@@ -5,7 +5,7 @@ description = "General-purpose shift scheduling optimization using constraint pr
 readme = "README.md"
 license = "MIT"
 authors = [
-    { name = "Jason Olinger", email = "jbolinge@hotmail.com" }
+    { name = "Jason Olinger", email = "jasonolinger@fastmail.com" }
 ]
 requires-python = ">=3.12"
 keywords = ["scheduling", "optimization", "constraint-programming", "shifts", "workforce"]
