@@ -1,0 +1,114 @@
+# shift-solver Configuration
+# All aspects of scheduling are configurable
+
+# Solver settings
+solver:
+  max_time_seconds: 3600        # 1 hour solving limit
+  num_workers: 8                # Parallel CPU workers
+  quick_solution_seconds: 60    # Quick solve time limit
+
+# Schedule definition
+schedule:
+  period_type: "week"           # day, week, or month
+
+# Constraint configuration
+# Each constraint can be:
+#   - enabled: true/false
+#   - is_hard: true (must satisfy) / false (soft with penalty)
+#   - weight: integer (for soft constraints, higher = more important)
+#   - parameters: constraint-specific settings
+constraints:
+  coverage:
+    enabled: true
+    is_hard: true
+
+  worker_restriction:
+    enabled: true
+    is_hard: true
+
+  availability:
+    enabled: true
+    is_hard: true
+
+  fairness:
+    enabled: true
+    is_hard: false
+    weight: 1000
+    parameters:
+      categories: ["weekend", "night"]
+
+  frequency:
+    enabled: true
+    is_hard: false
+    weight: 500
+    parameters:
+      default_max_periods_between: 4
+
+  request:
+    enabled: true
+    is_hard: false
+    weight: 150
+    parameters:
+      max_requests_per_worker: 8
+
+  sequence_no_consecutive:
+    enabled: true
+    is_hard: false
+    weight: 100
+    parameters:
+      categories: ["ambulatory"]
+
+  max_absence:
+    enabled: true
+    is_hard: false
+    weight: 200
+    parameters:
+      max_periods_absent: 8
+
+# Shift type definitions
+shift_types:
+  - id: "day_shift"
+    name: "Day Shift"
+    category: "day"
+    start_time: "07:00"
+    end_time: "15:00"
+    duration_hours: 8.0
+    is_undesirable: false
+    workers_required: 2
+
+  - id: "evening_shift"
+    name: "Evening Shift"
+    category: "evening"
+    start_time: "15:00"
+    end_time: "23:00"
+    duration_hours: 8.0
+    is_undesirable: false
+    workers_required: 2
+
+  - id: "night_shift"
+    name: "Night Shift"
+    category: "night"
+    start_time: "23:00"
+    end_time: "07:00"
+    duration_hours: 8.0
+    is_undesirable: true
+    workers_required: 1
+
+  - id: "weekend"
+    name: "Weekend Shift"
+    category: "weekend"
+    start_time: "07:00"
+    end_time: "19:00"
+    duration_hours: 12.0
+    is_undesirable: true
+    workers_required: 1
+
+# Database settings
+database:
+  path: "shift_solver.db"
+  backup_on_solve: true
+
+# Logging
+logging:
+  level: "INFO"
+  file: "logs/shift_solver.log"
