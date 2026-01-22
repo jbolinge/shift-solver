@@ -76,7 +76,7 @@ class ShiftSolverConfig(BaseModel):
     solver: SolverConfig = Field(default_factory=SolverConfig)
     schedule: ScheduleConfig = Field(default_factory=ScheduleConfig)
     constraints: dict[str, ConstraintConfig] = Field(default_factory=dict)
-    shift_types: list[ShiftTypeConfig]
+    shift_types: list[ShiftTypeConfig] = Field(min_length=1)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
 
