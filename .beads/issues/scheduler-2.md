@@ -2,7 +2,7 @@
 id: scheduler-2
 title: "Project setup with uv and pyproject.toml"
 type: task
-status: open
+status: closed
 priority: 1
 created: 2026-01-22
 updated: 2026-01-22

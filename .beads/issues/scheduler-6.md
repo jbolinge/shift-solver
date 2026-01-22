@@ -2,7 +2,7 @@
 id: scheduler-6
 title: "CLI scaffolding with Click"
 type: task
-status: open
+status: closed
 priority: 1
 created: 2026-01-22
 updated: 2026-01-22

@@ -2,7 +2,7 @@
 id: scheduler-4
 title: "Configuration schema with Pydantic validation"
 type: task
-status: open
+status: closed
 priority: 1
 created: 2026-01-22
 updated: 2026-01-22

@@ -2,7 +2,7 @@
 id: scheduler-7
 title: "Test infrastructure with pytest and hypothesis"
 type: task
-status: open
+status: closed
 priority: 1
 created: 2026-01-22
 updated: 2026-01-22
