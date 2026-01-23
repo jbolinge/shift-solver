@@ -1,11 +1,15 @@
 """Command-line interface for shift-solver."""
 
+import json
+from datetime import date, timedelta
 from pathlib import Path
 
 import click
 
 from shift_solver import __version__
 from shift_solver.config import ShiftSolverConfig
+from shift_solver.models import Worker, ShiftType
+from shift_solver.solver import ShiftSolver
 
 
 @click.group()
@@ -156,6 +160,11 @@ def list_shifts(ctx: click.Context, config: Path | None) -> None:
     default=None,
     help="Custom time limit in seconds",
 )
+@click.option(
+    "--demo",
+    is_flag=True,
+    help="Use demo data (no database required)",
+)
 @click.pass_context
 def generate(
     ctx: click.Context,
@@ -164,16 +173,152 @@ def generate(
     output: Path,
     quick_solve: bool,
     time_limit: int | None,
+    demo: bool,
 ) -> None:
     """Generate an optimized schedule for the specified date range."""
-    # Placeholder - will be implemented with solver integration
+    config_path = ctx.obj.get("config_path")
+    verbose = ctx.obj.get("verbose", 0)
+
     click.echo(f"Generating schedule from {start_date.date()} to {end_date.date()}")
-    click.echo(f"Output: {output}")
-    if quick_solve:
-        click.echo("Using quick solve mode")
+
+    # Load configuration
+    if config_path and config_path.exists():
+        try:
+            cfg = ShiftSolverConfig.load_from_yaml(config_path)
+            shift_types = [
+                ShiftType(
+                    id=st.id,
+                    name=st.name,
+                    category=st.category,
+                    start_time=st.start_time,
+                    end_time=st.end_time,
+                    duration_hours=st.duration_hours,
+                    is_undesirable=st.is_undesirable,
+                    workers_required=st.workers_required,
+                )
+                for st in cfg.shift_types
+            ]
+            if verbose:
+                click.echo(f"Loaded {len(shift_types)} shift types from config")
+        except Exception as e:
+            raise click.ClickException(f"Error loading config: {e}")
+    else:
+        # Use demo shift types
+        from datetime import time
+
+        shift_types = [
+            ShiftType(
+                id="day",
+                name="Day Shift",
+                category="day",
+                start_time=time(7, 0),
+                end_time=time(15, 0),
+                duration_hours=8.0,
+                workers_required=2,
+            ),
+            ShiftType(
+                id="night",
+                name="Night Shift",
+                category="night",
+                start_time=time(23, 0),
+                end_time=time(7, 0),
+                duration_hours=8.0,
+                workers_required=1,
+                is_undesirable=True,
+            ),
+        ]
+        click.echo("Using demo shift types (no config file)")
+
+    # Get workers - demo mode creates sample workers
+    if demo:
+        workers = [Worker(id=f"W{i:03d}", name=f"Worker {i}") for i in range(1, 11)]
+        click.echo(f"Using {len(workers)} demo workers")
+    else:
+        # TODO: Load workers from database
+        click.echo("Database not yet implemented. Use --demo flag for now.")
+        raise click.ClickException("Use --demo flag until database is implemented")
+
+    # Calculate period dates (weekly periods)
+    start = start_date.date() if hasattr(start_date, "date") else date.fromisoformat(str(start_date)[:10])
+    end = end_date.date() if hasattr(end_date, "date") else date.fromisoformat(str(end_date)[:10])
+
+    period_dates: list[tuple[date, date]] = []
+    current = start
+    while current <= end:
+        period_end = min(current + timedelta(days=6), end)
+        period_dates.append((current, period_end))
+        current = period_end + timedelta(days=1)
+
+    click.echo(f"Schedule covers {len(period_dates)} periods")
+
+    # Determine time limit
     if time_limit:
-        click.echo(f"Time limit: {time_limit}s")
-    click.echo("Solver not yet implemented. Coming in Epic 2.")
+        solve_time = time_limit
+    elif quick_solve:
+        solve_time = 60
+    else:
+        solve_time = 300
+
+    click.echo(f"Solving with {solve_time}s time limit...")
+
+    # Create and run solver
+    solver = ShiftSolver(
+        workers=workers,
+        shift_types=shift_types,
+        period_dates=period_dates,
+        schedule_id=f"SCH-{start.strftime('%Y%m%d')}",
+    )
+
+    result = solver.solve(time_limit_seconds=solve_time)
+
+    if result.success:
+        click.echo(f"Solution found! Status: {result.status_name}")
+        click.echo(f"Solve time: {result.solve_time_seconds:.2f}s")
+
+        # Output schedule
+        schedule = result.schedule
+        assert schedule is not None
+
+        # Write output
+        output_data = {
+            "schedule_id": schedule.schedule_id,
+            "start_date": str(schedule.start_date),
+            "end_date": str(schedule.end_date),
+            "periods": [],
+            "statistics": schedule.statistics,
+        }
+
+        for period in schedule.periods:
+            period_data = {
+                "period_index": period.period_index,
+                "period_start": str(period.period_start),
+                "period_end": str(period.period_end),
+                "assignments": {},
+            }
+            for worker_id, shifts in period.assignments.items():
+                period_data["assignments"][worker_id] = [
+                    {
+                        "shift_type_id": s.shift_type_id,
+                        "date": str(s.date),
+                    }
+                    for s in shifts
+                ]
+            output_data["periods"].append(period_data)
+
+        output.parent.mkdir(parents=True, exist_ok=True)
+        with open(output, "w") as f:
+            json.dump(output_data, f, indent=2)
+
+        click.echo(f"Schedule written to: {output}")
+
+        # Print summary
+        if verbose:
+            click.echo("\nWorker Statistics:")
+            for worker_id, stats in schedule.statistics.items():
+                click.echo(f"  {worker_id}: {stats.get('total_shifts', 0)} shifts")
+    else:
+        click.echo(f"No solution found. Status: {result.status_name}")
+        raise click.ClickException("Failed to generate schedule")
 
 
 @cli.command("generate-samples")
