@@ -2,7 +2,7 @@
 id: scheduler-16
 title: "Generate CLI command"
 type: task
-status: open
+status: closed
 priority: 1
 created: 2026-01-22
 updated: 2026-01-22
