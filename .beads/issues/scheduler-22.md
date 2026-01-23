@@ -2,7 +2,7 @@
 id: scheduler-22
 title: "Max absence constraint (soft)"
 type: task
-status: open
+status: closed
 priority: 2
 created: 2026-01-22
 updated: 2026-01-22
