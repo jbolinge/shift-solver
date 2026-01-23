@@ -1,12 +1,14 @@
 """Coverage constraint - ensures required workers for each shift type."""
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from ortools.sat.python import cp_model
 
 from shift_solver.constraints.base import BaseConstraint, ConstraintConfig
 from shift_solver.models import Worker, ShiftType
-from shift_solver.solver.types import SolverVariables
+
+if TYPE_CHECKING:
+    from shift_solver.solver.types import SolverVariables
 
 
 class CoverageConstraint(BaseConstraint):
@@ -28,7 +30,7 @@ class CoverageConstraint(BaseConstraint):
     def __init__(
         self,
         model: cp_model.CpModel,
-        variables: SolverVariables,
+        variables: "SolverVariables",
         config: ConstraintConfig | None = None,
     ) -> None:
         """Initialize coverage constraint."""

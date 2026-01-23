@@ -2,11 +2,12 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from ortools.sat.python import cp_model
 
-from shift_solver.solver.types import SolverVariables
+if TYPE_CHECKING:
+    from shift_solver.solver.types import SolverVariables
 
 
 @dataclass
@@ -41,7 +42,7 @@ class BaseConstraint(ABC):
     def __init__(
         self,
         model: cp_model.CpModel,
-        variables: SolverVariables,
+        variables: "SolverVariables",
         config: ConstraintConfig | None = None,
     ) -> None:
         """
