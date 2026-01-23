@@ -3,7 +3,7 @@ name = "shift-solver"
 version = "0.1.0"
 description = "General-purpose shift scheduling optimization using constraint programming"
 readme = "README.md"
-license = "MIT"
+license = "GPL-3.0-or-later"
 authors = [
     { name = "Jason Olinger", email = "jasonolinger@fastmail.com" }
 ]
@@ -12,7 +12,7 @@ keywords = ["scheduling", "optimization", "constraint-programming", "shifts", "w
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
