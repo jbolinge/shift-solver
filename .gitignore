@@ -62,3 +62,4 @@ Thumbs.db
 data/output/
 *.xlsx
 !config/examples/*.xlsx
+tmp/
