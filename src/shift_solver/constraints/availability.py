@@ -52,7 +52,7 @@ class AvailabilityConstraint(BaseConstraint):
         workers: list[Worker] = context["workers"]
         shift_types: list[ShiftType] = context["shift_types"]
         num_periods: int = context["num_periods"]
-        availabilities: list[Availability] = context["availabilities"]
+        availabilities: list[Availability] = context.get("availabilities", [])
         period_dates: list[tuple[date, date]] = context["period_dates"]
 
         # Build lookup for valid worker IDs
@@ -112,16 +112,22 @@ class AvailabilityConstraint(BaseConstraint):
         """
         if specific_shift_id:
             # Block only the specific shift type
-            assignment_var = self.variables.get_assignment_var(
-                worker_id, period, specific_shift_id
-            )
+            try:
+                assignment_var = self.variables.get_assignment_var(
+                    worker_id, period, specific_shift_id
+                )
+            except KeyError:
+                return
             self.model.add(assignment_var == 0)
             self._constraint_count += 1
         else:
             # Block all shift types
             for shift_type in shift_types:
-                assignment_var = self.variables.get_assignment_var(
-                    worker_id, period, shift_type.id
-                )
+                try:
+                    assignment_var = self.variables.get_assignment_var(
+                        worker_id, period, shift_type.id
+                    )
+                except KeyError:
+                    continue
                 self.model.add(assignment_var == 0)
                 self._constraint_count += 1

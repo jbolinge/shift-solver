@@ -80,8 +80,11 @@ class RestrictionConstraint(BaseConstraint):
             shift_type_id: Restricted shift type identifier
             period: Period index
         """
-        assignment_var = self.variables.get_assignment_var(
-            worker_id, period, shift_type_id
-        )
+        try:
+            assignment_var = self.variables.get_assignment_var(
+                worker_id, period, shift_type_id
+            )
+        except KeyError:
+            return
         self.model.add(assignment_var == 0)
         self._constraint_count += 1
