@@ -1,0 +1,4 @@
+worker_id,start_date,end_date,availability_type,shift_type_id
+R001,2026-02-15,2026-02-16,unavailable,
+R003,2026-02-08,2026-02-10,unavailable,
+R005,2026-02-22,2026-02-28,unavailable,

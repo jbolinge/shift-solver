@@ -1,0 +1,85 @@
+# Retail Store Configuration
+# Typical retail store with morning, afternoon, evening shifts
+
+solver:
+  max_time_seconds: 300
+  num_workers: 4
+
+schedule:
+  period_type: "week"
+
+# Shift types for retail store
+shift_types:
+  - id: "morning"
+    name: "Morning Shift"
+    category: "day"
+    start_time: "06:00"
+    end_time: "14:00"
+    duration_hours: 8.0
+    is_undesirable: false
+    workers_required: 2
+
+  - id: "afternoon"
+    name: "Afternoon Shift"
+    category: "day"
+    start_time: "14:00"
+    end_time: "22:00"
+    duration_hours: 8.0
+    is_undesirable: false
+    workers_required: 2
+
+  - id: "weekend_day"
+    name: "Weekend Day"
+    category: "weekend"
+    start_time: "09:00"
+    end_time: "18:00"
+    duration_hours: 9.0
+    is_undesirable: true
+    workers_required: 3
+
+# Constraints tuned for retail
+constraints:
+  coverage:
+    enabled: true
+    is_hard: true
+
+  worker_restriction:
+    enabled: true
+    is_hard: true
+
+  availability:
+    enabled: true
+    is_hard: true
+
+  fairness:
+    enabled: true
+    is_hard: false
+    weight: 1000
+    parameters:
+      categories: ["weekend"]
+
+  frequency:
+    enabled: false
+
+  request:
+    enabled: true
+    is_hard: false
+    weight: 200
+    parameters:
+      max_requests_per_worker: 4
+
+  sequence_no_consecutive:
+    enabled: false
+
+  max_absence:
+    enabled: true
+    is_hard: false
+    weight: 100
+    parameters:
+      max_periods_absent: 2
+
+database:
+  path: "retail_scheduler.db"
+
+logging:
+  level: "INFO"

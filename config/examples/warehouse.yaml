@@ -1,0 +1,100 @@
+# Warehouse / Distribution Center Configuration
+# Multiple shifts with varying staffing needs
+# Focus on coverage and avoiding overtime
+
+solver:
+  max_time_seconds: 300
+  num_workers: 4
+
+schedule:
+  period_type: "week"
+
+# Shift types for warehouse operations
+shift_types:
+  - id: "first_shift"
+    name: "First Shift"
+    category: "day"
+    start_time: "06:00"
+    end_time: "14:00"
+    duration_hours: 8.0
+    is_undesirable: false
+    workers_required: 4
+
+  - id: "second_shift"
+    name: "Second Shift"
+    category: "evening"
+    start_time: "14:00"
+    end_time: "22:00"
+    duration_hours: 8.0
+    is_undesirable: false
+    workers_required: 3
+
+  - id: "third_shift"
+    name: "Third Shift (Overnight)"
+    category: "night"
+    start_time: "22:00"
+    end_time: "06:00"
+    duration_hours: 8.0
+    is_undesirable: true
+    workers_required: 2
+
+  - id: "weekend_shift"
+    name: "Weekend Shift"
+    category: "weekend"
+    start_time: "08:00"
+    end_time: "16:00"
+    duration_hours: 8.0
+    is_undesirable: true
+    workers_required: 2
+
+# Constraints tuned for warehouse
+constraints:
+  coverage:
+    enabled: true
+    is_hard: true
+
+  worker_restriction:
+    enabled: true
+    is_hard: true
+
+  availability:
+    enabled: true
+    is_hard: true
+
+  # Distribute overnight and weekend shifts fairly
+  fairness:
+    enabled: true
+    is_hard: false
+    weight: 1500
+    parameters:
+      categories: ["night", "weekend"]
+
+  frequency:
+    enabled: true
+    is_hard: false
+    weight: 300
+    parameters:
+      default_max_periods_between: 4
+
+  request:
+    enabled: true
+    is_hard: false
+    weight: 100
+    parameters:
+      max_requests_per_worker: 4
+
+  sequence_no_consecutive:
+    enabled: true
+    is_hard: false
+    weight: 200
+    parameters:
+      categories: ["night"]
+
+  max_absence:
+    enabled: false
+
+database:
+  path: "warehouse_scheduler.db"
+
+logging:
+  level: "INFO"

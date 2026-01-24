@@ -1,0 +1,5 @@
+worker_id,start_date,end_date,request_type,shift_type_id,priority
+N002,2026-02-14,2026-02-14,negative,night,2
+N004,2026-02-01,2026-02-28,positive,day,1
+N006,2026-02-07,2026-02-08,negative,weekend,2
+N008,2026-02-15,2026-02-21,positive,night,1

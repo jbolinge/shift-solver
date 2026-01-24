@@ -1,0 +1,6 @@
+id,name,worker_type,restricted_shifts,preferred_shifts
+W001,Alice,full_time,,
+W002,Bob,full_time,,
+W003,Carol,full_time,,
+W004,David,full_time,,
+W005,Eve,full_time,,

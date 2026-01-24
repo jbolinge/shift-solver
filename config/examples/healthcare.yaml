@@ -1,0 +1,115 @@
+# Healthcare / Hospital Configuration
+# 24/7 coverage with day, evening, night shifts
+# Strict fairness for undesirable shifts
+
+solver:
+  max_time_seconds: 600
+  num_workers: 8
+
+schedule:
+  period_type: "week"
+
+# Shift types for hospital/clinic
+shift_types:
+  - id: "day"
+    name: "Day Shift"
+    category: "day"
+    start_time: "07:00"
+    end_time: "15:00"
+    duration_hours: 8.0
+    is_undesirable: false
+    workers_required: 3
+
+  - id: "evening"
+    name: "Evening Shift"
+    category: "evening"
+    start_time: "15:00"
+    end_time: "23:00"
+    duration_hours: 8.0
+    is_undesirable: false
+    workers_required: 2
+
+  - id: "night"
+    name: "Night Shift"
+    category: "night"
+    start_time: "23:00"
+    end_time: "07:00"
+    duration_hours: 8.0
+    is_undesirable: true
+    workers_required: 2
+
+  - id: "weekend_day"
+    name: "Weekend Day"
+    category: "weekend"
+    start_time: "07:00"
+    end_time: "19:00"
+    duration_hours: 12.0
+    is_undesirable: true
+    workers_required: 2
+
+  - id: "weekend_night"
+    name: "Weekend Night"
+    category: "weekend_night"
+    start_time: "19:00"
+    end_time: "07:00"
+    duration_hours: 12.0
+    is_undesirable: true
+    workers_required: 1
+
+# Constraints tuned for healthcare
+constraints:
+  coverage:
+    enabled: true
+    is_hard: true
+
+  worker_restriction:
+    enabled: true
+    is_hard: true
+
+  availability:
+    enabled: true
+    is_hard: true
+
+  # High priority on fair distribution of nights/weekends
+  fairness:
+    enabled: true
+    is_hard: false
+    weight: 2000
+    parameters:
+      categories: ["night", "weekend", "weekend_night"]
+
+  # Ensure everyone gets regular shifts
+  frequency:
+    enabled: true
+    is_hard: false
+    weight: 500
+    parameters:
+      default_max_periods_between: 3
+
+  request:
+    enabled: true
+    is_hard: false
+    weight: 150
+    parameters:
+      max_requests_per_worker: 8
+
+  # Avoid back-to-back night shifts
+  sequence_no_consecutive:
+    enabled: true
+    is_hard: false
+    weight: 300
+    parameters:
+      categories: ["night", "weekend_night"]
+
+  max_absence:
+    enabled: true
+    is_hard: false
+    weight: 200
+    parameters:
+      max_periods_absent: 4
+
+database:
+  path: "healthcare_scheduler.db"
+
+logging:
+  level: "INFO"

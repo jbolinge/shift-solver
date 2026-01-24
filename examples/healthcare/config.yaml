@@ -1,0 +1,97 @@
+# Healthcare Example Configuration
+# Hospital rotation with 24/7 coverage
+
+solver:
+  max_time_seconds: 300
+  num_workers: 8
+
+schedule:
+  period_type: "week"
+
+shift_types:
+  - id: "day"
+    name: "Day Shift"
+    category: "day"
+    start_time: "07:00"
+    end_time: "15:00"
+    duration_hours: 8.0
+    is_undesirable: false
+    workers_required: 3
+
+  - id: "evening"
+    name: "Evening Shift"
+    category: "evening"
+    start_time: "15:00"
+    end_time: "23:00"
+    duration_hours: 8.0
+    is_undesirable: false
+    workers_required: 2
+
+  - id: "night"
+    name: "Night Shift"
+    category: "night"
+    start_time: "23:00"
+    end_time: "07:00"
+    duration_hours: 8.0
+    is_undesirable: true
+    workers_required: 2
+
+  - id: "weekend"
+    name: "Weekend Shift"
+    category: "weekend"
+    start_time: "07:00"
+    end_time: "19:00"
+    duration_hours: 12.0
+    is_undesirable: true
+    workers_required: 2
+
+constraints:
+  coverage:
+    enabled: true
+    is_hard: true
+
+  worker_restriction:
+    enabled: true
+    is_hard: true
+
+  availability:
+    enabled: true
+    is_hard: true
+
+  fairness:
+    enabled: true
+    is_hard: false
+    weight: 2000
+    parameters:
+      categories: ["night", "weekend"]
+
+  frequency:
+    enabled: true
+    is_hard: false
+    weight: 500
+    parameters:
+      default_max_periods_between: 3
+
+  request:
+    enabled: true
+    is_hard: false
+    weight: 150
+    parameters:
+      max_requests_per_worker: 8
+
+  sequence_no_consecutive:
+    enabled: true
+    is_hard: false
+    weight: 300
+    parameters:
+      categories: ["night"]
+
+  max_absence:
+    enabled: true
+    is_hard: false
+    weight: 200
+    parameters:
+      max_periods_absent: 4
+
+logging:
+  level: "INFO"

@@ -1,0 +1,80 @@
+# Retail Store Example Configuration
+# Small store with morning/afternoon/weekend shifts
+
+solver:
+  max_time_seconds: 120
+  num_workers: 4
+
+schedule:
+  period_type: "week"
+
+shift_types:
+  - id: "morning"
+    name: "Morning Shift"
+    category: "day"
+    start_time: "09:00"
+    end_time: "14:00"
+    duration_hours: 5.0
+    is_undesirable: false
+    workers_required: 2
+
+  - id: "afternoon"
+    name: "Afternoon Shift"
+    category: "day"
+    start_time: "14:00"
+    end_time: "20:00"
+    duration_hours: 6.0
+    is_undesirable: false
+    workers_required: 2
+
+  - id: "weekend"
+    name: "Weekend Shift"
+    category: "weekend"
+    start_time: "10:00"
+    end_time: "18:00"
+    duration_hours: 8.0
+    is_undesirable: true
+    workers_required: 3
+
+constraints:
+  coverage:
+    enabled: true
+    is_hard: true
+
+  worker_restriction:
+    enabled: true
+    is_hard: true
+
+  availability:
+    enabled: true
+    is_hard: true
+
+  fairness:
+    enabled: true
+    is_hard: false
+    weight: 1000
+    parameters:
+      categories: ["weekend"]
+
+  frequency:
+    enabled: false
+
+  request:
+    enabled: true
+    is_hard: false
+    weight: 150
+    parameters:
+      max_requests_per_worker: 4
+
+  sequence_no_consecutive:
+    enabled: false
+
+  max_absence:
+    enabled: true
+    is_hard: false
+    weight: 100
+    parameters:
+      max_periods_absent: 2
+
+logging:
+  level: "INFO"

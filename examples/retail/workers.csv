@@ -1,0 +1,7 @@
+id,name,worker_type,restricted_shifts,preferred_shifts
+R001,Manager Mike,full_time,,morning
+R002,Alice,full_time,,
+R003,Bob,full_time,,afternoon
+R004,Carol,part_time,weekend,morning
+R005,Dave,part_time,,afternoon
+R006,Emma,part_time,,weekend

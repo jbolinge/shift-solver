@@ -1,0 +1,63 @@
+# Simple Example Configuration
+# 5 workers, 2 shift types, 2 weeks
+
+solver:
+  max_time_seconds: 60
+  num_workers: 4
+
+schedule:
+  period_type: "week"
+
+shift_types:
+  - id: "day"
+    name: "Day Shift"
+    category: "day"
+    start_time: "08:00"
+    end_time: "16:00"
+    duration_hours: 8.0
+    is_undesirable: false
+    workers_required: 2
+
+  - id: "night"
+    name: "Night Shift"
+    category: "night"
+    start_time: "22:00"
+    end_time: "06:00"
+    duration_hours: 8.0
+    is_undesirable: true
+    workers_required: 1
+
+constraints:
+  coverage:
+    enabled: true
+    is_hard: true
+
+  worker_restriction:
+    enabled: true
+    is_hard: true
+
+  availability:
+    enabled: true
+    is_hard: true
+
+  fairness:
+    enabled: true
+    is_hard: false
+    weight: 1000
+    parameters:
+      categories: ["night"]
+
+  frequency:
+    enabled: false
+
+  request:
+    enabled: false
+
+  sequence_no_consecutive:
+    enabled: false
+
+  max_absence:
+    enabled: false
+
+logging:
+  level: "INFO"

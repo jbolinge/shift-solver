@@ -1,0 +1,119 @@
+{
+  "schedule_id": "SCH-20260201",
+  "start_date": "2026-02-01",
+  "end_date": "2026-02-14",
+  "periods": [
+    {
+      "period_index": 0,
+      "period_start": "2026-02-01",
+      "period_end": "2026-02-07",
+      "assignments": {
+        "W001": [
+          {
+            "shift_type_id": "day",
+            "date": "2026-02-01"
+          }
+        ],
+        "W002": [
+          {
+            "shift_type_id": "day",
+            "date": "2026-02-01"
+          }
+        ],
+        "W010": [
+          {
+            "shift_type_id": "night",
+            "date": "2026-02-01"
+          }
+        ]
+      }
+    },
+    {
+      "period_index": 1,
+      "period_start": "2026-02-08",
+      "period_end": "2026-02-14",
+      "assignments": {
+        "W001": [
+          {
+            "shift_type_id": "day",
+            "date": "2026-02-08"
+          }
+        ],
+        "W002": [
+          {
+            "shift_type_id": "day",
+            "date": "2026-02-08"
+          }
+        ],
+        "W009": [
+          {
+            "shift_type_id": "night",
+            "date": "2026-02-08"
+          }
+        ]
+      }
+    }
+  ],
+  "statistics": {
+    "W001": {
+      "total_shifts": 2,
+      "periods_worked": 2,
+      "day": 2,
+      "night": 0
+    },
+    "W002": {
+      "total_shifts": 2,
+      "periods_worked": 2,
+      "day": 2,
+      "night": 0
+    },
+    "W003": {
+      "total_shifts": 0,
+      "periods_worked": 0,
+      "day": 0,
+      "night": 0
+    },
+    "W004": {
+      "total_shifts": 0,
+      "periods_worked": 0,
+      "day": 0,
+      "night": 0
+    },
+    "W005": {
+      "total_shifts": 0,
+      "periods_worked": 0,
+      "day": 0,
+      "night": 0
+    },
+    "W006": {
+      "total_shifts": 0,
+      "periods_worked": 0,
+      "day": 0,
+      "night": 0
+    },
+    "W007": {
+      "total_shifts": 0,
+      "periods_worked": 0,
+      "day": 0,
+      "night": 0
+    },
+    "W008": {
+      "total_shifts": 0,
+      "periods_worked": 0,
+      "day": 0,
+      "night": 0
+    },
+    "W009": {
+      "total_shifts": 1,
+      "periods_worked": 1,
+      "day": 0,
+      "night": 1
+    },
+    "W010": {
+      "total_shifts": 1,
+      "periods_worked": 1,
+      "day": 0,
+      "night": 1
+    }
+  }
+}
