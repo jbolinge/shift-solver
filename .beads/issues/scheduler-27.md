@@ -2,10 +2,11 @@
 id: scheduler-27
 title: "Sample data generator"
 type: task
-status: open
+status: closed
 priority: 2
 created: 2026-01-22
 updated: 2026-01-22
+closed: 2026-01-24
 parent: scheduler-24
 depends-on: scheduler-25
 ---

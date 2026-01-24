@@ -2,10 +2,11 @@
 id: scheduler-28
 title: "Import/export CLI commands"
 type: task
-status: open
+status: closed
 priority: 2
 created: 2026-01-22
 updated: 2026-01-22
+closed: 2026-01-24
 parent: scheduler-24
 depends-on: scheduler-25,scheduler-26,scheduler-6
 ---
@@ -21,3 +22,7 @@ Implement data management CLI commands.
 - [ ] shift-solver list-shifts
 - [ ] shift-solver list-schedules
 - [ ] shift-solver generate-samples --industry INDUSTRY
+
+
+## Completion
+Implemented generate-samples, import-data, and export CLI commands with 12 tests.
