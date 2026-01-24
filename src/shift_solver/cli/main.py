@@ -645,5 +645,253 @@ def export_schedule(
         click.echo(f"Schedule exported to: {output}")
 
 
+@cli.command()
+@click.option(
+    "--schedule",
+    type=click.Path(exists=True, path_type=Path),
+    required=True,
+    help="Schedule JSON file to validate",
+)
+@click.option(
+    "--config",
+    "-c",
+    type=click.Path(exists=True, path_type=Path),
+    default=None,
+    help="Configuration file with shift type definitions",
+)
+@click.option(
+    "--workers",
+    type=click.Path(exists=True, path_type=Path),
+    default=None,
+    help="Workers CSV file (for restriction validation)",
+)
+@click.option(
+    "--availability",
+    type=click.Path(exists=True, path_type=Path),
+    default=None,
+    help="Availability CSV file",
+)
+@click.option(
+    "--requests",
+    type=click.Path(exists=True, path_type=Path),
+    default=None,
+    help="Requests CSV file",
+)
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Output file for validation report (JSON)",
+)
+@click.pass_context
+def validate(
+    ctx: click.Context,
+    schedule: Path,
+    config: Path | None,
+    workers: Path | None,
+    availability: Path | None,
+    requests: Path | None,
+    output: Path | None,
+) -> None:
+    """Validate a generated schedule against constraints."""
+    from shift_solver.models import (
+        Schedule,
+        PeriodAssignment,
+        ShiftInstance,
+        Worker as WorkerModel,
+        ShiftType as ShiftTypeModel,
+    )
+    from shift_solver.validation import ScheduleValidator
+    from shift_solver.io import CSVLoader
+
+    verbose = ctx.obj.get("verbose", 0)
+
+    click.echo(f"Validating schedule: {schedule}")
+
+    # Load the schedule JSON
+    try:
+        with open(schedule) as f:
+            schedule_data = json.load(f)
+    except Exception as e:
+        raise click.ClickException(f"Error reading schedule: {e}")
+
+    # Load shift types from config or infer from schedule
+    shift_types: list[ShiftTypeModel] = []
+    if config and config.exists():
+        try:
+            cfg = ShiftSolverConfig.load_from_yaml(config)
+            shift_types = [
+                ShiftTypeModel(
+                    id=st.id,
+                    name=st.name,
+                    category=st.category,
+                    start_time=st.start_time,
+                    end_time=st.end_time,
+                    duration_hours=st.duration_hours,
+                    is_undesirable=st.is_undesirable,
+                    workers_required=st.workers_required,
+                )
+                for st in cfg.shift_types
+            ]
+            if verbose:
+                click.echo(f"Loaded {len(shift_types)} shift types from config")
+        except Exception as e:
+            raise click.ClickException(f"Error loading config: {e}")
+    else:
+        # Infer shift types from schedule
+        from datetime import time as dt_time
+
+        shift_type_ids: set[str] = set()
+        for period in schedule_data.get("periods", []):
+            for assignments in period.get("assignments", {}).values():
+                for a in assignments:
+                    shift_type_ids.add(a.get("shift_type_id"))
+
+        shift_types = [
+            ShiftTypeModel(
+                id=stid,
+                name=stid,
+                category="unknown",
+                start_time=dt_time(0, 0),
+                end_time=dt_time(8, 0),
+                duration_hours=8.0,
+                workers_required=1,
+            )
+            for stid in sorted(shift_type_ids)
+        ]
+        if verbose:
+            click.echo(f"Inferred {len(shift_types)} shift types from schedule")
+
+    # Load workers
+    worker_list: list[WorkerModel] = []
+    if workers:
+        try:
+            csv_loader = CSVLoader()
+            worker_list = csv_loader.load_workers(workers)
+            if verbose:
+                click.echo(f"Loaded {len(worker_list)} workers")
+        except Exception as e:
+            raise click.ClickException(f"Error loading workers: {e}")
+    else:
+        # Infer workers from schedule
+        worker_ids: set[str] = set()
+        for period in schedule_data.get("periods", []):
+            worker_ids.update(period.get("assignments", {}).keys())
+
+        worker_list = [
+            WorkerModel(id=wid, name=wid) for wid in sorted(worker_ids)
+        ]
+        if verbose:
+            click.echo(f"Inferred {len(worker_list)} workers from schedule")
+
+    # Load availability and requests
+    availabilities = []
+    request_list = []
+
+    if availability:
+        try:
+            csv_loader = CSVLoader()
+            availabilities = csv_loader.load_availability(availability)
+            if verbose:
+                click.echo(f"Loaded {len(availabilities)} availability records")
+        except Exception as e:
+            raise click.ClickException(f"Error loading availability: {e}")
+
+    if requests:
+        try:
+            csv_loader = CSVLoader()
+            request_list = csv_loader.load_requests(requests)
+            if verbose:
+                click.echo(f"Loaded {len(request_list)} requests")
+        except Exception as e:
+            raise click.ClickException(f"Error loading requests: {e}")
+
+    # Reconstruct Schedule object
+    periods = []
+    for p in schedule_data.get("periods", []):
+        assignments: dict[str, list[ShiftInstance]] = {}
+        for worker_id, shifts in p.get("assignments", {}).items():
+            assignments[worker_id] = [
+                ShiftInstance(
+                    shift_type_id=s["shift_type_id"],
+                    period_index=p["period_index"],
+                    date=date.fromisoformat(s["date"]),
+                    worker_id=worker_id,
+                )
+                for s in shifts
+            ]
+        periods.append(
+            PeriodAssignment(
+                period_index=p["period_index"],
+                period_start=date.fromisoformat(p["period_start"]),
+                period_end=date.fromisoformat(p["period_end"]),
+                assignments=assignments,
+            )
+        )
+
+    schedule_obj = Schedule(
+        schedule_id=schedule_data.get("schedule_id", "UNKNOWN"),
+        start_date=date.fromisoformat(schedule_data["start_date"]),
+        end_date=date.fromisoformat(schedule_data["end_date"]),
+        period_type="week",
+        periods=periods,
+        workers=worker_list,
+        shift_types=shift_types,
+    )
+
+    # Run validation
+    validator = ScheduleValidator(
+        schedule=schedule_obj,
+        availabilities=availabilities,
+        requests=request_list,
+    )
+    result = validator.validate()
+
+    # Output results
+    if result.is_valid:
+        click.echo(click.style("Validation PASSED", fg="green", bold=True))
+    else:
+        click.echo(click.style("Validation FAILED", fg="red", bold=True))
+        click.echo(f"\n{len(result.violations)} violations found:")
+        for v in result.violations:
+            click.echo(f"  - [{v['type']}] {v['message']}")
+
+    if result.warnings:
+        click.echo(f"\n{len(result.warnings)} warnings:")
+        for w in result.warnings:
+            click.echo(f"  - [{w['type']}] {w['message']}")
+
+    # Show statistics
+    if verbose or not result.is_valid:
+        click.echo("\nStatistics:")
+        click.echo(f"  Total assignments: {result.statistics.get('total_assignments', 0)}")
+
+        if "fairness" in result.statistics:
+            fairness = result.statistics["fairness"]
+            click.echo(f"  Avg assignments/worker: {fairness.get('average_assignments', 0):.1f}")
+            click.echo(f"  Std deviation: {fairness.get('std_deviation', 0):.2f}")
+
+        if "request_fulfillment" in result.statistics:
+            req = result.statistics["request_fulfillment"]
+            click.echo(f"  Request fulfillment: {req.get('rate', 0) * 100:.1f}%")
+
+    # Write report if output specified
+    if output:
+        report = {
+            "is_valid": result.is_valid,
+            "violations": result.violations,
+            "warnings": result.warnings,
+            "statistics": result.statistics,
+        }
+        output.parent.mkdir(parents=True, exist_ok=True)
+        with open(output, "w") as f:
+            json.dump(report, f, indent=2, default=str)
+        click.echo(f"\nValidation report written to: {output}")
+
+    if not result.is_valid:
+        raise SystemExit(1)
+
+
 if __name__ == "__main__":
     cli()
