@@ -6,11 +6,11 @@ from typing import Any
 from ortools.sat.python import cp_model
 
 from shift_solver.models import (
-    Worker,
-    ShiftType,
-    ShiftInstance,
     PeriodAssignment,
     Schedule,
+    ShiftInstance,
+    ShiftType,
+    Worker,
 )
 from shift_solver.solver.types import SolverVariables
 
@@ -75,7 +75,9 @@ class SolutionExtractor:
         periods: list[PeriodAssignment] = []
         for period_idx in range(num_periods):
             period_start, period_end = self.period_dates[period_idx]
-            period_assignment = self._extract_period(period_idx, period_start, period_end)
+            period_assignment = self._extract_period(
+                period_idx, period_start, period_end
+            )
             periods.append(period_assignment)
 
         # Create schedule
@@ -119,7 +121,9 @@ class SolutionExtractor:
 
         # Extract assignments for each worker
         for worker in self.workers:
-            worker_shifts = self._extract_worker_shifts(worker.id, period_idx, period_start)
+            worker_shifts = self._extract_worker_shifts(
+                worker.id, period_idx, period_start
+            )
             if worker_shifts:
                 period_assignment.assignments[worker.id] = worker_shifts
 

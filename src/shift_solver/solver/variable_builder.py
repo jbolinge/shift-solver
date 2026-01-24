@@ -2,7 +2,7 @@
 
 from ortools.sat.python import cp_model
 
-from shift_solver.models import Worker, ShiftType
+from shift_solver.models import ShiftType, Worker
 from shift_solver.solver.types import SolverVariables
 
 
@@ -160,7 +160,9 @@ class VariableBuilder:
             undesirable_vars = []
             for period in range(self.num_periods):
                 for shift_type_id in self._undesirable_shift_ids:
-                    undesirable_vars.append(assignment[worker.id][period][shift_type_id])
+                    undesirable_vars.append(
+                        assignment[worker.id][period][shift_type_id]
+                    )
 
             if undesirable_vars:
                 self.model.add(total_var == sum(undesirable_vars))

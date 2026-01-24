@@ -2,14 +2,14 @@
 
 import csv
 import random
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date, time, timedelta
 from pathlib import Path
 from typing import Any
 
 import openpyxl
 
-from shift_solver.models import Worker, ShiftType, Availability, SchedulingRequest
+from shift_solver.models import Availability, SchedulingRequest, ShiftType, Worker
 
 
 @dataclass
@@ -179,18 +179,80 @@ class IndustryPreset:
 
 # Common first and last names for generating worker names
 FIRST_NAMES = [
-    "James", "Mary", "John", "Patricia", "Robert", "Jennifer", "Michael", "Linda",
-    "William", "Elizabeth", "David", "Barbara", "Richard", "Susan", "Joseph", "Jessica",
-    "Thomas", "Sarah", "Charles", "Karen", "Christopher", "Lisa", "Daniel", "Nancy",
-    "Matthew", "Betty", "Anthony", "Margaret", "Mark", "Sandra", "Donald", "Ashley",
-    "Steven", "Kimberly", "Paul", "Emily", "Andrew", "Donna", "Joshua", "Michelle",
+    "James",
+    "Mary",
+    "John",
+    "Patricia",
+    "Robert",
+    "Jennifer",
+    "Michael",
+    "Linda",
+    "William",
+    "Elizabeth",
+    "David",
+    "Barbara",
+    "Richard",
+    "Susan",
+    "Joseph",
+    "Jessica",
+    "Thomas",
+    "Sarah",
+    "Charles",
+    "Karen",
+    "Christopher",
+    "Lisa",
+    "Daniel",
+    "Nancy",
+    "Matthew",
+    "Betty",
+    "Anthony",
+    "Margaret",
+    "Mark",
+    "Sandra",
+    "Donald",
+    "Ashley",
+    "Steven",
+    "Kimberly",
+    "Paul",
+    "Emily",
+    "Andrew",
+    "Donna",
+    "Joshua",
+    "Michelle",
 ]
 
 LAST_NAMES = [
-    "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis",
-    "Rodriguez", "Martinez", "Hernandez", "Lopez", "Gonzalez", "Wilson", "Anderson",
-    "Thomas", "Taylor", "Moore", "Jackson", "Martin", "Lee", "Perez", "Thompson",
-    "White", "Harris", "Sanchez", "Clark", "Ramirez", "Lewis", "Robinson", "Walker",
+    "Smith",
+    "Johnson",
+    "Williams",
+    "Brown",
+    "Jones",
+    "Garcia",
+    "Miller",
+    "Davis",
+    "Rodriguez",
+    "Martinez",
+    "Hernandez",
+    "Lopez",
+    "Gonzalez",
+    "Wilson",
+    "Anderson",
+    "Thomas",
+    "Taylor",
+    "Moore",
+    "Jackson",
+    "Martin",
+    "Lee",
+    "Perez",
+    "Thompson",
+    "White",
+    "Harris",
+    "Sanchez",
+    "Clark",
+    "Ramirez",
+    "Lewis",
+    "Robinson",
+    "Walker",
 ]
 
 
@@ -427,63 +489,91 @@ class SampleGenerator:
             writer = csv.writer(f)
             writer.writerow(["id", "name", "worker_type", "restricted_shifts"])
             for w in workers:
-                writer.writerow([
-                    w.id,
-                    w.name,
-                    w.worker_type or "",
-                    ",".join(w.restricted_shifts),
-                ])
+                writer.writerow(
+                    [
+                        w.id,
+                        w.name,
+                        w.worker_type or "",
+                        ",".join(w.restricted_shifts),
+                    ]
+                )
 
         # Write shift_types.csv
         with open(output_dir / "shift_types.csv", "w", newline="") as f:
             writer = csv.writer(f)
-            writer.writerow([
-                "id", "name", "category", "start_time", "end_time",
-                "duration_hours", "workers_required", "is_undesirable"
-            ])
+            writer.writerow(
+                [
+                    "id",
+                    "name",
+                    "category",
+                    "start_time",
+                    "end_time",
+                    "duration_hours",
+                    "workers_required",
+                    "is_undesirable",
+                ]
+            )
             for st in shift_types:
-                writer.writerow([
-                    st.id,
-                    st.name,
-                    st.category,
-                    st.start_time.strftime("%H:%M"),
-                    st.end_time.strftime("%H:%M"),
-                    st.duration_hours,
-                    st.workers_required,
-                    str(st.is_undesirable).lower(),
-                ])
+                writer.writerow(
+                    [
+                        st.id,
+                        st.name,
+                        st.category,
+                        st.start_time.strftime("%H:%M"),
+                        st.end_time.strftime("%H:%M"),
+                        st.duration_hours,
+                        st.workers_required,
+                        str(st.is_undesirable).lower(),
+                    ]
+                )
 
         # Write availability.csv
         with open(output_dir / "availability.csv", "w", newline="") as f:
             writer = csv.writer(f)
-            writer.writerow([
-                "worker_id", "start_date", "end_date", "availability_type", "shift_type_id"
-            ])
+            writer.writerow(
+                [
+                    "worker_id",
+                    "start_date",
+                    "end_date",
+                    "availability_type",
+                    "shift_type_id",
+                ]
+            )
             for a in availability:
-                writer.writerow([
-                    a.worker_id,
-                    a.start_date.isoformat(),
-                    a.end_date.isoformat(),
-                    a.availability_type,
-                    a.shift_type_id or "",
-                ])
+                writer.writerow(
+                    [
+                        a.worker_id,
+                        a.start_date.isoformat(),
+                        a.end_date.isoformat(),
+                        a.availability_type,
+                        a.shift_type_id or "",
+                    ]
+                )
 
         # Write requests.csv
         with open(output_dir / "requests.csv", "w", newline="") as f:
             writer = csv.writer(f)
-            writer.writerow([
-                "worker_id", "start_date", "end_date", "request_type",
-                "shift_type_id", "priority"
-            ])
+            writer.writerow(
+                [
+                    "worker_id",
+                    "start_date",
+                    "end_date",
+                    "request_type",
+                    "shift_type_id",
+                    "priority",
+                ]
+            )
             for r in requests:
-                writer.writerow([
-                    r.worker_id,
-                    r.start_date.isoformat(),
-                    r.end_date.isoformat(),
-                    r.request_type,
-                    r.shift_type_id,
-                    r.priority,
-                ])
+                writer.writerow(
+                    [
+                        r.worker_id,
+                        r.start_date.isoformat(),
+                        r.end_date.isoformat(),
+                        r.request_type,
+                        r.shift_type_id,
+                        r.priority,
+                    ]
+                )
 
     def generate_to_excel(
         self,
@@ -522,60 +612,88 @@ class SampleGenerator:
         ws_workers.title = "Workers"
         ws_workers.append(["id", "name", "worker_type", "restricted_shifts"])
         for w in workers:
-            ws_workers.append([
-                w.id,
-                w.name,
-                w.worker_type or "",
-                ",".join(w.restricted_shifts),
-            ])
+            ws_workers.append(
+                [
+                    w.id,
+                    w.name,
+                    w.worker_type or "",
+                    ",".join(w.restricted_shifts),
+                ]
+            )
 
         # ShiftTypes sheet
         ws_shifts = wb.create_sheet("ShiftTypes")
-        ws_shifts.append([
-            "id", "name", "category", "start_time", "end_time",
-            "duration_hours", "workers_required", "is_undesirable"
-        ])
+        ws_shifts.append(
+            [
+                "id",
+                "name",
+                "category",
+                "start_time",
+                "end_time",
+                "duration_hours",
+                "workers_required",
+                "is_undesirable",
+            ]
+        )
         for st in shift_types:
-            ws_shifts.append([
-                st.id,
-                st.name,
-                st.category,
-                st.start_time.strftime("%H:%M"),
-                st.end_time.strftime("%H:%M"),
-                st.duration_hours,
-                st.workers_required,
-                st.is_undesirable,
-            ])
+            ws_shifts.append(
+                [
+                    st.id,
+                    st.name,
+                    st.category,
+                    st.start_time.strftime("%H:%M"),
+                    st.end_time.strftime("%H:%M"),
+                    st.duration_hours,
+                    st.workers_required,
+                    st.is_undesirable,
+                ]
+            )
 
         # Availability sheet
         ws_avail = wb.create_sheet("Availability")
-        ws_avail.append([
-            "worker_id", "start_date", "end_date", "availability_type", "shift_type_id"
-        ])
+        ws_avail.append(
+            [
+                "worker_id",
+                "start_date",
+                "end_date",
+                "availability_type",
+                "shift_type_id",
+            ]
+        )
         for a in availability:
-            ws_avail.append([
-                a.worker_id,
-                a.start_date,
-                a.end_date,
-                a.availability_type,
-                a.shift_type_id or "",
-            ])
+            ws_avail.append(
+                [
+                    a.worker_id,
+                    a.start_date,
+                    a.end_date,
+                    a.availability_type,
+                    a.shift_type_id or "",
+                ]
+            )
 
         # Requests sheet
         ws_req = wb.create_sheet("Requests")
-        ws_req.append([
-            "worker_id", "start_date", "end_date", "request_type",
-            "shift_type_id", "priority"
-        ])
+        ws_req.append(
+            [
+                "worker_id",
+                "start_date",
+                "end_date",
+                "request_type",
+                "shift_type_id",
+                "priority",
+            ]
+        )
         for r in requests:
-            ws_req.append([
-                r.worker_id,
-                r.start_date,
-                r.end_date,
-                r.request_type,
-                r.shift_type_id,
-                r.priority,
-            ])
+            ws_req.append(
+                [
+                    r.worker_id,
+                    r.start_date,
+                    r.end_date,
+                    r.request_type,
+                    r.shift_type_id,
+                    r.priority,
+                ]
+            )
 
         wb.save(output_file)
 

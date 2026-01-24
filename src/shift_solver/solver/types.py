@@ -1,7 +1,7 @@
 """Type definitions for the solver module."""
 
+from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Iterator
 
 from ortools.sat.python import cp_model
 
@@ -48,7 +48,9 @@ class SolverVariables:
             return self.assignment[worker_id][period][shift_type_id]
         except KeyError as e:
             if worker_id not in self.assignment:
-                raise KeyError(f"Worker {worker_id} not found in assignment variables") from e
+                raise KeyError(
+                    f"Worker {worker_id} not found in assignment variables"
+                ) from e
             if period not in self.assignment[worker_id]:
                 raise KeyError(
                     f"Assignment variable not found for worker {worker_id}, period {period}"
@@ -58,7 +60,9 @@ class SolverVariables:
                 f"period {period}, shift type {shift_type_id}"
             ) from e
 
-    def get_shift_count_var(self, worker_id: str, shift_type_id: str) -> cp_model.IntVar:
+    def get_shift_count_var(
+        self, worker_id: str, shift_type_id: str
+    ) -> cp_model.IntVar:
         """
         Type-safe accessor for shift count variables.
 
@@ -76,7 +80,9 @@ class SolverVariables:
             return self.shift_counts[worker_id][shift_type_id]
         except KeyError as e:
             if worker_id not in self.shift_counts:
-                raise KeyError(f"Worker {worker_id} not found in shift count variables") from e
+                raise KeyError(
+                    f"Worker {worker_id} not found in shift count variables"
+                ) from e
             raise KeyError(
                 f"Shift count variable not found for worker {worker_id}, "
                 f"shift type {shift_type_id}"
@@ -136,7 +142,7 @@ class SolverVariables:
             return self.assignment[worker_id][period]
         except KeyError as e:
             if worker_id not in self.assignment:
-                raise KeyError(f"Worker {worker_id} not found in assignment variables") from e
-            raise KeyError(
-                f"Period {period} not found for worker {worker_id}"
-            ) from e
+                raise KeyError(
+                    f"Worker {worker_id} not found in assignment variables"
+                ) from e
+            raise KeyError(f"Period {period} not found for worker {worker_id}") from e

@@ -75,7 +75,12 @@ class ObjectiveBuilder:
 
             for var_name, var in constraint.violation_variables.items():
                 # Skip aggregate variables (like "total")
-                if var_name in ("total", "spread", "max_undesirable", "min_undesirable"):
+                if var_name in (
+                    "total",
+                    "spread",
+                    "max_undesirable",
+                    "min_undesirable",
+                ):
                     # For fairness, we want to minimize spread directly
                     if var_name == "spread":
                         term = ObjectiveTerm(

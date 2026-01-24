@@ -1,26 +1,32 @@
 """ShiftSolver - main orchestrator for shift scheduling optimization."""
 
 import time as time_module
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
 from ortools.sat.python import cp_model
 
-from shift_solver.models import Worker, ShiftType, Availability, Schedule, SchedulingRequest
-from shift_solver.solver.types import SolverVariables
-from shift_solver.solver.variable_builder import VariableBuilder
-from shift_solver.solver.solution_extractor import SolutionExtractor
-from shift_solver.solver.objective_builder import ObjectiveBuilder
+from shift_solver.constraints.availability import AvailabilityConstraint
 from shift_solver.constraints.base import ConstraintConfig
 from shift_solver.constraints.coverage import CoverageConstraint
-from shift_solver.constraints.restriction import RestrictionConstraint
-from shift_solver.constraints.availability import AvailabilityConstraint
 from shift_solver.constraints.fairness import FairnessConstraint
 from shift_solver.constraints.frequency import FrequencyConstraint
-from shift_solver.constraints.request import RequestConstraint
-from shift_solver.constraints.sequence import SequenceConstraint
 from shift_solver.constraints.max_absence import MaxAbsenceConstraint
+from shift_solver.constraints.request import RequestConstraint
+from shift_solver.constraints.restriction import RestrictionConstraint
+from shift_solver.constraints.sequence import SequenceConstraint
+from shift_solver.models import (
+    Availability,
+    Schedule,
+    SchedulingRequest,
+    ShiftType,
+    Worker,
+)
+from shift_solver.solver.objective_builder import ObjectiveBuilder
+from shift_solver.solver.solution_extractor import SolutionExtractor
+from shift_solver.solver.types import SolverVariables
+from shift_solver.solver.variable_builder import VariableBuilder
 
 
 @dataclass
@@ -155,7 +161,9 @@ class ShiftSolver:
                 status=status,
                 status_name=self._solver.StatusName(status),
                 solve_time_seconds=solve_time,
-                objective_value=self._solver.ObjectiveValue() if hasattr(self._solver, 'ObjectiveValue') else None,
+                objective_value=self._solver.ObjectiveValue()
+                if hasattr(self._solver, "ObjectiveValue")
+                else None,
             )
         else:
             return SolverResult(
@@ -236,9 +244,7 @@ class ShiftSolver:
         fairness_config = self._get_constraint_config("fairness")
         if fairness_config is None:
             # Default: enabled with weight 1000
-            fairness_config = ConstraintConfig(
-                enabled=True, is_hard=False, weight=1000
-            )
+            fairness_config = ConstraintConfig(enabled=True, is_hard=False, weight=1000)
         fairness = FairnessConstraint(self._model, self._variables, fairness_config)
         fairness.apply(**context)
         self._objective_builder.add_constraint(fairness)

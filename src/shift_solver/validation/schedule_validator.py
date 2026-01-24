@@ -25,7 +25,12 @@ class ValidationResult:
     ) -> None:
         """Add a violation to the result."""
         self.violations.append(
-            {"type": violation_type, "message": message, "severity": severity, **details}
+            {
+                "type": violation_type,
+                "message": message,
+                "severity": severity,
+                **details,
+            }
         )
         if severity == "error":
             self.is_valid = False
@@ -33,7 +38,12 @@ class ValidationResult:
     def add_warning(self, violation_type: str, message: str, **details: Any) -> None:
         """Add a warning to the result."""
         self.warnings.append(
-            {"type": violation_type, "message": message, "severity": "warning", **details}
+            {
+                "type": violation_type,
+                "message": message,
+                "severity": "warning",
+                **details,
+            }
         )
 
 
@@ -106,7 +116,7 @@ class ScheduleValidator:
             # Count assignments per shift type for this period
             shift_type_counts: dict[str, int] = defaultdict(int)
 
-            for worker_id, shifts in period.assignments.items():
+            for _worker_id, shifts in period.assignments.items():
                 for shift in shifts:
                     shift_type_counts[shift.shift_type_id] += 1
 
@@ -140,7 +150,9 @@ class ScheduleValidator:
                 for shift in shifts:
                     if not worker.can_work_shift(shift.shift_type_id):
                         shift_type = self._shift_type_map.get(shift.shift_type_id)
-                        shift_name = shift_type.name if shift_type else shift.shift_type_id
+                        shift_name = (
+                            shift_type.name if shift_type else shift.shift_type_id
+                        )
                         result.add_violation(
                             "restriction",
                             f"Worker '{worker.name}' assigned to restricted "
@@ -211,7 +223,7 @@ class ScheduleValidator:
             counts = list(assignments_per_worker.values())
             avg = sum(counts) / len(counts)
             variance = sum((c - avg) ** 2 for c in counts) / len(counts)
-            std_dev = variance ** 0.5
+            std_dev = variance**0.5
 
             undesirable_counts = list(undesirable_per_worker.values())
             undesirable_avg = (

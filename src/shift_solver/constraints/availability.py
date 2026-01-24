@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 from ortools.sat.python import cp_model
 
 from shift_solver.constraints.base import BaseConstraint, ConstraintConfig
-from shift_solver.models import Worker, ShiftType, Availability
+from shift_solver.models import Availability, ShiftType, Worker
 
 if TYPE_CHECKING:
     from shift_solver.solver.types import SolverVariables

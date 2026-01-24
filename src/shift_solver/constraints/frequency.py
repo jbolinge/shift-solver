@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 from ortools.sat.python import cp_model
 
 from shift_solver.constraints.base import BaseConstraint, ConstraintConfig
-from shift_solver.models import Worker, ShiftType
+from shift_solver.models import ShiftType, Worker
 
 if TYPE_CHECKING:
     from shift_solver.solver.types import SolverVariables
@@ -124,12 +124,12 @@ class FrequencyConstraint(BaseConstraint):
                     )
 
                     # has_assignment is true iff sum(window_assignments) >= 1
-                    self.model.add(
-                        sum(window_assignments) >= 1
-                    ).only_enforce_if(has_assignment)
-                    self.model.add(
-                        sum(window_assignments) == 0
-                    ).only_enforce_if(has_assignment.negated())
+                    self.model.add(sum(window_assignments) >= 1).only_enforce_if(
+                        has_assignment
+                    )
+                    self.model.add(sum(window_assignments) == 0).only_enforce_if(
+                        has_assignment.negated()
+                    )
 
                     # violation = NOT has_assignment
                     self.model.add(violation_var == has_assignment.negated())
@@ -144,8 +144,10 @@ class FrequencyConstraint(BaseConstraint):
                 0, violation_count, "frequency_total_violations"
             )
             self.model.add(
-                total_var == sum(
-                    v for k, v in self._violation_variables.items()
+                total_var
+                == sum(
+                    v
+                    for k, v in self._violation_variables.items()
                     if k.startswith("freq_viol_")
                 )
             )

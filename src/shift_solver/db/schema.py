@@ -3,7 +3,17 @@
 from datetime import date, datetime, time
 from typing import Any
 
-from sqlalchemy import JSON, Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Time
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Time,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -54,7 +64,9 @@ class DBShiftType(Base):
     required_attributes: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
 
     # Relationships
-    assignments: Mapped[list["DBAssignment"]] = relationship(back_populates="shift_type")
+    assignments: Mapped[list["DBAssignment"]] = relationship(
+        back_populates="shift_type"
+    )
 
 
 class DBSchedule(Base):

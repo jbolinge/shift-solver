@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 from ortools.sat.python import cp_model
 
 from shift_solver.constraints.base import BaseConstraint, ConstraintConfig
-from shift_solver.models import Worker, ShiftType
+from shift_solver.models import ShiftType, Worker
 
 if TYPE_CHECKING:
     from shift_solver.solver.types import SolverVariables
@@ -111,23 +111,21 @@ class SequenceConstraint(BaseConstraint):
                         f"seq_curr_{worker.id}_{category}_p{period}"
                     )
                     # assigned_current = 1 iff sum(current_vars) >= 1
-                    self.model.add(
-                        sum(current_vars) >= 1
-                    ).only_enforce_if(assigned_current)
-                    self.model.add(
-                        sum(current_vars) == 0
-                    ).only_enforce_if(assigned_current.negated())
+                    self.model.add(sum(current_vars) >= 1).only_enforce_if(
+                        assigned_current
+                    )
+                    self.model.add(sum(current_vars) == 0).only_enforce_if(
+                        assigned_current.negated()
+                    )
 
                     # Create indicator for "assigned in next period"
                     assigned_next = self.model.new_bool_var(
                         f"seq_next_{worker.id}_{category}_p{next_period}"
                     )
-                    self.model.add(
-                        sum(next_vars) >= 1
-                    ).only_enforce_if(assigned_next)
-                    self.model.add(
-                        sum(next_vars) == 0
-                    ).only_enforce_if(assigned_next.negated())
+                    self.model.add(sum(next_vars) >= 1).only_enforce_if(assigned_next)
+                    self.model.add(sum(next_vars) == 0).only_enforce_if(
+                        assigned_next.negated()
+                    )
 
                     # Violation = both are assigned (consecutive)
                     violation_name = f"seq_viol_{worker.id}_{category}_p{period}"
@@ -151,7 +149,8 @@ class SequenceConstraint(BaseConstraint):
                 0, violation_count, "sequence_total_violations"
             )
             viol_vars = [
-                v for k, v in self._violation_variables.items()
+                v
+                for k, v in self._violation_variables.items()
                 if k.startswith("seq_viol_")
             ]
             self.model.add(total_var == sum(viol_vars))

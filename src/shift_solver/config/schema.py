@@ -53,7 +53,9 @@ class ShiftTypeConfig(BaseModel):
         if isinstance(v, str):
             parts = v.split(":")
             return time(int(parts[0]), int(parts[1]))
-        return v
+        if isinstance(v, time):
+            return v
+        raise ValueError(f"Cannot parse time from {type(v).__name__}")
 
 
 class DatabaseConfig(BaseModel):
@@ -86,7 +88,9 @@ class ShiftSolverConfig(BaseModel):
         ids = [st.id for st in self.shift_types]
         if len(ids) != len(set(ids)):
             duplicates = [id for id in ids if ids.count(id) > 1]
-            raise ValueError(f"Shift type IDs must be unique. Duplicates: {set(duplicates)}")
+            raise ValueError(
+                f"Shift type IDs must be unique. Duplicates: {set(duplicates)}"
+            )
         return self
 
     @classmethod

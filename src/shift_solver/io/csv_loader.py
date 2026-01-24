@@ -3,9 +3,8 @@
 import csv
 from datetime import date, datetime
 from pathlib import Path
-from typing import Any
 
-from shift_solver.models import Worker, Availability, SchedulingRequest
+from shift_solver.models import Availability, SchedulingRequest, Worker
 from shift_solver.models.data_models import AVAILABILITY_TYPES, REQUEST_TYPES
 
 
@@ -112,7 +111,13 @@ class CSVLoader:
             CSVLoaderError: If file is missing, malformed, or has invalid data
         """
         rows = self._read_csv(file_path)
-        required = ["worker_id", "start_date", "end_date", "request_type", "shift_type_id"]
+        required = [
+            "worker_id",
+            "start_date",
+            "end_date",
+            "request_type",
+            "shift_type_id",
+        ]
         self._validate_required_columns(rows, required, file_path)
 
         requests = []

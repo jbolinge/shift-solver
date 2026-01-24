@@ -98,7 +98,7 @@ class BaseConstraint(ABC):
         """
         pass
 
-    def _add_hard_constraint(self, constraint: cp_model.Constraint) -> None:
+    def _add_hard_constraint(self, _constraint: cp_model.Constraint) -> None:
         """Add a hard constraint and increment counter."""
         self._constraint_count += 1
 

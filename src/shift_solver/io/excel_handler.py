@@ -5,15 +5,14 @@ from pathlib import Path
 from typing import Any
 
 import openpyxl
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.styles import Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 from shift_solver.models import (
-    Worker,
-    ShiftType,
     Availability,
-    SchedulingRequest,
     Schedule,
+    SchedulingRequest,
+    Worker,
 )
 from shift_solver.models.data_models import AVAILABILITY_TYPES, REQUEST_TYPES
 
@@ -145,9 +144,7 @@ class ExcelLoader:
 
         return result
 
-    def _read_sheet(
-        self, file_path: Path, sheet_name: str
-    ) -> list[dict[str, Any]]:
+    def _read_sheet(self, file_path: Path, sheet_name: str) -> list[dict[str, Any]]:
         """Read a sheet and return list of row dicts."""
         if not file_path.exists():
             raise ExcelHandlerError(f"File not found: {file_path}")
@@ -157,12 +154,8 @@ class ExcelLoader:
         except Exception as e:
             raise ExcelHandlerError(f"Error reading Excel file: {e}") from e
 
-        # Try to find the sheet
-        if sheet_name in wb.sheetnames:
-            ws = wb[sheet_name]
-        else:
-            # Use first sheet if named sheet not found
-            ws = wb.active
+        # Try to find the sheet (use first sheet if named sheet not found)
+        ws = wb[sheet_name] if sheet_name in wb.sheetnames else wb.active
 
         if ws is None:
             return []
@@ -311,7 +304,9 @@ class ExcelExporter:
     """
 
     # Styles
-    HEADER_FILL = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    HEADER_FILL = PatternFill(
+        start_color="4472C4", end_color="4472C4", fill_type="solid"
+    )
     HEADER_FONT = Font(bold=True, color="FFFFFF")
     BORDER = Border(
         left=Side(style="thin"),
@@ -355,9 +350,7 @@ class ExcelExporter:
 
         wb.save(output_path)
 
-    def _create_schedule_sheet(
-        self, wb: openpyxl.Workbook, schedule: Schedule
-    ) -> None:
+    def _create_schedule_sheet(self, wb: openpyxl.Workbook, schedule: Schedule) -> None:
         """Create the main schedule sheet."""
         ws = wb.active
         if ws is None:
@@ -410,9 +403,7 @@ class ExcelExporter:
                     )
 
         # Get all shift types
-        shift_type_ids = sorted(
-            {st.id for st in schedule.shift_types}
-        )
+        shift_type_ids = sorted({st.id for st in schedule.shift_types})
 
         # Headers
         headers = ["Worker"] + shift_type_ids + ["Total"]
@@ -443,9 +434,7 @@ class ExcelExporter:
         ws = wb.create_sheet("By Worker")
 
         # Headers: Worker, then period columns
-        headers = ["Worker"] + [
-            f"P{p.period_index + 1}" for p in schedule.periods
-        ]
+        headers = ["Worker"] + [f"P{p.period_index + 1}" for p in schedule.periods]
         for col, header in enumerate(headers, start=1):
             cell = ws.cell(row=1, column=col, value=header)
             cell.fill = self.HEADER_FILL
@@ -466,10 +455,14 @@ class ExcelExporter:
         for worker in schedule.workers:
             ws.cell(row=row, column=1, value=f"{worker.name} ({worker.id})")
             for col, period in enumerate(schedule.periods, start=2):
-                shifts = period_assignments.get(period.period_index, {}).get(
+                shift_ids = period_assignments.get(period.period_index, {}).get(
                     worker.id, []
                 )
-                ws.cell(row=row, column=col, value=", ".join(shifts) if shifts else "-")
+                ws.cell(
+                    row=row,
+                    column=col,
+                    value=", ".join(shift_ids) if shift_ids else "-",
+                )
             row += 1
 
         self._autofit_columns(ws)

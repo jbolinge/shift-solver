@@ -1,23 +1,23 @@
 """Command-line interface for shift-solver."""
 
 import json
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import click
 
 from shift_solver import __version__
 from shift_solver.config import ShiftSolverConfig
-from shift_solver.models import Worker, ShiftType
-from shift_solver.solver import ShiftSolver
 from shift_solver.io import (
     CSVLoader,
     CSVLoaderError,
-    ExcelLoader,
     ExcelExporter,
     ExcelHandlerError,
+    ExcelLoader,
     SampleGenerator,
 )
+from shift_solver.models import ShiftType, Worker
+from shift_solver.solver import ShiftSolver
 
 
 @click.group()
@@ -89,19 +89,19 @@ def check_config(config: Path) -> None:
     """Validate a configuration file."""
     try:
         cfg = ShiftSolverConfig.load_from_yaml(config)
-        click.echo(f"Configuration is valid!")
+        click.echo("Configuration is valid!")
         click.echo(f"  Shift types: {len(cfg.shift_types)}")
         click.echo(f"  Constraints configured: {len(cfg.constraints)}")
         click.echo(f"  Solver time limit: {cfg.solver.max_time_seconds}s")
-    except FileNotFoundError:
-        raise click.ClickException(f"Configuration file not found: {config}")
+    except FileNotFoundError as e:
+        raise click.ClickException(f"Configuration file not found: {config}") from e
     except Exception as e:
-        raise click.ClickException(f"Invalid configuration: {e}")
+        raise click.ClickException(f"Invalid configuration: {e}") from e
 
 
 @cli.command("list-workers")
 @click.pass_context
-def list_workers(ctx: click.Context) -> None:
+def list_workers(_ctx: click.Context) -> None:
     """List all workers in the database."""
     # Placeholder - will be implemented with database integration
     click.echo("No workers found. Import data first with 'import-data'.")
@@ -132,7 +132,7 @@ def list_shifts(ctx: click.Context, config: Path | None) -> None:
                     f"({st.workers_required} workers){undesirable}"
                 )
         except Exception as e:
-            raise click.ClickException(f"Error loading config: {e}")
+            raise click.ClickException(f"Error loading config: {e}") from e
     else:
         click.echo("No configuration file found. Specify with --config.")
 
@@ -176,8 +176,8 @@ def list_shifts(ctx: click.Context, config: Path | None) -> None:
 @click.pass_context
 def generate(
     ctx: click.Context,
-    start_date: click.DateTime,
-    end_date: click.DateTime,
+    start_date: datetime,
+    end_date: datetime,
     output: Path,
     quick_solve: bool,
     time_limit: int | None,
@@ -209,7 +209,7 @@ def generate(
             if verbose:
                 click.echo(f"Loaded {len(shift_types)} shift types from config")
         except Exception as e:
-            raise click.ClickException(f"Error loading config: {e}")
+            raise click.ClickException(f"Error loading config: {e}") from e
     else:
         # Use demo shift types
         from datetime import time
@@ -247,8 +247,16 @@ def generate(
         raise click.ClickException("Use --demo flag until database is implemented")
 
     # Calculate period dates (weekly periods)
-    start = start_date.date() if hasattr(start_date, "date") else date.fromisoformat(str(start_date)[:10])
-    end = end_date.date() if hasattr(end_date, "date") else date.fromisoformat(str(end_date)[:10])
+    start = (
+        start_date.date()
+        if hasattr(start_date, "date")
+        else date.fromisoformat(str(start_date)[:10])
+    )
+    end = (
+        end_date.date()
+        if hasattr(end_date, "date")
+        else date.fromisoformat(str(end_date)[:10])
+    )
 
     period_dates: list[tuple[date, date]] = []
     current = start
@@ -288,30 +296,32 @@ def generate(
         assert schedule is not None
 
         # Write output
-        output_data = {
+        periods_list: list[dict[str, object]] = []
+        output_data: dict[str, object] = {
             "schedule_id": schedule.schedule_id,
             "start_date": str(schedule.start_date),
             "end_date": str(schedule.end_date),
-            "periods": [],
+            "periods": periods_list,
             "statistics": schedule.statistics,
         }
 
         for period in schedule.periods:
-            period_data = {
+            assignments_dict: dict[str, list[dict[str, str]]] = {}
+            period_data: dict[str, object] = {
                 "period_index": period.period_index,
                 "period_start": str(period.period_start),
                 "period_end": str(period.period_end),
-                "assignments": {},
+                "assignments": assignments_dict,
             }
             for worker_id, shifts in period.assignments.items():
-                period_data["assignments"][worker_id] = [
+                assignments_dict[worker_id] = [
                     {
                         "shift_type_id": s.shift_type_id,
                         "date": str(s.date),
                     }
                     for s in shifts
                 ]
-            output_data["periods"].append(period_data)
+            periods_list.append(period_data)
 
         output.parent.mkdir(parents=True, exist_ok=True)
         with open(output, "w") as f:
@@ -464,10 +474,11 @@ def import_data(
 
             if verbose:
                 for w in data["workers"]:
-                    click.echo(f"    - {w.id}: {w.name}")
+                    if isinstance(w, Worker):
+                        click.echo(f"    - {w.id}: {w.name}")
 
         except ExcelHandlerError as e:
-            raise click.ClickException(f"Excel import error: {e}")
+            raise click.ClickException(f"Excel import error: {e}") from e
     else:
         # Import from individual files
         csv_loader = CSVLoader()
@@ -487,7 +498,7 @@ def import_data(
                         click.echo(f"    - {w.id}: {w.name}")
 
             except (CSVLoaderError, ExcelHandlerError) as e:
-                raise click.ClickException(f"Worker import error: {e}")
+                raise click.ClickException(f"Worker import error: {e}") from e
 
         if availability:
             click.echo(f"Importing availability from: {availability}")
@@ -499,7 +510,7 @@ def import_data(
                 click.echo(f"  Loaded {len(avail_list)} availability records")
 
             except (CSVLoaderError, ExcelHandlerError) as e:
-                raise click.ClickException(f"Availability import error: {e}")
+                raise click.ClickException(f"Availability import error: {e}") from e
 
         if requests:
             click.echo(f"Importing requests from: {requests}")
@@ -511,14 +522,18 @@ def import_data(
                 click.echo(f"  Loaded {len(req_list)} requests")
 
             except (CSVLoaderError, ExcelHandlerError) as e:
-                raise click.ClickException(f"Request import error: {e}")
+                raise click.ClickException(f"Request import error: {e}") from e
 
         if not workers and not availability and not requests:
-            click.echo("No files specified. Use --workers, --availability, --requests, or --excel.")
+            click.echo(
+                "No files specified. Use --workers, --availability, --requests, or --excel."
+            )
             raise click.ClickException("No input files specified")
 
     click.echo("Import complete!")
-    click.echo("Note: Database persistence not yet implemented. Data validated but not stored.")
+    click.echo(
+        "Note: Database persistence not yet implemented. Data validated but not stored."
+    )
 
 
 @cli.command("export")
@@ -561,7 +576,7 @@ def export_schedule(
         with open(schedule) as f:
             schedule_data = json.load(f)
     except Exception as e:
-        raise click.ClickException(f"Error reading schedule: {e}")
+        raise click.ClickException(f"Error reading schedule: {e}") from e
 
     if output_format == "json":
         # Just copy/format the JSON
@@ -572,7 +587,7 @@ def export_schedule(
 
     elif output_format == "excel":
         # Convert to Schedule object and export
-        from shift_solver.models import Schedule, PeriodAssignment, ShiftInstance
+        from shift_solver.models import PeriodAssignment, Schedule, ShiftInstance
 
         # Reconstruct workers (minimal info from assignments)
         worker_ids = set()
@@ -584,8 +599,8 @@ def export_schedule(
         # Reconstruct shift types (minimal info from assignments)
         shift_type_ids = set()
         for period in schedule_data.get("periods", []):
-            for assignments in period.get("assignments", {}).values():
-                for a in assignments:
+            for shift_list in period.get("assignments", {}).values():
+                for a in shift_list:
                     shift_type_ids.add(a.get("shift_type_id"))
 
         from datetime import time
@@ -695,15 +710,19 @@ def validate(
     output: Path | None,
 ) -> None:
     """Validate a generated schedule against constraints."""
+    from shift_solver.io import CSVLoader
     from shift_solver.models import (
-        Schedule,
         PeriodAssignment,
+        Schedule,
         ShiftInstance,
-        Worker as WorkerModel,
+    )
+    from shift_solver.models import (
         ShiftType as ShiftTypeModel,
     )
+    from shift_solver.models import (
+        Worker as WorkerModel,
+    )
     from shift_solver.validation import ScheduleValidator
-    from shift_solver.io import CSVLoader
 
     verbose = ctx.obj.get("verbose", 0)
 
@@ -714,7 +733,7 @@ def validate(
         with open(schedule) as f:
             schedule_data = json.load(f)
     except Exception as e:
-        raise click.ClickException(f"Error reading schedule: {e}")
+        raise click.ClickException(f"Error reading schedule: {e}") from e
 
     # Load shift types from config or infer from schedule
     shift_types: list[ShiftTypeModel] = []
@@ -737,15 +756,15 @@ def validate(
             if verbose:
                 click.echo(f"Loaded {len(shift_types)} shift types from config")
         except Exception as e:
-            raise click.ClickException(f"Error loading config: {e}")
+            raise click.ClickException(f"Error loading config: {e}") from e
     else:
         # Infer shift types from schedule
         from datetime import time as dt_time
 
         shift_type_ids: set[str] = set()
         for period in schedule_data.get("periods", []):
-            for assignments in period.get("assignments", {}).values():
-                for a in assignments:
+            for shift_list in period.get("assignments", {}).values():
+                for a in shift_list:
                     shift_type_ids.add(a.get("shift_type_id"))
 
         shift_types = [
@@ -772,16 +791,14 @@ def validate(
             if verbose:
                 click.echo(f"Loaded {len(worker_list)} workers")
         except Exception as e:
-            raise click.ClickException(f"Error loading workers: {e}")
+            raise click.ClickException(f"Error loading workers: {e}") from e
     else:
         # Infer workers from schedule
         worker_ids: set[str] = set()
         for period in schedule_data.get("periods", []):
             worker_ids.update(period.get("assignments", {}).keys())
 
-        worker_list = [
-            WorkerModel(id=wid, name=wid) for wid in sorted(worker_ids)
-        ]
+        worker_list = [WorkerModel(id=wid, name=wid) for wid in sorted(worker_ids)]
         if verbose:
             click.echo(f"Inferred {len(worker_list)} workers from schedule")
 
@@ -796,7 +813,7 @@ def validate(
             if verbose:
                 click.echo(f"Loaded {len(availabilities)} availability records")
         except Exception as e:
-            raise click.ClickException(f"Error loading availability: {e}")
+            raise click.ClickException(f"Error loading availability: {e}") from e
 
     if requests:
         try:
@@ -805,7 +822,7 @@ def validate(
             if verbose:
                 click.echo(f"Loaded {len(request_list)} requests")
         except Exception as e:
-            raise click.ClickException(f"Error loading requests: {e}")
+            raise click.ClickException(f"Error loading requests: {e}") from e
 
     # Reconstruct Schedule object
     periods = []
@@ -865,11 +882,15 @@ def validate(
     # Show statistics
     if verbose or not result.is_valid:
         click.echo("\nStatistics:")
-        click.echo(f"  Total assignments: {result.statistics.get('total_assignments', 0)}")
+        click.echo(
+            f"  Total assignments: {result.statistics.get('total_assignments', 0)}"
+        )
 
         if "fairness" in result.statistics:
             fairness = result.statistics["fairness"]
-            click.echo(f"  Avg assignments/worker: {fairness.get('average_assignments', 0):.1f}")
+            click.echo(
+                f"  Avg assignments/worker: {fairness.get('average_assignments', 0):.1f}"
+            )
             click.echo(f"  Std deviation: {fairness.get('std_deviation', 0):.2f}")
 
         if "request_fulfillment" in result.statistics:
