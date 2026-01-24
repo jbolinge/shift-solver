@@ -10,6 +10,14 @@ from shift_solver import __version__
 from shift_solver.config import ShiftSolverConfig
 from shift_solver.models import Worker, ShiftType
 from shift_solver.solver import ShiftSolver
+from shift_solver.io import (
+    CSVLoader,
+    CSVLoaderError,
+    ExcelLoader,
+    ExcelExporter,
+    ExcelHandlerError,
+    SampleGenerator,
+)
 
 
 @click.group()
@@ -334,12 +342,307 @@ def generate(
     default="retail",
     help="Industry preset for sample data",
 )
-def generate_samples(output_dir: Path, industry: str) -> None:
-    """Generate sample input files."""
-    # Placeholder - will be implemented with I/O module
+@click.option(
+    "--num-workers",
+    type=int,
+    default=15,
+    help="Number of workers to generate",
+)
+@click.option(
+    "--months",
+    type=int,
+    default=3,
+    help="Number of months of data to generate",
+)
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(["csv", "excel", "both"]),
+    default="csv",
+    help="Output format",
+)
+@click.option(
+    "--seed",
+    type=int,
+    default=None,
+    help="Random seed for reproducible generation",
+)
+def generate_samples(
+    output_dir: Path,
+    industry: str,
+    num_workers: int,
+    months: int,
+    output_format: str,
+    seed: int | None,
+) -> None:
+    """Generate sample input files for testing."""
     output_dir.mkdir(parents=True, exist_ok=True)
-    click.echo(f"Generating {industry} sample data in {output_dir}")
-    click.echo("Sample generator not yet implemented. Coming in Epic 4.")
+
+    click.echo(f"Generating {industry} sample data...")
+    click.echo(f"  Workers: {num_workers}")
+    click.echo(f"  Duration: {months} months")
+
+    generator = SampleGenerator(industry=industry, seed=seed)
+
+    # Calculate date range
+    start_date = date.today().replace(day=1)
+    # Add months
+    end_month = start_date.month + months - 1
+    end_year = start_date.year + (end_month - 1) // 12
+    end_month = ((end_month - 1) % 12) + 1
+    # Get last day of end month
+    if end_month == 12:
+        end_date = date(end_year, 12, 31)
+    else:
+        end_date = date(end_year, end_month + 1, 1) - timedelta(days=1)
+
+    if output_format in ("csv", "both"):
+        csv_dir = output_dir / "csv" if output_format == "both" else output_dir
+        generator.generate_to_csv(
+            output_dir=csv_dir,
+            num_workers=num_workers,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        click.echo(f"  CSV files written to: {csv_dir}")
+
+    if output_format in ("excel", "both"):
+        excel_dir = output_dir / "excel" if output_format == "both" else output_dir
+        excel_dir.mkdir(parents=True, exist_ok=True)
+        generator.generate_to_excel(
+            output_file=excel_dir / "sample_data.xlsx",
+            num_workers=num_workers,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        click.echo(f"  Excel file written to: {excel_dir / 'sample_data.xlsx'}")
+
+    click.echo("Sample data generation complete!")
+
+
+@cli.command("import-data")
+@click.option(
+    "--workers",
+    type=click.Path(exists=True, path_type=Path),
+    help="Workers CSV or Excel file",
+)
+@click.option(
+    "--availability",
+    type=click.Path(exists=True, path_type=Path),
+    help="Availability CSV or Excel file",
+)
+@click.option(
+    "--requests",
+    type=click.Path(exists=True, path_type=Path),
+    help="Requests CSV or Excel file",
+)
+@click.option(
+    "--excel",
+    type=click.Path(exists=True, path_type=Path),
+    help="Excel workbook with all data (Workers, Availability, Requests sheets)",
+)
+@click.pass_context
+def import_data(
+    ctx: click.Context,
+    workers: Path | None,
+    availability: Path | None,
+    requests: Path | None,
+    excel: Path | None,
+) -> None:
+    """Import worker and scheduling data from files."""
+    verbose = ctx.obj.get("verbose", 0)
+
+    if excel:
+        # Import from single Excel workbook
+        click.echo(f"Importing from Excel workbook: {excel}")
+        try:
+            loader = ExcelLoader()
+            data = loader.load_all(excel)
+            click.echo(f"  Workers: {len(data['workers'])}")
+            click.echo(f"  Availability records: {len(data['availability'])}")
+            click.echo(f"  Requests: {len(data['requests'])}")
+
+            if verbose:
+                for w in data["workers"]:
+                    click.echo(f"    - {w.id}: {w.name}")
+
+        except ExcelHandlerError as e:
+            raise click.ClickException(f"Excel import error: {e}")
+    else:
+        # Import from individual files
+        csv_loader = CSVLoader()
+        excel_loader = ExcelLoader()
+
+        if workers:
+            click.echo(f"Importing workers from: {workers}")
+            try:
+                if workers.suffix == ".xlsx":
+                    worker_list = excel_loader.load_workers(workers)
+                else:
+                    worker_list = csv_loader.load_workers(workers)
+                click.echo(f"  Loaded {len(worker_list)} workers")
+
+                if verbose:
+                    for w in worker_list:
+                        click.echo(f"    - {w.id}: {w.name}")
+
+            except (CSVLoaderError, ExcelHandlerError) as e:
+                raise click.ClickException(f"Worker import error: {e}")
+
+        if availability:
+            click.echo(f"Importing availability from: {availability}")
+            try:
+                if availability.suffix == ".xlsx":
+                    avail_list = excel_loader.load_availability(availability)
+                else:
+                    avail_list = csv_loader.load_availability(availability)
+                click.echo(f"  Loaded {len(avail_list)} availability records")
+
+            except (CSVLoaderError, ExcelHandlerError) as e:
+                raise click.ClickException(f"Availability import error: {e}")
+
+        if requests:
+            click.echo(f"Importing requests from: {requests}")
+            try:
+                if requests.suffix == ".xlsx":
+                    req_list = excel_loader.load_requests(requests)
+                else:
+                    req_list = csv_loader.load_requests(requests)
+                click.echo(f"  Loaded {len(req_list)} requests")
+
+            except (CSVLoaderError, ExcelHandlerError) as e:
+                raise click.ClickException(f"Request import error: {e}")
+
+        if not workers and not availability and not requests:
+            click.echo("No files specified. Use --workers, --availability, --requests, or --excel.")
+            raise click.ClickException("No input files specified")
+
+    click.echo("Import complete!")
+    click.echo("Note: Database persistence not yet implemented. Data validated but not stored.")
+
+
+@cli.command("export")
+@click.option(
+    "--schedule",
+    type=click.Path(exists=True, path_type=Path),
+    required=True,
+    help="Schedule JSON file to export",
+)
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(path_type=Path),
+    required=True,
+    help="Output file path",
+)
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(["excel", "json"]),
+    default="excel",
+    help="Output format",
+)
+@click.option(
+    "--include-worker-view/--no-worker-view",
+    default=True,
+    help="Include per-worker view in Excel export",
+)
+def export_schedule(
+    schedule: Path,
+    output: Path,
+    output_format: str,
+    include_worker_view: bool,
+) -> None:
+    """Export a schedule to Excel or JSON format."""
+    click.echo(f"Exporting schedule from: {schedule}")
+
+    # Load the schedule JSON
+    try:
+        with open(schedule) as f:
+            schedule_data = json.load(f)
+    except Exception as e:
+        raise click.ClickException(f"Error reading schedule: {e}")
+
+    if output_format == "json":
+        # Just copy/format the JSON
+        output.parent.mkdir(parents=True, exist_ok=True)
+        with open(output, "w") as f:
+            json.dump(schedule_data, f, indent=2)
+        click.echo(f"Schedule exported to: {output}")
+
+    elif output_format == "excel":
+        # Convert to Schedule object and export
+        from shift_solver.models import Schedule, PeriodAssignment, ShiftInstance
+
+        # Reconstruct workers (minimal info from assignments)
+        worker_ids = set()
+        for period in schedule_data.get("periods", []):
+            worker_ids.update(period.get("assignments", {}).keys())
+
+        workers = [Worker(id=wid, name=wid) for wid in sorted(worker_ids)]
+
+        # Reconstruct shift types (minimal info from assignments)
+        shift_type_ids = set()
+        for period in schedule_data.get("periods", []):
+            for assignments in period.get("assignments", {}).values():
+                for a in assignments:
+                    shift_type_ids.add(a.get("shift_type_id"))
+
+        from datetime import time
+
+        shift_types = [
+            ShiftType(
+                id=stid,
+                name=stid,
+                category="unknown",
+                start_time=time(0, 0),
+                end_time=time(8, 0),
+                duration_hours=8.0,
+                workers_required=1,
+            )
+            for stid in sorted(shift_type_ids)
+        ]
+
+        # Reconstruct periods
+        periods = []
+        for p in schedule_data.get("periods", []):
+            assignments: dict[str, list[ShiftInstance]] = {}
+            for worker_id, shifts in p.get("assignments", {}).items():
+                assignments[worker_id] = [
+                    ShiftInstance(
+                        shift_type_id=s["shift_type_id"],
+                        period_index=p["period_index"],
+                        date=date.fromisoformat(s["date"]),
+                        worker_id=worker_id,
+                    )
+                    for s in shifts
+                ]
+            periods.append(
+                PeriodAssignment(
+                    period_index=p["period_index"],
+                    period_start=date.fromisoformat(p["period_start"]),
+                    period_end=date.fromisoformat(p["period_end"]),
+                    assignments=assignments,
+                )
+            )
+
+        schedule_obj = Schedule(
+            schedule_id=schedule_data.get("schedule_id", "UNKNOWN"),
+            start_date=date.fromisoformat(schedule_data["start_date"]),
+            end_date=date.fromisoformat(schedule_data["end_date"]),
+            period_type="week",
+            periods=periods,
+            workers=workers,
+            shift_types=shift_types,
+        )
+
+        exporter = ExcelExporter()
+        exporter.export_schedule(
+            schedule_obj,
+            output,
+            include_worker_view=include_worker_view,
+        )
+        click.echo(f"Schedule exported to: {output}")
 
 
 if __name__ == "__main__":
