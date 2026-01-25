@@ -1,9 +1,9 @@
 """CSV loader for importing worker, availability, and request data."""
 
 import csv
-from datetime import date, datetime
 from pathlib import Path
 
+from shift_solver.io.date_utils import parse_date
 from shift_solver.models import Availability, SchedulingRequest, Worker
 from shift_solver.models.data_models import AVAILABILITY_TYPES, REQUEST_TYPES
 
@@ -28,12 +28,6 @@ class CSVLoader:
     - MM/DD/YYYY (US format)
     - DD/MM/YYYY (EU format, if day > 12)
     """
-
-    DATE_FORMATS = [
-        "%Y-%m-%d",  # ISO: 2026-01-15
-        "%m/%d/%Y",  # US: 01/15/2026
-        "%d/%m/%Y",  # EU: 15/01/2026
-    ]
 
     def load_workers(self, file_path: Path) -> list[Worker]:
         """
@@ -197,8 +191,12 @@ class CSVLoader:
         if not worker_id:
             raise CSVLoaderError(f"empty 'worker_id' on line {line_num}")
 
-        start_date = self._parse_date(row.get("start_date", ""), "start_date", line_num)
-        end_date = self._parse_date(row.get("end_date", ""), "end_date", line_num)
+        start_date = parse_date(
+            row.get("start_date", ""), "start_date", line_num, CSVLoaderError
+        )
+        end_date = parse_date(
+            row.get("end_date", ""), "end_date", line_num, CSVLoaderError
+        )
 
         availability_type = row.get("availability_type", "").strip()
         if availability_type not in AVAILABILITY_TYPES:
@@ -225,8 +223,12 @@ class CSVLoader:
         if not worker_id:
             raise CSVLoaderError(f"empty 'worker_id' on line {line_num}")
 
-        start_date = self._parse_date(row.get("start_date", ""), "start_date", line_num)
-        end_date = self._parse_date(row.get("end_date", ""), "end_date", line_num)
+        start_date = parse_date(
+            row.get("start_date", ""), "start_date", line_num, CSVLoaderError
+        )
+        end_date = parse_date(
+            row.get("end_date", ""), "end_date", line_num, CSVLoaderError
+        )
 
         request_type = row.get("request_type", "").strip()
         if request_type not in REQUEST_TYPES:
@@ -249,21 +251,4 @@ class CSVLoader:
             request_type=request_type,  # type: ignore
             shift_type_id=shift_type_id,
             priority=priority,
-        )
-
-    def _parse_date(self, date_str: str, field_name: str, line_num: int) -> date:
-        """Parse a date string trying multiple formats."""
-        date_str = date_str.strip()
-        if not date_str:
-            raise CSVLoaderError(f"empty '{field_name}' on line {line_num}")
-
-        for fmt in self.DATE_FORMATS:
-            try:
-                return datetime.strptime(date_str, fmt).date()
-            except ValueError:
-                continue
-
-        raise CSVLoaderError(
-            f"Invalid date '{date_str}' for '{field_name}' on line {line_num}. "
-            f"Supported formats: YYYY-MM-DD, MM/DD/YYYY"
         )

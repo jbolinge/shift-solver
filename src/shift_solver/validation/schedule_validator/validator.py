@@ -1,50 +1,18 @@
-"""ScheduleValidator for post-solve validation."""
+"""ScheduleValidator - orchestrator for post-solve validation."""
 
 from collections import defaultdict
-from dataclasses import dataclass, field
 from datetime import date
-from typing import Any
 
 from shift_solver.models import Availability, Schedule, SchedulingRequest
 from shift_solver.utils import get_logger
+from shift_solver.validation.schedule_validator.result import ValidationResult
+from shift_solver.validation.schedule_validator.strategies import (
+    AvailabilityValidationStrategy,
+    CoverageValidationStrategy,
+    RestrictionValidationStrategy,
+)
 
 logger = get_logger("validation.schedule")
-
-
-@dataclass
-class ValidationResult:
-    """Result of schedule validation."""
-
-    is_valid: bool
-    violations: list[dict[str, Any]]
-    warnings: list[dict[str, Any]] = field(default_factory=list)
-    statistics: dict[str, Any] = field(default_factory=dict)
-
-    def add_violation(
-        self, violation_type: str, message: str, severity: str = "error", **details: Any
-    ) -> None:
-        """Add a violation to the result."""
-        self.violations.append(
-            {
-                "type": violation_type,
-                "message": message,
-                "severity": severity,
-                **details,
-            }
-        )
-        if severity == "error":
-            self.is_valid = False
-
-    def add_warning(self, violation_type: str, message: str, **details: Any) -> None:
-        """Add a warning to the result."""
-        self.warnings.append(
-            {
-                "type": violation_type,
-                "message": message,
-                "severity": "warning",
-                **details,
-            }
-        )
 
 
 class ScheduleValidator:
@@ -81,6 +49,13 @@ class ScheduleValidator:
         self._worker_map = {w.id: w for w in schedule.workers}
         self._shift_type_map = {st.id: st for st in schedule.shift_types}
 
+        # Initialize validation strategies
+        self._strategies = [
+            CoverageValidationStrategy(),
+            RestrictionValidationStrategy(),
+            AvailabilityValidationStrategy(),
+        ]
+
     def validate(self) -> ValidationResult:
         """
         Run all validation checks.
@@ -90,10 +65,16 @@ class ScheduleValidator:
         """
         result = ValidationResult(is_valid=True, violations=[])
 
-        # Run all validation checks
-        self._validate_coverage(result)
-        self._validate_restrictions(result)
-        self._validate_availability(result)
+        # Run all validation strategies
+        for strategy in self._strategies:
+            strategy.validate(
+                schedule=self.schedule,
+                result=result,
+                worker_map=self._worker_map,
+                shift_type_map=self._shift_type_map,
+                availabilities=self.availabilities,
+                requests=self.requests,
+            )
 
         # Compute statistics
         self._compute_statistics(result)
@@ -109,94 +90,6 @@ class ScheduleValidator:
                 logger.warning(f"  - {violation['type']}: {violation['message']}")
 
         return result
-
-    def _validate_coverage(self, result: ValidationResult) -> None:
-        """Validate that coverage requirements are met."""
-        for period in self.schedule.periods:
-            # Count assignments per shift type for this period
-            shift_type_counts: dict[str, int] = defaultdict(int)
-
-            for _worker_id, shifts in period.assignments.items():
-                for shift in shifts:
-                    shift_type_counts[shift.shift_type_id] += 1
-
-            # Check each shift type has required coverage
-            for shift_type in self.schedule.shift_types:
-                count = shift_type_counts.get(shift_type.id, 0)
-                if count < shift_type.workers_required:
-                    result.add_violation(
-                        "coverage",
-                        f"Period {period.period_index}: Shift '{shift_type.name}' "
-                        f"has {count} workers, requires {shift_type.workers_required}",
-                        period_index=period.period_index,
-                        shift_type_id=shift_type.id,
-                        assigned=count,
-                        required=shift_type.workers_required,
-                    )
-
-    def _validate_restrictions(self, result: ValidationResult) -> None:
-        """Validate that no worker is assigned to a restricted shift."""
-        for period in self.schedule.periods:
-            for worker_id, shifts in period.assignments.items():
-                worker = self._worker_map.get(worker_id)
-                if not worker:
-                    result.add_violation(
-                        "data",
-                        f"Unknown worker '{worker_id}' in assignments",
-                        worker_id=worker_id,
-                    )
-                    continue
-
-                for shift in shifts:
-                    if not worker.can_work_shift(shift.shift_type_id):
-                        shift_type = self._shift_type_map.get(shift.shift_type_id)
-                        shift_name = (
-                            shift_type.name if shift_type else shift.shift_type_id
-                        )
-                        result.add_violation(
-                            "restriction",
-                            f"Worker '{worker.name}' assigned to restricted "
-                            f"shift '{shift_name}' on {shift.date}",
-                            worker_id=worker_id,
-                            shift_type_id=shift.shift_type_id,
-                            date=str(shift.date),
-                        )
-
-    def _validate_availability(self, result: ValidationResult) -> None:
-        """Validate that no worker is assigned when unavailable."""
-        if not self.availabilities:
-            return
-
-        # Build lookup: (worker_id, date) -> is_unavailable
-        unavailable_dates: dict[tuple[str, date], bool] = {}
-        for avail in self.availabilities:
-            if avail.availability_type != "unavailable":
-                continue
-            # Mark all dates in range as unavailable
-            current = avail.start_date
-            while current <= avail.end_date:
-                key = (avail.worker_id, current)
-                # If shift_type_id is specified, only that shift is unavailable
-                # For simplicity, we treat general unavailability as blocking all shifts
-                if avail.shift_type_id is None:
-                    unavailable_dates[key] = True
-                current = date.fromordinal(current.toordinal() + 1)
-
-        # Check assignments
-        for period in self.schedule.periods:
-            for worker_id, shifts in period.assignments.items():
-                for shift in shifts:
-                    if (worker_id, shift.date) in unavailable_dates:
-                        worker = self._worker_map.get(worker_id)
-                        worker_name = worker.name if worker else worker_id
-                        result.add_violation(
-                            "availability",
-                            f"Worker '{worker_name}' assigned on {shift.date} "
-                            f"but marked unavailable",
-                            worker_id=worker_id,
-                            date=str(shift.date),
-                            shift_type_id=shift.shift_type_id,
-                        )
 
     def _compute_statistics(self, result: ValidationResult) -> None:
         """Compute schedule statistics."""

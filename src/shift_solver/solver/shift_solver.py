@@ -1,44 +1,27 @@
 """ShiftSolver - main orchestrator for shift scheduling optimization."""
 
 import time as time_module
-from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
 from ortools.sat.python import cp_model
 
-from shift_solver.constraints.availability import AvailabilityConstraint
 from shift_solver.constraints.base import ConstraintConfig
-from shift_solver.constraints.coverage import CoverageConstraint
-from shift_solver.constraints.fairness import FairnessConstraint
-from shift_solver.constraints.frequency import FrequencyConstraint
-from shift_solver.constraints.max_absence import MaxAbsenceConstraint
-from shift_solver.constraints.request import RequestConstraint
-from shift_solver.constraints.restriction import RestrictionConstraint
-from shift_solver.constraints.sequence import SequenceConstraint
 from shift_solver.models import (
     Availability,
-    Schedule,
     SchedulingRequest,
     ShiftType,
     Worker,
 )
+from shift_solver.solver.constraint_registry import (
+    ConstraintRegistry,
+    register_builtin_constraints,
+)
 from shift_solver.solver.objective_builder import ObjectiveBuilder
+from shift_solver.solver.result import SolverResult
 from shift_solver.solver.solution_extractor import SolutionExtractor
 from shift_solver.solver.types import SolverVariables
 from shift_solver.solver.variable_builder import VariableBuilder
-
-
-@dataclass
-class SolverResult:
-    """Result from the solver."""
-
-    success: bool
-    schedule: Schedule | None
-    status: int
-    status_name: str
-    solve_time_seconds: float
-    objective_value: float | None = None
 
 
 class ShiftSolver:
@@ -49,6 +32,9 @@ class ShiftSolver:
     - Variable creation via VariableBuilder
     - Constraint application via constraint classes
     - Solution extraction via SolutionExtractor
+
+    Constraints are loaded from the ConstraintRegistry, allowing
+    for dynamic constraint discovery and configuration.
 
     Usage:
         solver = ShiftSolver(
@@ -108,6 +94,9 @@ class ShiftSolver:
         self._variables: SolverVariables | None = None
         self._solver: cp_model.CpSolver | None = None
         self._objective_builder: ObjectiveBuilder | None = None
+
+        # Ensure constraints are registered
+        register_builtin_constraints()
 
     def solve(self, time_limit_seconds: int = 300) -> SolverResult:
         """
@@ -192,101 +181,65 @@ class ShiftSolver:
         # Initialize objective builder for soft constraints
         self._objective_builder = ObjectiveBuilder(self._model)
 
-        # Hard constraints (always enabled)
+        # Apply hard constraints from registry
         self._apply_hard_constraints(constraints_context)
 
-        # Soft constraints (configurable)
+        # Apply soft constraints from registry
         self._apply_soft_constraints(constraints_context)
 
         # Build the objective function
         self._objective_builder.build()
 
-    def _get_constraint_config(self, constraint_id: str) -> ConstraintConfig | None:
-        """Get config for a constraint, or None for default."""
-        return self.constraint_configs.get(constraint_id)
+    def _get_constraint_config(
+        self, constraint_id: str, default: ConstraintConfig
+    ) -> ConstraintConfig:
+        """Get config for a constraint, using default if not specified."""
+        return self.constraint_configs.get(constraint_id, default)
 
     def _apply_hard_constraints(self, context: dict[str, Any]) -> None:
-        """Apply hard constraints."""
+        """Apply hard constraints from registry."""
         assert self._model is not None
         assert self._variables is not None
 
-        # Coverage constraint
-        coverage = CoverageConstraint(
-            self._model,
-            self._variables,
-            self._get_constraint_config("coverage"),
-        )
-        coverage.apply(**context)
+        for constraint_id, registration in ConstraintRegistry.get_hard_constraints().items():
+            config = self._get_constraint_config(
+                constraint_id, registration.default_config
+            )
+            if not config.enabled:
+                continue
 
-        # Restriction constraint
-        restriction = RestrictionConstraint(
-            self._model,
-            self._variables,
-            self._get_constraint_config("restriction"),
-        )
-        restriction.apply(**context)
-
-        # Availability constraint
-        availability = AvailabilityConstraint(
-            self._model,
-            self._variables,
-            self._get_constraint_config("availability"),
-        )
-        availability.apply(**context)
+            constraint = registration.constraint_class(
+                self._model,
+                self._variables,
+                config,
+            )
+            constraint.apply(**context)
 
     def _apply_soft_constraints(self, context: dict[str, Any]) -> None:
-        """Apply soft constraints and add them to objective builder."""
+        """Apply soft constraints from registry and add them to objective builder."""
         assert self._model is not None
         assert self._variables is not None
         assert self._objective_builder is not None
 
-        # Fairness constraint
-        fairness_config = self._get_constraint_config("fairness")
-        if fairness_config is None:
-            # Default: enabled with weight 1000
-            fairness_config = ConstraintConfig(enabled=True, is_hard=False, weight=1000)
-        fairness = FairnessConstraint(self._model, self._variables, fairness_config)
-        fairness.apply(**context)
-        self._objective_builder.add_constraint(fairness)
+        for constraint_id, registration in ConstraintRegistry.get_soft_constraints().items():
+            # Get config with special handling for request constraint
+            default_config = registration.default_config
+            if constraint_id == "request" and not default_config.enabled:
+                # Enable request constraint by default if there are requests
+                default_config = ConstraintConfig(
+                    enabled=bool(self.requests),
+                    is_hard=False,
+                    weight=default_config.weight,
+                )
 
-        # Frequency constraint
-        frequency_config = self._get_constraint_config("frequency")
-        if frequency_config is None:
-            # Default: disabled
-            frequency_config = ConstraintConfig(enabled=False)
-        frequency = FrequencyConstraint(self._model, self._variables, frequency_config)
-        frequency.apply(**context)
-        self._objective_builder.add_constraint(frequency)
+            config = self._get_constraint_config(constraint_id, default_config)
+            if not config.enabled:
+                continue
 
-        # Request constraint
-        request_config = self._get_constraint_config("request")
-        if request_config is None:
-            # Default: enabled if there are requests
-            request_config = ConstraintConfig(
-                enabled=bool(self.requests), is_hard=False, weight=150
+            constraint = registration.constraint_class(
+                self._model,
+                self._variables,
+                config,
             )
-        request_constraint = RequestConstraint(
-            self._model, self._variables, request_config
-        )
-        request_constraint.apply(**context)
-        self._objective_builder.add_constraint(request_constraint)
-
-        # Sequence constraint
-        sequence_config = self._get_constraint_config("sequence")
-        if sequence_config is None:
-            # Default: disabled
-            sequence_config = ConstraintConfig(enabled=False)
-        sequence = SequenceConstraint(self._model, self._variables, sequence_config)
-        sequence.apply(**context)
-        self._objective_builder.add_constraint(sequence)
-
-        # Max absence constraint
-        max_absence_config = self._get_constraint_config("max_absence")
-        if max_absence_config is None:
-            # Default: disabled
-            max_absence_config = ConstraintConfig(enabled=False)
-        max_absence = MaxAbsenceConstraint(
-            self._model, self._variables, max_absence_config
-        )
-        max_absence.apply(**context)
-        self._objective_builder.add_constraint(max_absence)
+            constraint.apply(**context)
+            self._objective_builder.add_constraint(constraint)

@@ -13,3 +13,8 @@ __all__ = [
     "SampleGenerator",
     "IndustryPreset",
 ]
+
+# Backwards compatibility: date_utils can be imported from io
+from shift_solver.io.date_utils import DATE_FORMATS, parse_date
+
+__all__ += ["DATE_FORMATS", "parse_date"]
