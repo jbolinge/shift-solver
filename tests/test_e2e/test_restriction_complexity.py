@@ -41,7 +41,7 @@ class TestMultipleRestrictionsPerWorker:
                 name=f"Shift {chr(65+i)}",
                 category="day" if i < 3 else "night",
                 start_time=time(6 + i * 2, 0),
-                end_time=time(14 + i * 2, 0),
+                end_time=time((14 + i * 2) % 24, 0),
                 duration_hours=8.0,
                 workers_required=1,
                 is_undesirable=i >= 3,

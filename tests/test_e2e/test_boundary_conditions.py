@@ -305,11 +305,9 @@ class TestMaximumCapacity:
 class TestEmptySchedule:
     """Tests for shifts with zero workers required."""
 
-    def test_shifts_with_zero_workers_required(self, worker_factory) -> None:
-        """Shift types with workers_required=0."""
-        workers = [worker_factory() for _ in range(5)]
-
-        shift_types = [
+    def test_shifts_with_zero_workers_required_raises_error(self) -> None:
+        """Shift types with workers_required=0 should raise ValueError."""
+        with pytest.raises(ValueError, match="workers_required must be at least 1"):
             ShiftType(
                 id="empty",
                 name="Empty Shift",
@@ -318,33 +316,11 @@ class TestEmptySchedule:
                 end_time=time(17, 0),
                 duration_hours=8.0,
                 workers_required=0,
-            ),
-            ShiftType(
-                id="normal",
-                name="Normal Shift",
-                category="day",
-                start_time=time(17, 0),
-                end_time=time(1, 0),
-                duration_hours=8.0,
-                workers_required=1,
-            ),
-        ]
+            )
 
-        periods = create_period_dates(num_periods=2)
-
-        result = solve_and_verify(
-            workers=workers,
-            shift_types=shift_types,
-            period_dates=periods,
-        )
-
-        assert result.success
-
-    def test_all_shifts_zero_required(self, worker_factory) -> None:
-        """All shift types have workers_required=0."""
-        workers = [worker_factory() for _ in range(3)]
-
-        shift_types = [
+    def test_all_shifts_zero_required_raises_error(self) -> None:
+        """All shift types with workers_required=0 should raise ValueError."""
+        with pytest.raises(ValueError, match="workers_required must be at least 1"):
             ShiftType(
                 id="empty_a",
                 name="Empty A",
@@ -353,28 +329,7 @@ class TestEmptySchedule:
                 end_time=time(17, 0),
                 duration_hours=8.0,
                 workers_required=0,
-            ),
-            ShiftType(
-                id="empty_b",
-                name="Empty B",
-                category="b",
-                start_time=time(17, 0),
-                end_time=time(1, 0),
-                duration_hours=8.0,
-                workers_required=0,
-            ),
-        ]
-
-        periods = create_period_dates(num_periods=1)
-
-        result = solve_and_verify(
-            workers=workers,
-            shift_types=shift_types,
-            period_dates=periods,
-        )
-
-        # Should succeed with empty assignments
-        assert result.success
+            )
 
 
 @pytest.mark.e2e

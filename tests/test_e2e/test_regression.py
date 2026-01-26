@@ -247,8 +247,8 @@ class TestDateRangeBoundaryBugs:
         assert result.success
         # Verify period dates preserved correctly
         period = result.schedule.periods[0]
-        assert period.start_date == date(2026, 12, 28)
-        assert period.end_date == date(2027, 1, 3)
+        assert period.period_start == date(2026, 12, 28)
+        assert period.period_end == date(2027, 1, 3)
 
     def test_leap_year_february_29(self, worker_factory) -> None:
         """Period including February 29 in leap year."""

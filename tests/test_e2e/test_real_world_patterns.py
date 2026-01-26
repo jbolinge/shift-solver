@@ -327,15 +327,15 @@ class TestTrainingMentorshipRequirements:
         seniors = [
             worker_factory(attributes={"level": "senior"}) for _ in range(4)
         ]
+        # Juniors can't work alone (restrict from senior-only shift)
         juniors = [
-            worker_factory(attributes={"level": "junior"}) for _ in range(4)
+            worker_factory(
+                attributes={"level": "junior"},
+                restricted_shifts=frozenset(["senior_only"]),
+            )
+            for _ in range(4)
         ]
         workers = seniors + juniors
-
-        # Model pairing via shift type restrictions
-        # Juniors can't work alone (restrict from senior-only shift)
-        for junior in juniors:
-            junior.restricted_shifts = frozenset(["senior_only"])
 
         shift_types = [
             ShiftType(
