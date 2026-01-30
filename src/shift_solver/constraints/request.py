@@ -124,6 +124,9 @@ class RequestConstraint(BaseConstraint):
 
         For positive requests: violation if NOT assigned
         For negative requests: violation if assigned
+
+        When is_hard=True, enforces the request as a hard constraint.
+        When is_hard=False, creates violation variables for soft penalties.
         """
         for period in periods:
             try:
@@ -133,31 +136,42 @@ class RequestConstraint(BaseConstraint):
             except KeyError:
                 continue
 
-            violation_name = (
-                f"req_viol_{request.worker_id}_{request.shift_type_id}"
-                f"_p{period}_r{request_idx}"
-            )
-
-            if request.is_positive:
-                # Positive request: violation when NOT assigned
-                # violation = (assignment == 0)
-                violation_var = self.model.new_bool_var(violation_name)
-                self.model.add(assignment_var == 0).only_enforce_if(violation_var)
-                self.model.add(assignment_var >= 1).only_enforce_if(
-                    violation_var.negated()
-                )
+            if self.is_hard:
+                # Hard constraint: enforce directly
+                if request.is_positive:
+                    # Must be assigned
+                    self.model.add(assignment_var >= 1)
+                else:
+                    # Must NOT be assigned
+                    self.model.add(assignment_var == 0)
+                self._constraint_count += 1
             else:
-                # Negative request: violation when assigned
-                # violation = (assignment == 1)
-                violation_var = self.model.new_bool_var(violation_name)
-                self.model.add(assignment_var >= 1).only_enforce_if(violation_var)
-                self.model.add(assignment_var == 0).only_enforce_if(
-                    violation_var.negated()
+                # Soft constraint: create violation variable
+                violation_name = (
+                    f"req_viol_{request.worker_id}_{request.shift_type_id}"
+                    f"_p{period}_r{request_idx}"
                 )
 
-            # Store with priority multiplier in the name for later weighting
-            # The actual weight will be: base_weight * priority
-            # We store priority in a separate dict for the ObjectiveBuilder
-            weighted_name = f"{violation_name}_prio{request.priority}"
-            self._violation_variables[weighted_name] = violation_var
-            self._constraint_count += 2
+                if request.is_positive:
+                    # Positive request: violation when NOT assigned
+                    # violation = (assignment == 0)
+                    violation_var = self.model.new_bool_var(violation_name)
+                    self.model.add(assignment_var == 0).only_enforce_if(violation_var)
+                    self.model.add(assignment_var >= 1).only_enforce_if(
+                        violation_var.negated()
+                    )
+                else:
+                    # Negative request: violation when assigned
+                    # violation = (assignment == 1)
+                    violation_var = self.model.new_bool_var(violation_name)
+                    self.model.add(assignment_var >= 1).only_enforce_if(violation_var)
+                    self.model.add(assignment_var == 0).only_enforce_if(
+                        violation_var.negated()
+                    )
+
+                # Store with priority multiplier in the name for later weighting
+                # The actual weight will be: base_weight * priority
+                # We store priority in a separate dict for the ObjectiveBuilder
+                weighted_name = f"{violation_name}_prio{request.priority}"
+                self._violation_variables[weighted_name] = violation_var
+                self._constraint_count += 2
