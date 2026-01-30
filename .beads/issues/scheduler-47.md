@@ -2,7 +2,7 @@
 id: scheduler-47
 title: "Boundary Conditions"
 type: task
-status: open
+status: closed
 priority: 1
 created: 2026-01-25
 updated: 2026-01-25

@@ -2,7 +2,7 @@
 id: scheduler-39
 title: "Commercial-Grade E2E Test Suite"
 type: epic
-status: open
+status: closed
 priority: 1
 created: 2026-01-25
 updated: 2026-01-25

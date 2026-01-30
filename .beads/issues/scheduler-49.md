@@ -2,7 +2,7 @@
 id: scheduler-49
 title: "Performance & Stress Testing"
 type: task
-status: open
+status: closed
 priority: 0
 created: 2026-01-25
 updated: 2026-01-25

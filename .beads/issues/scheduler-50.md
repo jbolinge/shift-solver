@@ -2,7 +2,7 @@
 id: scheduler-50
 title: "Regression & Known Edge Cases"
 type: task
-status: open
+status: closed
 priority: 0
 created: 2026-01-25
 updated: 2026-01-25
