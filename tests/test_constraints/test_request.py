@@ -5,9 +5,9 @@ from datetime import date, time
 import pytest
 from ortools.sat.python import cp_model
 
-from shift_solver.constraints.request import RequestConstraint
 from shift_solver.constraints.base import ConstraintConfig
-from shift_solver.models import Worker, ShiftType, SchedulingRequest
+from shift_solver.constraints.request import RequestConstraint
+from shift_solver.models import SchedulingRequest, ShiftType, Worker
 from shift_solver.solver.types import SolverVariables
 from shift_solver.solver.variable_builder import VariableBuilder
 
@@ -396,3 +396,93 @@ class TestRequestConstraintSolve:
         solver = cp_model.CpSolver()
         status = solver.solve(model)
         assert status in (cp_model.OPTIMAL, cp_model.FEASIBLE)
+
+
+class TestRequestConstraintPriorityMetadata:
+    """Tests for priority metadata storage (scheduler-54)."""
+
+    def test_priority_stored_in_metadata_not_name(
+        self,
+        model_and_variables: tuple[cp_model.CpModel, SolverVariables],
+        workers: list[Worker],
+        shift_types: list[ShiftType],
+        period_dates: list[tuple[date, date]],
+    ) -> None:
+        """Test that priority is stored in violation_priorities dict."""
+        model, variables = model_and_variables
+
+        requests = [
+            SchedulingRequest(
+                worker_id="W001",
+                start_date=date(2026, 1, 5),
+                end_date=date(2026, 1, 11),
+                request_type="positive",
+                shift_type_id="day",
+                priority=3,
+            )
+        ]
+
+        constraint = RequestConstraint(model, variables)
+        constraint.apply(
+            workers=workers,
+            shift_types=shift_types,
+            num_periods=4,
+            requests=requests,
+            period_dates=period_dates,
+        )
+
+        # Should have violation priorities dict with entries
+        assert hasattr(constraint, "violation_priorities")
+        assert len(constraint.violation_priorities) > 0
+
+        # Variable names should NOT contain _prio suffix
+        for var_name in constraint.violation_variables:
+            assert "_prio" not in var_name
+
+        # Priorities should be stored in the dict
+        for var_name in constraint.violation_variables:
+            assert var_name in constraint.violation_priorities
+            assert constraint.violation_priorities[var_name] == 3
+
+    def test_different_priorities_stored_correctly(
+        self,
+        model_and_variables: tuple[cp_model.CpModel, SolverVariables],
+        workers: list[Worker],
+        shift_types: list[ShiftType],
+        period_dates: list[tuple[date, date]],
+    ) -> None:
+        """Test that different priorities are stored correctly."""
+        model, variables = model_and_variables
+
+        requests = [
+            SchedulingRequest(
+                worker_id="W001",
+                start_date=date(2026, 1, 5),
+                end_date=date(2026, 1, 11),
+                request_type="positive",
+                shift_type_id="day",
+                priority=1,
+            ),
+            SchedulingRequest(
+                worker_id="W002",
+                start_date=date(2026, 1, 5),
+                end_date=date(2026, 1, 11),
+                request_type="positive",
+                shift_type_id="night",
+                priority=5,
+            ),
+        ]
+
+        constraint = RequestConstraint(model, variables)
+        constraint.apply(
+            workers=workers,
+            shift_types=shift_types,
+            num_periods=4,
+            requests=requests,
+            period_dates=period_dates,
+        )
+
+        # Check that we have both priorities
+        priorities = set(constraint.violation_priorities.values())
+        assert 1 in priorities
+        assert 5 in priorities

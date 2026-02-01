@@ -169,9 +169,8 @@ class RequestConstraint(BaseConstraint):
                         violation_var.negated()
                     )
 
-                # Store with priority multiplier in the name for later weighting
-                # The actual weight will be: base_weight * priority
-                # We store priority in a separate dict for the ObjectiveBuilder
-                weighted_name = f"{violation_name}_prio{request.priority}"
-                self._violation_variables[weighted_name] = violation_var
+                # Store violation variable and priority separately
+                # Priority is stored in _violation_priorities dict for ObjectiveBuilder
+                self._violation_variables[violation_name] = violation_var
+                self._violation_priorities[violation_name] = request.priority
                 self._constraint_count += 2

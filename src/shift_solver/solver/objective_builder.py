@@ -93,9 +93,8 @@ class ObjectiveBuilder:
                         self.objective_terms.append(term)
                     continue
 
-                # Extract priority from variable name if present
-                # Format: ..._prioN where N is the priority
-                priority = self._extract_priority(var_name)
+                # Get priority from metadata dict if available, otherwise from name
+                priority = self._get_priority(constraint, var_name)
 
                 term = ObjectiveTerm(
                     constraint_id=constraint.constraint_id,
@@ -115,8 +114,16 @@ class ObjectiveBuilder:
         )
         self.model.minimize(objective_expr)
 
+    def _get_priority(self, constraint: "BaseConstraint", var_name: str) -> int:
+        """Get priority from constraint metadata or fallback to name-based extraction."""
+        # First check the violation_priorities dict
+        if var_name in constraint.violation_priorities:
+            return constraint.violation_priorities[var_name]
+        # Fallback to regex for backwards compatibility
+        return self._extract_priority(var_name)
+
     def _extract_priority(self, var_name: str) -> int:
-        """Extract priority multiplier from variable name."""
+        """Extract priority multiplier from variable name (legacy fallback)."""
         # Look for _prioN at end of name
         match = re.search(r"_prio(\d+)$", var_name)
         if match:

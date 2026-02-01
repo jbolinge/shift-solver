@@ -58,6 +58,7 @@ class BaseConstraint(ABC):
         self.config = config or ConstraintConfig()
         self._constraint_count = 0
         self._violation_variables: dict[str, cp_model.IntVar] = {}
+        self._violation_priorities: dict[str, int] = {}
 
     @property
     def is_enabled(self) -> bool:
@@ -83,6 +84,11 @@ class BaseConstraint(ABC):
     def violation_variables(self) -> dict[str, cp_model.IntVar]:
         """Get violation variables (for soft constraints)."""
         return self._violation_variables
+
+    @property
+    def violation_priorities(self) -> dict[str, int]:
+        """Get priority multipliers for violation variables."""
+        return self._violation_priorities
 
     @abstractmethod
     def apply(self, **context: Any) -> None:
