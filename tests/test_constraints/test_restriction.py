@@ -7,7 +7,7 @@ from ortools.sat.python import cp_model
 
 from shift_solver.constraints.base import ConstraintConfig
 from shift_solver.constraints.restriction import RestrictionConstraint
-from shift_solver.models import Worker, ShiftType
+from shift_solver.models import ShiftType, Worker
 from shift_solver.solver import VariableBuilder
 
 

@@ -5,9 +5,9 @@ from datetime import date, time, timedelta
 import pytest
 from ortools.sat.python import cp_model
 
-from shift_solver.constraints.base import ConstraintConfig
 from shift_solver.constraints.availability import AvailabilityConstraint
-from shift_solver.models import Worker, ShiftType, Availability
+from shift_solver.constraints.base import ConstraintConfig
+from shift_solver.models import Availability, ShiftType, Worker
 from shift_solver.solver import VariableBuilder
 
 

@@ -74,9 +74,23 @@ class TestRequestConstraintInit:
     def test_init_default_config(
         self, model_and_variables: tuple[cp_model.CpModel, SolverVariables]
     ) -> None:
-        """Test initialization with default config."""
+        """Test initialization with default config uses BaseConstraint defaults."""
         model, variables = model_and_variables
         constraint = RequestConstraint(model, variables)
+
+        assert constraint.constraint_id == "request"
+        # BaseConstraint defaults: enabled=True, is_hard=True, weight=100
+        assert constraint.is_enabled
+        assert constraint.is_hard
+        assert constraint.weight == 100
+
+    def test_init_soft_config(
+        self, model_and_variables: tuple[cp_model.CpModel, SolverVariables]
+    ) -> None:
+        """Test initialization with explicit soft config."""
+        model, variables = model_and_variables
+        config = ConstraintConfig(enabled=True, is_hard=False, weight=100)
+        constraint = RequestConstraint(model, variables, config)
 
         assert constraint.constraint_id == "request"
         assert constraint.is_enabled
@@ -123,7 +137,9 @@ class TestRequestConstraintApply:
             )
         ]
 
-        constraint = RequestConstraint(model, variables)
+        # Use soft config to create violation variables
+        config = ConstraintConfig(enabled=True, is_hard=False, weight=100)
+        constraint = RequestConstraint(model, variables, config)
         constraint.apply(
             workers=workers,
             shift_types=shift_types,
@@ -157,7 +173,9 @@ class TestRequestConstraintApply:
             )
         ]
 
-        constraint = RequestConstraint(model, variables)
+        # Use soft config to create violation variables
+        config = ConstraintConfig(enabled=True, is_hard=False, weight=100)
+        constraint = RequestConstraint(model, variables, config)
         constraint.apply(
             workers=workers,
             shift_types=shift_types,
@@ -422,7 +440,9 @@ class TestRequestConstraintPriorityMetadata:
             )
         ]
 
-        constraint = RequestConstraint(model, variables)
+        # Use soft config to create violation variables
+        config = ConstraintConfig(enabled=True, is_hard=False, weight=100)
+        constraint = RequestConstraint(model, variables, config)
         constraint.apply(
             workers=workers,
             shift_types=shift_types,
@@ -473,7 +493,9 @@ class TestRequestConstraintPriorityMetadata:
             ),
         ]
 
-        constraint = RequestConstraint(model, variables)
+        # Use soft config to create violation variables
+        config = ConstraintConfig(enabled=True, is_hard=False, weight=100)
+        constraint = RequestConstraint(model, variables, config)
         constraint.apply(
             workers=workers,
             shift_types=shift_types,

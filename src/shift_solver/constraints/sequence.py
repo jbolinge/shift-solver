@@ -36,9 +36,9 @@ class SequenceConstraint(BaseConstraint):
         variables: "SolverVariables",
         config: ConstraintConfig | None = None,
     ) -> None:
-        """Initialize sequence constraint with soft default."""
-        if config is None:
-            config = ConstraintConfig(enabled=True, is_hard=False, weight=100)
+        """Initialize sequence constraint."""
+        # Default config handled by BaseConstraint
+        # Registry provides config when instantiated via solver
         super().__init__(model, variables, config)
 
     def apply(self, **context: Any) -> None:

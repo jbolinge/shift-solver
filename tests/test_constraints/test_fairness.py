@@ -5,9 +5,9 @@ from datetime import time
 import pytest
 from ortools.sat.python import cp_model
 
-from shift_solver.constraints.fairness import FairnessConstraint
 from shift_solver.constraints.base import ConstraintConfig
-from shift_solver.models import Worker, ShiftType
+from shift_solver.constraints.fairness import FairnessConstraint
+from shift_solver.models import ShiftType, Worker
 from shift_solver.solver.types import SolverVariables
 from shift_solver.solver.variable_builder import VariableBuilder
 
@@ -76,13 +76,27 @@ class TestFairnessConstraintInit:
     def test_init_default_config(
         self, model_and_variables: tuple[cp_model.CpModel, SolverVariables]
     ) -> None:
-        """Test initialization with default config."""
+        """Test initialization with default config uses BaseConstraint defaults."""
         model, variables = model_and_variables
         constraint = FairnessConstraint(model, variables)
 
         assert constraint.constraint_id == "fairness"
+        # BaseConstraint defaults: enabled=True, is_hard=True, weight=100
         assert constraint.is_enabled
-        assert not constraint.is_hard  # Fairness is soft by default
+        assert constraint.is_hard
+        assert constraint.weight == 100
+
+    def test_init_soft_config(
+        self, model_and_variables: tuple[cp_model.CpModel, SolverVariables]
+    ) -> None:
+        """Test initialization with explicit soft config."""
+        model, variables = model_and_variables
+        config = ConstraintConfig(enabled=True, is_hard=False, weight=100)
+        constraint = FairnessConstraint(model, variables, config)
+
+        assert constraint.constraint_id == "fairness"
+        assert constraint.is_enabled
+        assert not constraint.is_hard
         assert constraint.weight == 100
 
     def test_init_with_config(
