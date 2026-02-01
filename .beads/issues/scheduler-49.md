@@ -32,6 +32,6 @@ E2E tests for solver performance and scalability.
 
 ## Acceptance Criteria
 
-- [ ] All 6 test cases implemented
-- [ ] Performance benchmarks documented
-- [ ] Timeout behavior verified
+- [x] All 6 test cases implemented
+- [x] Performance benchmarks documented
+- [x] Timeout behavior verified

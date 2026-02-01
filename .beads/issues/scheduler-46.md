@@ -32,6 +32,6 @@ E2E tests for constraint interaction and competition.
 
 ## Acceptance Criteria
 
-- [ ] All 6 test cases implemented
-- [ ] Constraint weights properly balanced
-- [ ] Complex multi-constraint scenarios solve correctly
+- [x] All 6 test cases implemented
+- [x] Constraint weights properly balanced
+- [x] Complex multi-constraint scenarios solve correctly

@@ -32,6 +32,6 @@ E2E tests for conflicting scheduling requests.
 
 ## Acceptance Criteria
 
-- [ ] All 6 test cases implemented
-- [ ] Request priorities properly honored
-- [ ] Violation counts match expected
+- [x] All 6 test cases implemented
+- [x] Request priorities properly honored
+- [x] Violation counts match expected

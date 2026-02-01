@@ -32,6 +32,6 @@ E2E tests for complex availability and vacation scenarios.
 
 ## Acceptance Criteria
 
-- [ ] All 6 test cases implemented
-- [ ] Tests pass with `@pytest.mark.e2e`
-- [ ] Edge cases properly exercise availability constraint
+- [x] All 6 test cases implemented
+- [x] Tests pass with `@pytest.mark.e2e`
+- [x] Edge cases properly exercise availability constraint

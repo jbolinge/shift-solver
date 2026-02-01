@@ -32,6 +32,6 @@ E2E tests for near-feasibility boundary conditions.
 
 ## Acceptance Criteria
 
-- [ ] All 6 test cases implemented
-- [ ] INFEASIBLE status correctly detected
-- [ ] FeasibilityChecker matches solver results
+- [x] All 6 test cases implemented
+- [x] INFEASIBLE status correctly detected
+- [x] FeasibilityChecker matches solver results

@@ -31,6 +31,6 @@ E2E tests for complex worker restriction scenarios.
 
 ## Acceptance Criteria
 
-- [ ] All 5 test cases implemented
-- [ ] Restriction constraint enforced correctly
-- [ ] Bottleneck scenarios handled properly
+- [x] All 5 test cases implemented
+- [x] Restriction constraint enforced correctly
+- [x] Bottleneck scenarios handled properly

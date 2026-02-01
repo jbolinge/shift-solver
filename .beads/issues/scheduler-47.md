@@ -32,6 +32,6 @@ E2E tests for extreme input boundaries.
 
 ## Acceptance Criteria
 
-- [ ] All 6 test cases implemented
-- [ ] ValueError raised for invalid inputs
-- [ ] Single-element scenarios solve correctly
+- [x] All 6 test cases implemented
+- [x] ValueError raised for invalid inputs
+- [x] Single-element scenarios solve correctly

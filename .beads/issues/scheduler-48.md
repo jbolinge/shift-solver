@@ -32,6 +32,6 @@ E2E tests for realistic industry patterns.
 
 ## Acceptance Criteria
 
-- [ ] All 6 test cases implemented
-- [ ] Industry patterns produce valid schedules
-- [ ] Rotation and pairing work correctly
+- [x] All 6 test cases implemented
+- [x] Industry patterns produce valid schedules
+- [x] Rotation and pairing work correctly

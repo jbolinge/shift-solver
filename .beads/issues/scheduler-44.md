@@ -33,6 +33,6 @@ E2E tests for fairness constraint edge conditions.
 
 ## Acceptance Criteria
 
-- [ ] All 7 test cases implemented
-- [ ] Spread variable correctly calculated
-- [ ] Category filtering works correctly
+- [x] All 7 test cases implemented
+- [x] Spread variable correctly calculated
+- [x] Category filtering works correctly

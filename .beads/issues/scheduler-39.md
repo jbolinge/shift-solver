@@ -63,7 +63,7 @@ tests/test_e2e/
 
 ## Acceptance Criteria
 
-- [ ] All 11 test files implemented
-- [ ] `uv run pytest tests/test_e2e/ -v` passes
-- [ ] `uv run pytest tests/test_e2e/ -m slow` runs performance tests
-- [ ] Coverage >90% for constraint code paths
+- [x] All 11 test files implemented
+- [x] `uv run pytest tests/test_e2e/ -v` passes
+- [x] `uv run pytest tests/test_e2e/ -m slow` runs performance tests
+- [x] Coverage >90% for constraint code paths

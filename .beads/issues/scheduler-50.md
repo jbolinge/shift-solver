@@ -32,6 +32,6 @@ E2E tests for regression prevention and documented edge cases.
 
 ## Acceptance Criteria
 
-- [ ] All 6 test cases implemented
-- [ ] Known edge cases documented in test docstrings
-- [ ] Date handling works across boundaries
+- [x] All 6 test cases implemented
+- [x] Known edge cases documented in test docstrings
+- [x] Date handling works across boundaries
