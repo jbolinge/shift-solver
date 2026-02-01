@@ -1,6 +1,7 @@
 """SolverResult dataclass for solver outcomes."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Any
 
 from shift_solver.models import Schedule
 
@@ -15,3 +16,4 @@ class SolverResult:
     status_name: str
     solve_time_seconds: float
     objective_value: float | None = None
+    feasibility_issues: list[dict[str, Any]] | None = field(default=None)

@@ -4,7 +4,7 @@ from datetime import date, time
 
 import pytest
 
-from shift_solver.models import Worker, ShiftType, Availability
+from shift_solver.models import Availability, ShiftType, Worker
 from shift_solver.validation.feasibility import FeasibilityChecker, FeasibilityResult
 
 
@@ -375,3 +375,117 @@ class TestCombinedChecks:
         )
         result = checker.check()
         assert not result.is_feasible
+
+
+class TestCoverageVsRestrictions:
+    """Tests for coverage vs restrictions check (scheduler-53)."""
+
+    def test_all_workers_restricted_from_required_shift(self) -> None:
+        """All workers restricted from shift that requires coverage."""
+        workers = [
+            Worker(id="W1", name="Alice", restricted_shifts=frozenset(["night"])),
+            Worker(id="W2", name="Bob", restricted_shifts=frozenset(["night"])),
+            Worker(id="W3", name="Charlie", restricted_shifts=frozenset(["night"])),
+        ]
+        shift_types = [
+            ShiftType(
+                id="night",
+                name="Night Shift",
+                category="night",
+                start_time=time(23, 0),
+                end_time=time(7, 0),
+                duration_hours=8.0,
+                workers_required=2,
+            ),
+        ]
+        period_dates = [(date(2026, 1, 1), date(2026, 1, 7))]
+
+        checker = FeasibilityChecker(
+            workers=workers,
+            shift_types=shift_types,
+            period_dates=period_dates,
+        )
+        result = checker.check()
+
+        assert not result.is_feasible
+        assert any(i["type"] == "restriction" for i in result.issues)
+        # Check error message is descriptive
+        restriction_issue = next(i for i in result.issues if i["type"] == "restriction")
+        assert "Night Shift" in restriction_issue["message"]
+        assert "0 available" in restriction_issue["message"]
+        assert "2 required" in restriction_issue["message"]
+
+    def test_partial_restrictions_sufficient_workers(self) -> None:
+        """Some workers restricted but still enough available."""
+        workers = [
+            Worker(id="W1", name="Alice", restricted_shifts=frozenset(["night"])),
+            Worker(id="W2", name="Bob"),
+            Worker(id="W3", name="Charlie"),
+        ]
+        shift_types = [
+            ShiftType(
+                id="night",
+                name="Night Shift",
+                category="night",
+                start_time=time(23, 0),
+                end_time=time(7, 0),
+                duration_hours=8.0,
+                workers_required=2,
+            ),
+        ]
+        period_dates = [(date(2026, 1, 1), date(2026, 1, 7))]
+
+        checker = FeasibilityChecker(
+            workers=workers,
+            shift_types=shift_types,
+            period_dates=period_dates,
+        )
+        result = checker.check()
+        assert result.is_feasible
+
+    def test_restrictions_plus_unavailability_combined(self) -> None:
+        """Workers restricted and remaining unavailable."""
+        workers = [
+            Worker(id="W1", name="Alice", restricted_shifts=frozenset(["night"])),
+            Worker(id="W2", name="Bob"),
+            Worker(id="W3", name="Charlie"),
+        ]
+        shift_types = [
+            ShiftType(
+                id="night",
+                name="Night Shift",
+                category="night",
+                start_time=time(23, 0),
+                end_time=time(7, 0),
+                duration_hours=8.0,
+                workers_required=2,
+            ),
+        ]
+        period_dates = [(date(2026, 1, 1), date(2026, 1, 7))]
+        # Bob and Charlie unavailable
+        availabilities = [
+            Availability(
+                worker_id="W2",
+                start_date=date(2026, 1, 1),
+                end_date=date(2026, 1, 7),
+                availability_type="unavailable",
+            ),
+            Availability(
+                worker_id="W3",
+                start_date=date(2026, 1, 1),
+                end_date=date(2026, 1, 7),
+                availability_type="unavailable",
+            ),
+        ]
+
+        checker = FeasibilityChecker(
+            workers=workers,
+            shift_types=shift_types,
+            period_dates=period_dates,
+            availabilities=availabilities,
+        )
+        result = checker.check()
+
+        assert not result.is_feasible
+        # Should get combined issue
+        assert any(i["type"] == "combined" for i in result.issues)

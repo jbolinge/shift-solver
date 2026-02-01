@@ -4,8 +4,8 @@ from datetime import date, time, timedelta
 
 import pytest
 
-from shift_solver.models import Worker, ShiftType, Availability, Schedule
-from shift_solver.solver.shift_solver import ShiftSolver, SolverResult
+from shift_solver.models import Availability, Schedule, ShiftType, Worker
+from shift_solver.solver.shift_solver import ShiftSolver
 
 
 class TestShiftSolver:
@@ -293,6 +293,78 @@ class TestShiftSolverValidation:
                 period_dates=[],
                 schedule_id="TEST",
             )
+
+
+class TestShiftSolverPreSolveFeasibility:
+    """Tests for pre-solve feasibility checking (scheduler-53)."""
+
+    def test_infeasible_detects_all_workers_restricted(self) -> None:
+        """Solver detects when all workers are restricted from required shift."""
+        workers = [
+            Worker(id="W1", name="Alice", restricted_shifts=frozenset(["night"])),
+            Worker(id="W2", name="Bob", restricted_shifts=frozenset(["night"])),
+            Worker(id="W3", name="Charlie", restricted_shifts=frozenset(["night"])),
+        ]
+        shift_types = [
+            ShiftType(
+                id="night",
+                name="Night Shift",
+                category="night",
+                start_time=time(23, 0),
+                end_time=time(7, 0),
+                duration_hours=8.0,
+                workers_required=2,
+            ),
+        ]
+        period_dates = [(date(2026, 1, 1), date(2026, 1, 7))]
+
+        solver = ShiftSolver(
+            workers=workers,
+            shift_types=shift_types,
+            period_dates=period_dates,
+            schedule_id="TEST-INFEASIBLE",
+        )
+
+        result = solver.solve(time_limit_seconds=10)
+
+        # Should fail with clear reason
+        assert not result.success
+        assert result.feasibility_issues is not None
+        assert len(result.feasibility_issues) > 0
+        # Should identify the restriction issue
+        assert any(i["type"] == "restriction" for i in result.feasibility_issues)
+
+    def test_infeasible_message_identifies_shift_type(self) -> None:
+        """Feasibility error message identifies which shift type is infeasible."""
+        workers = [
+            Worker(id="W1", name="Alice", restricted_shifts=frozenset(["night"])),
+        ]
+        shift_types = [
+            ShiftType(
+                id="night",
+                name="Night Shift",
+                category="night",
+                start_time=time(23, 0),
+                end_time=time(7, 0),
+                duration_hours=8.0,
+                workers_required=1,
+            ),
+        ]
+        period_dates = [(date(2026, 1, 1), date(2026, 1, 7))]
+
+        solver = ShiftSolver(
+            workers=workers,
+            shift_types=shift_types,
+            period_dates=period_dates,
+            schedule_id="TEST-INFEASIBLE",
+        )
+
+        result = solver.solve(time_limit_seconds=10)
+
+        assert not result.success
+        assert result.feasibility_issues is not None
+        issue = next(i for i in result.feasibility_issues if i["type"] == "restriction")
+        assert "Night Shift" in issue["message"]
 
 
 class TestShiftSolverLargerScale:

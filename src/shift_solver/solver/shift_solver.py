@@ -22,6 +22,7 @@ from shift_solver.solver.result import SolverResult
 from shift_solver.solver.solution_extractor import SolutionExtractor
 from shift_solver.solver.types import SolverVariables
 from shift_solver.solver.variable_builder import VariableBuilder
+from shift_solver.validation.feasibility import FeasibilityChecker, FeasibilityResult
 
 
 class ShiftSolver:
@@ -109,6 +110,18 @@ class ShiftSolver:
             SolverResult with success status, schedule, and statistics
         """
         start_time = time_module.time()
+
+        # Run pre-solve feasibility check
+        feasibility_result = self._check_feasibility()
+        if not feasibility_result.is_feasible:
+            return SolverResult(
+                success=False,
+                schedule=None,
+                status=-1,  # Custom status for pre-solve failure
+                status_name="INFEASIBLE_PRE_SOLVE",
+                solve_time_seconds=time_module.time() - start_time,
+                feasibility_issues=feasibility_result.issues,
+            )
 
         # Create model and variables
         self._model = cp_model.CpModel()
@@ -243,3 +256,13 @@ class ShiftSolver:
             )
             constraint.apply(**context)
             self._objective_builder.add_constraint(constraint)
+
+    def _check_feasibility(self) -> FeasibilityResult:
+        """Run pre-solve feasibility check."""
+        checker = FeasibilityChecker(
+            workers=self.workers,
+            shift_types=self.shift_types,
+            period_dates=self.period_dates,
+            availabilities=self.availabilities,
+        )
+        return checker.check()

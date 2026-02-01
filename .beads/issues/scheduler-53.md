@@ -2,7 +2,7 @@
 id: scheduler-53
 title: "Add pre-solve feasibility check for coverage vs restrictions"
 type: feature
-status: open
+status: closed
 priority: 0
 created: 2026-02-01
 updated: 2026-02-01
@@ -27,8 +27,17 @@ If all workers are restricted from a shift type but coverage requires workers, t
 
 ## Acceptance Criteria
 
-- [ ] Add `check_coverage_vs_restrictions()` to FeasibilityChecker
-- [ ] For each shift type, verify available workers >= workers_required
-- [ ] Account for availability constraints reducing worker pool
-- [ ] Return clear error message identifying which shift types are infeasible
-- [ ] Add tests for: all workers restricted, partial restrictions, restrictions + unavailability combined
+- [x] Add `check_coverage_vs_restrictions()` to FeasibilityChecker
+- [x] For each shift type, verify available workers >= workers_required
+- [x] Account for availability constraints reducing worker pool
+- [x] Return clear error message identifying which shift types are infeasible
+- [x] Add tests for: all workers restricted, partial restrictions, restrictions + unavailability combined
+
+## Resolution
+
+- FeasibilityChecker already had `_check_restrictions` and `_check_combined_feasibility` methods
+- Added `_check_feasibility()` method to ShiftSolver that calls FeasibilityChecker before solving
+- Added `feasibility_issues` field to SolverResult to expose issues to callers
+- Added `INFEASIBLE_PRE_SOLVE` status for early detection of infeasible problems
+- Added TestCoverageVsRestrictions test class with 3 tests
+- Added TestShiftSolverPreSolveFeasibility test class with 2 tests
