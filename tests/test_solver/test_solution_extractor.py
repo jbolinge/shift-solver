@@ -251,7 +251,6 @@ class TestSolutionExtractorValidation:
 
     def test_requires_variables(self) -> None:
         """Raises ValueError when variables is None."""
-        model = cp_model.CpModel()
         solver = cp_model.CpSolver()
         workers = [Worker(id="W001", name="A")]
         shift_types = [

@@ -150,7 +150,7 @@ class TestSampleGeneratorOutput:
 class TestSampleGeneratorDeterminism:
     """Tests for reproducible generation."""
 
-    def test_seed_produces_same_output(self, tmp_path: Path) -> None:
+    def test_seed_produces_same_output(self, tmp_path: Path) -> None:  # noqa: ARG002
         """Test that same seed produces same output."""
         gen1 = SampleGenerator(industry="retail", seed=42)
         gen2 = SampleGenerator(industry="retail", seed=42)

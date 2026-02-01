@@ -113,7 +113,9 @@ class TestPhysicianStyleMultiSiteScheduling:
 
     @pytest.fixture
     def vacation_pattern_26_weeks(
-        self, multi_site_workers: list[Worker], periods_26_weeks: list[tuple[date, date]]
+        self,
+        multi_site_workers: list[Worker],  # noqa: ARG002 - fixture dependency
+        periods_26_weeks: list[tuple[date, date]],
     ) -> list[Availability]:
         """
         Create rolling vacation pattern over 26 weeks.
@@ -594,7 +596,7 @@ class TestPhysicianStyleMultiSiteScheduling:
         for period_idx, period in enumerate(result.schedule.periods):
             # Count assignments per shift type
             shift_coverage: dict[str, int] = defaultdict(int)
-            for worker_id, shifts in period.assignments.items():
+            for _worker_id, shifts in period.assignments.items():
                 for shift in shifts:
                     shift_coverage[shift.shift_type_id] += 1
 

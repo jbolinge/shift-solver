@@ -2,10 +2,11 @@
 id: scheduler-51
 title: "Code Quality & Integration Hardening"
 type: epic
-status: open
+status: closed
 priority: 1
 created: 2026-02-01
 updated: 2026-02-01
+closed: 2026-02-01
 ---
 
 # Code Quality & Integration Hardening

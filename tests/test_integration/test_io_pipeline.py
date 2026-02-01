@@ -152,7 +152,6 @@ class TestExcelRoundtrip:
         # Step 1: Generate sample data
         generator = SampleGenerator(industry="healthcare", seed=123)
         start_date = date(2026, 2, 2)
-        end_date = date(2026, 2, 22)
 
         workers = generator.generate_workers(8)
         shift_types = generator.generate_shift_types()

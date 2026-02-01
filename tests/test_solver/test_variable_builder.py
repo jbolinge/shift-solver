@@ -112,11 +112,10 @@ class TestVariableBuilder:
             shift_types=shift_types,
             num_periods=num_periods,
         )
-        variables = builder.build()
+        _variables = builder.build()
 
         # Verify through solving that bounds are respected
         solver = cp_model.CpSolver()
-        var = variables.get_shift_count_var("W001", "day")
 
         # Try to set value outside bounds - should fail
         test_model = cp_model.CpModel()

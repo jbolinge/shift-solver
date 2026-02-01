@@ -367,7 +367,7 @@ class TestUnavailabilityOutsidePeriod:
 
         # Worker should be available for all periods
         assert result.success
-        for period in result.schedule.periods:
+        for _period in result.schedule.periods:
             # Worker can be assigned since unavailability is outside schedule
             pass  # No specific assertion needed, just verify solve succeeds
 

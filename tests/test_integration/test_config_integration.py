@@ -4,6 +4,8 @@ from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
+import yaml
+from pydantic import ValidationError
 
 from shift_solver.config import ShiftSolverConfig
 from shift_solver.constraints.base import ConstraintConfig
@@ -201,12 +203,12 @@ class TestConfigValidation:
 
     def test_invalid_config_raises_error(self, invalid_config_yaml: Path) -> None:
         """Test that invalid config raises appropriate error."""
-        with pytest.raises(Exception):  # Pydantic ValidationError
+        with pytest.raises(ValidationError):
             ShiftSolverConfig.load_from_yaml(invalid_config_yaml)
 
     def test_malformed_yaml_raises_error(self, malformed_yaml: Path) -> None:
         """Test that malformed YAML raises appropriate error."""
-        with pytest.raises(Exception):  # yaml.YAMLError
+        with pytest.raises(yaml.YAMLError):
             ShiftSolverConfig.load_from_yaml(malformed_yaml)
 
     def test_missing_file_raises_error(self) -> None:

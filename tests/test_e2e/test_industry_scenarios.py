@@ -77,8 +77,6 @@ class TestRetailSchedule:
         assert weekend_shift.workers_required == 5
 
         period_dates = create_period_dates(num_periods=2)
-        start_date = period_dates[0][0]
-        end_date = period_dates[-1][1]
 
         solver = ShiftSolver(
             workers=workers,
