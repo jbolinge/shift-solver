@@ -178,8 +178,10 @@ class ShiftSolver:
 
     def _apply_constraints(self) -> None:
         """Apply all constraints to the model."""
-        assert self._model is not None
-        assert self._variables is not None
+        if self._model is None:
+            raise RuntimeError("Cannot apply constraints: model not initialized")
+        if self._variables is None:
+            raise RuntimeError("Cannot apply constraints: variables not initialized")
 
         # Context for all constraints
         constraints_context: dict[str, Any] = {
@@ -211,8 +213,10 @@ class ShiftSolver:
 
     def _apply_hard_constraints(self, context: dict[str, Any]) -> None:
         """Apply hard constraints from registry."""
-        assert self._model is not None
-        assert self._variables is not None
+        if self._model is None:
+            raise RuntimeError("Cannot apply hard constraints: model not initialized")
+        if self._variables is None:
+            raise RuntimeError("Cannot apply hard constraints: variables not initialized")
 
         for constraint_id, registration in ConstraintRegistry.get_hard_constraints().items():
             config = self._get_constraint_config(
@@ -230,9 +234,14 @@ class ShiftSolver:
 
     def _apply_soft_constraints(self, context: dict[str, Any]) -> None:
         """Apply soft constraints from registry and add them to objective builder."""
-        assert self._model is not None
-        assert self._variables is not None
-        assert self._objective_builder is not None
+        if self._model is None:
+            raise RuntimeError("Cannot apply soft constraints: model not initialized")
+        if self._variables is None:
+            raise RuntimeError("Cannot apply soft constraints: variables not initialized")
+        if self._objective_builder is None:
+            raise RuntimeError(
+                "Cannot apply soft constraints: objective builder not initialized"
+            )
 
         for constraint_id, registration in ConstraintRegistry.get_soft_constraints().items():
             # Get config with special handling for request constraint

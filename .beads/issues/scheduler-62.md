@@ -3,6 +3,7 @@ id: scheduler-62
 title: "Add full DB persistence cycle integration test"
 type: task
 status: open
+deferred: true
 priority: 1
 created: 2026-02-01
 updated: 2026-02-01

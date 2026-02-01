@@ -3,6 +3,7 @@ id: scheduler-59
 title: "Add date format configuration to avoid ambiguity"
 type: feature
 status: open
+deferred: true
 priority: 1
 created: 2026-02-01
 updated: 2026-02-01

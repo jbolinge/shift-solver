@@ -3,6 +3,7 @@ id: scheduler-58
 title: "Unify CSV and Excel error handling"
 type: task
 status: open
+deferred: true
 priority: 1
 created: 2026-02-01
 updated: 2026-02-01
