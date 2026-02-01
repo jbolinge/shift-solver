@@ -3,7 +3,6 @@ id: scheduler-57
 title: "Make Fairness-ObjectiveBuilder coupling explicit"
 type: task
 status: open
-deferred: true
 priority: 1
 created: 2026-02-01
 updated: 2026-02-01

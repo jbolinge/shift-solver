@@ -5,7 +5,7 @@ from datetime import time
 import pytest
 from ortools.sat.python import cp_model
 
-from shift_solver.models import Worker, ShiftType
+from shift_solver.models import ShiftType, Worker
 from shift_solver.solver.variable_builder import VariableBuilder
 
 

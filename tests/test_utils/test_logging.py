@@ -1,16 +1,14 @@
 """Tests for logging infrastructure."""
 
-import json
 import logging
-import tempfile
 from pathlib import Path
 
 import pytest
 
 from shift_solver.utils.logging import (
-    setup_logging,
-    get_logger,
     SolverProgressCallback,
+    get_logger,
+    setup_logging,
 )
 
 

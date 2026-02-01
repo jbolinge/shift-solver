@@ -4,13 +4,11 @@ scheduler-45: Tests complex worker restriction scenarios including multiple
 restrictions per worker, bottlenecks, and pyramid patterns.
 """
 
-from datetime import date, time, timedelta
+from datetime import time
 
 import pytest
 
-from shift_solver.constraints.base import ConstraintConfig
-from shift_solver.models import Availability, ShiftType, Worker
-from shift_solver.solver import ShiftSolver
+from shift_solver.models import Availability, ShiftType
 from shift_solver.validation import FeasibilityChecker
 
 from .conftest import create_period_dates, solve_and_verify

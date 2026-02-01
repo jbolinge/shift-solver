@@ -16,7 +16,6 @@ import pytest
 
 from shift_solver.constraints.base import ConstraintConfig
 from shift_solver.models import Availability, SchedulingRequest, ShiftType, Worker
-from shift_solver.solver import ShiftSolver
 from shift_solver.validation import ScheduleValidator
 
 from .conftest import create_period_dates, solve_and_verify
@@ -556,10 +555,10 @@ class TestPhysicianStyleMultiSiteScheduling:
         )
 
         # Log summary for debugging (visible with pytest -v -s)
-        print(f"\n=== 26-Week Multi-Site Schedule Statistics ===")
+        print("\n=== 26-Week Multi-Site Schedule Statistics ===")
         print(f"Total assignments: {total_assignments}")
         print(f"Average per worker: {avg_assignments:.1f}")
-        print(f"\nAssignments per worker:")
+        print("\nAssignments per worker:")
         for worker_id in sorted(assignments_per_worker.keys()):
             count = assignments_per_worker[worker_id]
             weekend = weekend_counts.get(worker_id, 0)

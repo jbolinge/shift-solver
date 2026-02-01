@@ -3,12 +3,12 @@
 import pytest
 
 from shift_solver.utils.exceptions import (
-    ShiftSolverError,
     ConfigurationError,
-    ValidationError,
-    FeasibilityError,
-    SolverError,
     DataImportError,
+    FeasibilityError,
+    ShiftSolverError,
+    SolverError,
+    ValidationError,
 )
 
 

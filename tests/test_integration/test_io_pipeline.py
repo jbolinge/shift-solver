@@ -1,10 +1,11 @@
 """Integration tests for the I/O pipeline: CSV/Excel import -> solve -> export."""
 
-from datetime import date, timedelta
+from datetime import date
 from pathlib import Path
 
 import pytest
 
+from factories import create_period_dates
 from shift_solver.io import (
     CSVLoader,
     ExcelExporter,
@@ -14,7 +15,6 @@ from shift_solver.io import (
 from shift_solver.models import ShiftType, Worker
 from shift_solver.solver import ShiftSolver
 from shift_solver.validation import ScheduleValidator
-from factories import create_period_dates
 
 
 @pytest.mark.integration

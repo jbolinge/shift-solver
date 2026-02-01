@@ -5,10 +5,10 @@ from datetime import date, time, timedelta
 import pytest
 from ortools.sat.python import cp_model
 
-from shift_solver.models import Worker, ShiftType, Schedule
-from shift_solver.solver import VariableBuilder, SolverVariables
-from shift_solver.solver.solution_extractor import SolutionExtractor
 from shift_solver.constraints import CoverageConstraint
+from shift_solver.models import Schedule, ShiftType, Worker
+from shift_solver.solver import SolverVariables, VariableBuilder
+from shift_solver.solver.solution_extractor import SolutionExtractor
 
 
 class TestSolutionExtractor:

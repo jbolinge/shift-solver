@@ -5,13 +5,13 @@ from datetime import date, time
 import pytest
 
 from shift_solver.models import (
-    Worker,
-    ShiftType,
-    ShiftInstance,
-    Schedule,
-    PeriodAssignment,
     Availability,
+    PeriodAssignment,
+    Schedule,
     SchedulingRequest,
+    ShiftInstance,
+    ShiftType,
+    Worker,
 )
 from shift_solver.validation.schedule_validator import (
     ScheduleValidator,

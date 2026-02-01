@@ -1,7 +1,8 @@
 """Tests for the Worker model."""
 
 import pytest
-from hypothesis import given, strategies as st
+from hypothesis import given
+from hypothesis import strategies as st
 
 from shift_solver.models.worker import Worker
 

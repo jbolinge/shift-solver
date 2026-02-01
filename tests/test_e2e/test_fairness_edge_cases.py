@@ -4,13 +4,12 @@ scheduler-44: Tests fairness constraint edge conditions including all
 undesirable shifts, single worker scenarios, and spread tracking.
 """
 
-from datetime import date, time, timedelta
+from datetime import time
 
 import pytest
 
 from shift_solver.constraints.base import ConstraintConfig
-from shift_solver.models import Availability, ShiftType, Worker
-from shift_solver.solver import ShiftSolver
+from shift_solver.models import ShiftType
 
 from .conftest import create_period_dates, solve_and_verify
 
@@ -338,7 +337,7 @@ class TestFairnessWithRestrictions:
 
         # Count undesirable shifts for eligible workers
         eligible_ids = {workers[2].id, workers[3].id}
-        counts = {wid: 0 for wid in eligible_ids}
+        counts = dict.fromkeys(eligible_ids, 0)
         for period in result.schedule.periods:
             for worker_id, shifts in period.assignments.items():
                 if worker_id in eligible_ids:

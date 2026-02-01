@@ -4,13 +4,12 @@ scheduler-41: Tests holiday scheduling complexity including skeleton crew,
 premium shifts, year-end clustering, and fair rotation.
 """
 
-from datetime import date, time, timedelta
+from datetime import date, time
 
 import pytest
 
 from shift_solver.constraints.base import ConstraintConfig
-from shift_solver.models import Availability, SchedulingRequest, ShiftType, Worker
-from shift_solver.solver import ShiftSolver
+from shift_solver.models import Availability, SchedulingRequest, ShiftType
 
 from .conftest import create_period_dates, solve_and_verify
 

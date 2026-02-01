@@ -11,8 +11,6 @@ from shift_solver.cli import cli
 from shift_solver.constraints.base import ConstraintConfig
 from shift_solver.models import Availability, SchedulingRequest, ShiftType, Worker
 from shift_solver.solver import ShiftSolver
-from shift_solver.validation import FeasibilityChecker
-
 
 # -----------------------------------------------------------------------------
 # Pytest Markers

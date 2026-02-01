@@ -1,13 +1,13 @@
 """End-to-end tests for realistic industry scheduling scenarios."""
 
-from datetime import date, timedelta
+from datetime import date
 
 import pytest
 
+from factories import create_period_dates
 from shift_solver.io import SampleGenerator
 from shift_solver.solver import ShiftSolver
 from shift_solver.validation import ScheduleValidator
-from factories import create_period_dates
 
 
 @pytest.mark.e2e

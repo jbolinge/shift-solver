@@ -2,6 +2,7 @@
 
 from datetime import date, time, timedelta
 from pathlib import Path
+
 import pytest
 from click.testing import CliRunner
 
@@ -12,7 +13,6 @@ from shift_solver.models import (
     ShiftType,
     Worker,
 )
-
 
 # -----------------------------------------------------------------------------
 # Worker Fixtures

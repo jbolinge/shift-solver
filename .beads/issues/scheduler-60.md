@@ -3,7 +3,6 @@ id: scheduler-60
 title: "Derive period_type from period_dates"
 type: bug
 status: open
-deferred: true
 priority: 2
 created: 2026-02-01
 updated: 2026-02-01

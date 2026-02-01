@@ -5,15 +5,13 @@ from pathlib import Path
 
 import pytest
 
-from shift_solver.io.excel_handler import ExcelLoader, ExcelExporter, ExcelHandlerError
+from shift_solver.io.excel_handler import ExcelExporter, ExcelHandlerError, ExcelLoader
 from shift_solver.models import (
-    Worker,
-    ShiftType,
-    Availability,
-    SchedulingRequest,
-    Schedule,
     PeriodAssignment,
+    Schedule,
     ShiftInstance,
+    ShiftType,
+    Worker,
 )
 
 

@@ -3,9 +3,8 @@
 from datetime import date, time
 
 import pytest
-from hypothesis import given, strategies as st
 
-from shift_solver.models.shift import ShiftType, ShiftInstance
+from shift_solver.models.shift import ShiftInstance, ShiftType
 
 
 class TestShiftType:
