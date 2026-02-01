@@ -26,27 +26,27 @@ Analysis revealed:
 - **scheduler-53** ✓ Pre-solve feasibility check for coverage vs restrictions
 - **scheduler-54** ✓ Refactor priority from variable names to metadata
 
-### Medium Priority (Priority 1) - IN PROGRESS
+### Medium Priority (Priority 1) - COMPLETED
 - **scheduler-55** ✓ Unify soft constraint default config with registry
 - **scheduler-56** ✓ Respect explicit constraint_configs for RequestConstraint
 - **scheduler-57** ✓ Make Fairness-ObjectiveBuilder coupling explicit
 - **scheduler-58** ✓ Unify CSV and Excel error handling
 - **scheduler-59** ✓ Add date format configuration to avoid ambiguity
 
-### Low Priority (Priority 2) - IN PROGRESS
+### Low Priority (Priority 2) - COMPLETED
 - **scheduler-60** ✓ Derive period_type from period_dates
 - **scheduler-61** ✓ Replace assertions with proper exception handling
 
-### Integration Tests (Priority 1) - IN PROGRESS
-- **scheduler-62** Add full DB persistence cycle integration test
-- **scheduler-63** Add tests for request + restriction conflicts
+### Integration Tests (Priority 1) - COMPLETED
+- **scheduler-62** ✓ Add full DB persistence cycle integration test
+- **scheduler-63** ✓ Add tests for request + restriction conflicts
 - **scheduler-64** ✓ Add infeasibility detection and messaging tests
 
 ## Acceptance Criteria
 
 - [x] All high priority issues resolved (3/3)
-- [ ] All medium priority issues resolved (2/5)
-- [ ] All low priority issues resolved (1/2)
-- [ ] All integration test gaps addressed (1/3)
-- [ ] Full test suite passes
-- [ ] No new regressions introduced
+- [x] All medium priority issues resolved (5/5)
+- [x] All low priority issues resolved (2/2)
+- [x] All integration test gaps addressed (3/3)
+- [x] Full test suite passes (625+ tests)
+- [x] No new regressions introduced
