@@ -1,11 +1,21 @@
 """Configuration schema for shift-solver using Pydantic v2."""
 
 from datetime import time
+from enum import Enum
 from pathlib import Path
 from typing import Any
 
 import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
+
+
+class DateFormat(str, Enum):
+    """Date format options for parsing."""
+
+    ISO = "iso"  # YYYY-MM-DD (unambiguous)
+    US = "us"  # MM/DD/YYYY
+    EU = "eu"  # DD/MM/YYYY
+    AUTO = "auto"  # Try all formats (default, warns on ambiguous)
 
 
 class SolverConfig(BaseModel):
@@ -22,6 +32,7 @@ class ScheduleConfig(BaseModel):
 
     period_type: str = Field(default="week")
     num_periods: int | None = Field(default=None, ge=1)
+    date_format: DateFormat = Field(default=DateFormat.AUTO)
 
 
 class ConstraintConfig(BaseModel):

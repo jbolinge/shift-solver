@@ -2,7 +2,7 @@
 id: scheduler-58
 title: "Unify CSV and Excel error handling"
 type: task
-status: open
+status: closed
 priority: 1
 created: 2026-02-01
 updated: 2026-02-01
@@ -32,6 +32,15 @@ worker = self._parse_worker_row(row, line_num)  # No error wrapping
 
 ## Acceptance Criteria
 
-- [ ] ExcelLoader wraps row parsing errors with row numbers
-- [ ] Both loaders raise similar error types with consistent info
-- [ ] Add test for Excel row parsing error message format
+- [x] ExcelLoader wraps row parsing errors with row numbers
+- [x] Both loaders raise similar error types with consistent info
+- [x] Add test for Excel row parsing error message format
+
+## Resolution
+
+Added try/except wrappers to ExcelLoader's load methods (load_workers,
+load_availability, load_requests) matching CSVLoader's pattern. Also fixed
+None value handling for empty Excel cells using `row.get("field") or ""`
+pattern instead of `row.get("field", "")`.
+
+Added 4 tests in `TestExcelLoaderErrorHandling` class.
