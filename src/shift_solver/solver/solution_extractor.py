@@ -15,6 +15,36 @@ from shift_solver.models import (
 from shift_solver.solver.types import SolverVariables
 
 
+def _derive_period_type(period_dates: list[tuple[date, date]]) -> str:
+    """
+    Derive period type from the duration of periods.
+
+    Args:
+        period_dates: List of (start_date, end_date) tuples for each period
+
+    Returns:
+        Period type string: "day", "week", "biweek", "month", or "custom"
+    """
+    if not period_dates:
+        return "week"  # Default fallback
+
+    # Calculate the duration of the first period
+    start, end = period_dates[0]
+    duration = (end - start).days + 1  # +1 to include both start and end
+
+    # Map duration to period type
+    if duration == 1:
+        return "day"
+    elif duration == 7:
+        return "week"
+    elif duration == 14:
+        return "biweek"
+    elif 28 <= duration <= 31:
+        return "month"
+    else:
+        return "custom"
+
+
 class SolutionExtractor:
     """
     Extracts complete schedules from OR-Tools CP-SAT solver solutions.
@@ -80,12 +110,13 @@ class SolutionExtractor:
             )
             periods.append(period_assignment)
 
-        # Create schedule
+        # Create schedule with derived period type
+        period_type = _derive_period_type(self.period_dates)
         schedule = Schedule(
             schedule_id=self.schedule_id,
             start_date=self.period_dates[0][0],
             end_date=self.period_dates[-1][1],
-            period_type="week",  # Default to week
+            period_type=period_type,
             periods=periods,
             workers=self.workers,
             shift_types=self.shift_types,

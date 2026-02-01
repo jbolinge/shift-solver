@@ -2,7 +2,7 @@
 id: scheduler-59
 title: "Add date format configuration to avoid ambiguity"
 type: feature
-status: open
+status: closed
 priority: 1
 created: 2026-02-01
 updated: 2026-02-01
@@ -31,7 +31,16 @@ DATE_FORMATS = [
 
 ## Acceptance Criteria
 
-- [ ] Add `date_format` config option (ISO, US, EU, or auto)
-- [ ] When format specified, use only that format
-- [ ] When auto, use current behavior with warning for ambiguous dates
-- [ ] Add tests for explicit format selection
+- [x] Add `date_format` config option (ISO, US, EU, or auto)
+- [x] When format specified, use only that format
+- [x] When auto, use current behavior with warning for ambiguous dates
+- [x] Add tests for explicit format selection
+
+## Resolution
+
+Added DateFormat enum and date_format config option to ScheduleConfig.
+Updated parse_date() to accept date_format parameter. In auto mode,
+ambiguous dates (both values <= 12) trigger a warning with guidance.
+Added 18 comprehensive tests in TestDateFormatDetection,
+TestParseDateWithFormat, TestAmbiguousDateWarning, and
+TestDateFormatErrorMessages classes.

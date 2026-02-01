@@ -8,7 +8,7 @@ from ortools.sat.python import cp_model
 from shift_solver.constraints import CoverageConstraint
 from shift_solver.models import Schedule, ShiftType, Worker
 from shift_solver.solver import SolverVariables, VariableBuilder
-from shift_solver.solver.solution_extractor import SolutionExtractor
+from shift_solver.solver.solution_extractor import SolutionExtractor, _derive_period_type
 
 
 class TestSolutionExtractor:
@@ -389,3 +389,145 @@ class TestSolutionExtractorStatistics:
         # 2 periods, 1 day and 1 night each = 2 of each
         assert total_day == 2
         assert total_night == 2
+
+
+class TestDerivePeriodType:
+    """Tests for _derive_period_type function."""
+
+    def test_derive_period_type_day(self) -> None:
+        """Single day periods return 'day'."""
+        period_dates = [
+            (date(2026, 1, 5), date(2026, 1, 5)),
+            (date(2026, 1, 6), date(2026, 1, 6)),
+        ]
+        assert _derive_period_type(period_dates) == "day"
+
+    def test_derive_period_type_week(self) -> None:
+        """Seven day periods return 'week'."""
+        period_dates = [
+            (date(2026, 1, 5), date(2026, 1, 11)),  # Mon-Sun = 7 days
+            (date(2026, 1, 12), date(2026, 1, 18)),
+        ]
+        assert _derive_period_type(period_dates) == "week"
+
+    def test_derive_period_type_biweek(self) -> None:
+        """14 day periods return 'biweek'."""
+        period_dates = [
+            (date(2026, 1, 5), date(2026, 1, 18)),  # 14 days
+        ]
+        assert _derive_period_type(period_dates) == "biweek"
+
+    def test_derive_period_type_month(self) -> None:
+        """28-31 day periods return 'month'."""
+        # 28 days
+        period_dates = [(date(2026, 2, 1), date(2026, 2, 28))]
+        assert _derive_period_type(period_dates) == "month"
+
+        # 30 days
+        period_dates = [(date(2026, 4, 1), date(2026, 4, 30))]
+        assert _derive_period_type(period_dates) == "month"
+
+        # 31 days
+        period_dates = [(date(2026, 1, 1), date(2026, 1, 31))]
+        assert _derive_period_type(period_dates) == "month"
+
+    def test_derive_period_type_custom(self) -> None:
+        """Other durations return 'custom'."""
+        # 3 days
+        period_dates = [(date(2026, 1, 5), date(2026, 1, 7))]
+        assert _derive_period_type(period_dates) == "custom"
+
+        # 10 days
+        period_dates = [(date(2026, 1, 5), date(2026, 1, 14))]
+        assert _derive_period_type(period_dates) == "custom"
+
+    def test_derive_period_type_empty_list(self) -> None:
+        """Empty period list returns default 'week'."""
+        assert _derive_period_type([]) == "week"
+
+
+class TestSolutionExtractorPeriodType:
+    """Tests for period_type being correctly set from period_dates."""
+
+    def test_extracted_schedule_has_correct_period_type_week(self) -> None:
+        """Extracted schedule has 'week' period_type for 7-day periods."""
+        model = cp_model.CpModel()
+        workers = [Worker(id="W001", name="A")]
+        shift_types = [
+            ShiftType(
+                id="shift",
+                name="Shift",
+                category="any",
+                start_time=time(0, 0),
+                end_time=time(8, 0),
+                duration_hours=8.0,
+                workers_required=1,
+            ),
+        ]
+
+        builder = VariableBuilder(model, workers, shift_types, num_periods=1)
+        variables = builder.build()
+
+        coverage = CoverageConstraint(model, variables)
+        coverage.apply(workers=workers, shift_types=shift_types, num_periods=1)
+
+        solver = cp_model.CpSolver()
+        solver.Solve(model)
+
+        # 7-day period (Monday to Sunday)
+        period_dates = [(date(2026, 1, 5), date(2026, 1, 11))]
+
+        extractor = SolutionExtractor(
+            solver=solver,
+            variables=variables,
+            workers=workers,
+            shift_types=shift_types,
+            period_dates=period_dates,
+            schedule_id="TEST",
+        )
+
+        schedule = extractor.extract()
+        assert schedule.period_type == "week"
+
+    def test_extracted_schedule_has_correct_period_type_day(self) -> None:
+        """Extracted schedule has 'day' period_type for 1-day periods."""
+        model = cp_model.CpModel()
+        workers = [Worker(id="W001", name="A")]
+        shift_types = [
+            ShiftType(
+                id="shift",
+                name="Shift",
+                category="any",
+                start_time=time(0, 0),
+                end_time=time(8, 0),
+                duration_hours=8.0,
+                workers_required=1,
+            ),
+        ]
+
+        builder = VariableBuilder(model, workers, shift_types, num_periods=2)
+        variables = builder.build()
+
+        coverage = CoverageConstraint(model, variables)
+        coverage.apply(workers=workers, shift_types=shift_types, num_periods=2)
+
+        solver = cp_model.CpSolver()
+        solver.Solve(model)
+
+        # Single-day periods
+        period_dates = [
+            (date(2026, 1, 5), date(2026, 1, 5)),
+            (date(2026, 1, 6), date(2026, 1, 6)),
+        ]
+
+        extractor = SolutionExtractor(
+            solver=solver,
+            variables=variables,
+            workers=workers,
+            shift_types=shift_types,
+            period_dates=period_dates,
+            schedule_id="TEST",
+        )
+
+        schedule = extractor.extract()
+        assert schedule.period_type == "day"
