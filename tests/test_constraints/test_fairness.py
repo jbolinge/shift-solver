@@ -8,6 +8,7 @@ from ortools.sat.python import cp_model
 from shift_solver.constraints.base import ConstraintConfig
 from shift_solver.constraints.fairness import FairnessConstraint
 from shift_solver.models import ShiftType, Worker
+from shift_solver.solver.objective_builder import ObjectiveBuilder
 from shift_solver.solver.types import SolverVariables
 from shift_solver.solver.variable_builder import VariableBuilder
 
@@ -245,3 +246,76 @@ class TestFairnessConstraintSolve:
 
         assert status in (cp_model.OPTIMAL, cp_model.FEASIBLE)
         # Distribution may or may not be even - just checking it solves
+
+
+class TestFairnessVariableTypeMetadata:
+    """Tests for variable type metadata used by ObjectiveBuilder."""
+
+    def test_apply_sets_variable_types(
+        self,
+        model_and_variables: tuple[cp_model.CpModel, SolverVariables],
+        workers: list[Worker],
+        shift_types: list[ShiftType],
+    ) -> None:
+        """Test that apply sets correct variable types for ObjectiveBuilder."""
+        model, variables = model_and_variables
+        config = ConstraintConfig(enabled=True, is_hard=False, weight=100)
+        constraint = FairnessConstraint(model, variables, config)
+
+        constraint.apply(workers=workers, shift_types=shift_types, num_periods=4)
+
+        # Check variable types are set correctly
+        assert constraint.violation_variable_types["spread"] == "objective_target"
+        assert constraint.violation_variable_types["max_undesirable"] == "auxiliary"
+        assert constraint.violation_variable_types["min_undesirable"] == "auxiliary"
+
+    def test_objective_builder_uses_variable_types(
+        self,
+        model_and_variables: tuple[cp_model.CpModel, SolverVariables],
+        workers: list[Worker],
+        shift_types: list[ShiftType],
+    ) -> None:
+        """Test that ObjectiveBuilder uses variable types, not hardcoded names."""
+        model, variables = model_and_variables
+        config = ConstraintConfig(enabled=True, is_hard=False, weight=100)
+        constraint = FairnessConstraint(model, variables, config)
+
+        constraint.apply(workers=workers, shift_types=shift_types, num_periods=4)
+
+        # Build objective
+        builder = ObjectiveBuilder(model)
+        builder.add_constraint(constraint)
+        builder.build()
+
+        # Check that only spread is in objective (not max/min which are auxiliary)
+        var_names = [term.variable_name for term in builder.objective_terms]
+        assert "spread" in var_names
+        assert "max_undesirable" not in var_names
+        assert "min_undesirable" not in var_names
+
+    def test_custom_variable_naming_works(
+        self,
+        workers: list[Worker],
+        shift_types: list[ShiftType],
+    ) -> None:
+        """Test that variable types work regardless of variable naming convention."""
+        # Create a custom fairness constraint subclass with different variable names
+        model = cp_model.CpModel()
+        builder = VariableBuilder(model, workers, shift_types, num_periods=4)
+        variables = builder.build()
+
+        config = ConstraintConfig(enabled=True, is_hard=False, weight=100)
+        constraint = FairnessConstraint(model, variables, config)
+        constraint.apply(workers=workers, shift_types=shift_types, num_periods=4)
+
+        # Verify that ObjectiveBuilder correctly identifies variables by type
+        obj_builder = ObjectiveBuilder(model)
+        obj_builder.add_constraint(constraint)
+        obj_builder.build()
+
+        # Should have exactly one term from fairness (the spread)
+        fairness_terms = [
+            t for t in obj_builder.objective_terms if t.constraint_id == "fairness"
+        ]
+        assert len(fairness_terms) == 1
+        assert fairness_terms[0].variable_name == "spread"

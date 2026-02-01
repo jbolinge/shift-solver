@@ -4,7 +4,7 @@ scheduler-47: Tests extreme input boundaries including single worker/period
 scenarios, maximum capacity, and edge case validation.
 """
 
-from datetime import date, time, timedelta
+from datetime import date, time
 
 import pytest
 

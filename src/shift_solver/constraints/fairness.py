@@ -147,3 +147,8 @@ class FairnessConstraint(BaseConstraint):
         self._violation_variables["spread"] = spread
         self._violation_variables["max_undesirable"] = max_undesirable
         self._violation_variables["min_undesirable"] = min_undesirable
+
+        # Mark variable types for ObjectiveBuilder
+        self._violation_variable_types["spread"] = "objective_target"
+        self._violation_variable_types["max_undesirable"] = "auxiliary"
+        self._violation_variable_types["min_undesirable"] = "auxiliary"

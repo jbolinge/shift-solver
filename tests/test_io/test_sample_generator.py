@@ -1,11 +1,11 @@
 """Tests for sample data generator."""
 
-from datetime import date, time
+from datetime import date
 from pathlib import Path
 
 import pytest
 
-from shift_solver.io.sample_generator import SampleGenerator, IndustryPreset
+from shift_solver.io.sample_generator import IndustryPreset, SampleGenerator
 
 
 class TestIndustryPresets:

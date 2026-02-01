@@ -2,11 +2,11 @@
 
 import pytest
 
+from factories import ScenarioBuilder, create_period_dates
 from shift_solver.constraints.base import ConstraintConfig
-from shift_solver.models import Availability, SchedulingRequest, ShiftType, Worker
+from shift_solver.models import Availability, ShiftType, Worker
 from shift_solver.solver import ShiftSolver
 from shift_solver.validation import ScheduleValidator
-from factories import ScenarioBuilder, create_period_dates
 
 
 @pytest.mark.integration

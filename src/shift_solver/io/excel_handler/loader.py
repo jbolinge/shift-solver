@@ -42,8 +42,13 @@ class ExcelLoader:
 
         workers = []
         for line_num, row in enumerate(rows, start=2):
-            worker = self._parse_worker_row(row, line_num)
-            workers.append(worker)
+            try:
+                worker = self._parse_worker_row(row, line_num)
+                workers.append(worker)
+            except ExcelHandlerError:
+                raise  # Already has line number context
+            except Exception as e:
+                raise ExcelHandlerError(f"Error on row {line_num}: {e}") from e
 
         return workers
 
@@ -66,8 +71,13 @@ class ExcelLoader:
 
         availabilities = []
         for line_num, row in enumerate(rows, start=2):
-            avail = self._parse_availability_row(row, line_num)
-            availabilities.append(avail)
+            try:
+                avail = self._parse_availability_row(row, line_num)
+                availabilities.append(avail)
+            except ExcelHandlerError:
+                raise  # Already has line number context
+            except Exception as e:
+                raise ExcelHandlerError(f"Error on row {line_num}: {e}") from e
 
         return availabilities
 
@@ -90,8 +100,13 @@ class ExcelLoader:
 
         requests = []
         for line_num, row in enumerate(rows, start=2):
-            req = self._parse_request_row(row, line_num)
-            requests.append(req)
+            try:
+                req = self._parse_request_row(row, line_num)
+                requests.append(req)
+            except ExcelHandlerError:
+                raise  # Already has line number context
+            except Exception as e:
+                raise ExcelHandlerError(f"Error on row {line_num}: {e}") from e
 
         return requests
 
@@ -170,8 +185,8 @@ class ExcelLoader:
 
     def _parse_worker_row(self, row: dict[str, Any], line_num: int) -> Worker:
         """Parse a worker row from Excel."""
-        worker_id = str(row.get("id", "")).strip()
-        name = str(row.get("name", "")).strip()
+        worker_id = str(row.get("id") or "").strip()
+        name = str(row.get("name") or "").strip()
 
         if not worker_id:
             raise ExcelHandlerError(f"empty 'id' on line {line_num}")
@@ -202,7 +217,7 @@ class ExcelLoader:
         self, row: dict[str, Any], line_num: int
     ) -> Availability:
         """Parse an availability row from Excel."""
-        worker_id = str(row.get("worker_id", "")).strip()
+        worker_id = str(row.get("worker_id") or "").strip()
         if not worker_id:
             raise ExcelHandlerError(f"empty 'worker_id' on line {line_num}")
 
@@ -213,7 +228,7 @@ class ExcelLoader:
             row.get("end_date"), "end_date", line_num, ExcelHandlerError
         )
 
-        availability_type = str(row.get("availability_type", "")).strip()
+        availability_type = str(row.get("availability_type") or "").strip()
         if availability_type not in AVAILABILITY_TYPES:
             raise ExcelHandlerError(
                 f"Invalid availability_type '{availability_type}' on line {line_num}"
@@ -233,7 +248,7 @@ class ExcelLoader:
         self, row: dict[str, Any], line_num: int
     ) -> SchedulingRequest:
         """Parse a request row from Excel."""
-        worker_id = str(row.get("worker_id", "")).strip()
+        worker_id = str(row.get("worker_id") or "").strip()
         if not worker_id:
             raise ExcelHandlerError(f"empty 'worker_id' on line {line_num}")
 
@@ -244,13 +259,13 @@ class ExcelLoader:
             row.get("end_date"), "end_date", line_num, ExcelHandlerError
         )
 
-        request_type = str(row.get("request_type", "")).strip()
+        request_type = str(row.get("request_type") or "").strip()
         if request_type not in REQUEST_TYPES:
             raise ExcelHandlerError(
                 f"Invalid request_type '{request_type}' on line {line_num}"
             )
 
-        shift_type_id = str(row.get("shift_type_id", "")).strip()
+        shift_type_id = str(row.get("shift_type_id") or "").strip()
         if not shift_type_id:
             raise ExcelHandlerError(f"empty 'shift_type_id' on line {line_num}")
 

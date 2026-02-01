@@ -15,6 +15,9 @@ __all__ = [
 ]
 
 # Backwards compatibility: date_utils can be imported from io
-from shift_solver.io.date_utils import DATE_FORMATS, parse_date
+from shift_solver.io.date_utils import ALL_FORMATS, DATE_FORMAT_STRINGS, parse_date
 
-__all__ += ["DATE_FORMATS", "parse_date"]
+# Legacy alias
+DATE_FORMATS = ALL_FORMATS
+
+__all__ += ["DATE_FORMATS", "DATE_FORMAT_STRINGS", "ALL_FORMATS", "parse_date"]

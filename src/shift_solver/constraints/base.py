@@ -59,6 +59,7 @@ class BaseConstraint(ABC):
         self._constraint_count = 0
         self._violation_variables: dict[str, cp_model.IntVar] = {}
         self._violation_priorities: dict[str, int] = {}
+        self._violation_variable_types: dict[str, str] = {}
 
     @property
     def is_enabled(self) -> bool:
@@ -89,6 +90,18 @@ class BaseConstraint(ABC):
     def violation_priorities(self) -> dict[str, int]:
         """Get priority multipliers for violation variables."""
         return self._violation_priorities
+
+    @property
+    def violation_variable_types(self) -> dict[str, str]:
+        """
+        Get the types of violation variables.
+
+        Variable types:
+        - "violation": Standard violation variable to include in objective (default)
+        - "objective_target": Explicit target for objective (e.g., spread to minimize)
+        - "auxiliary": Helper variable not for objective (e.g., max/min intermediates)
+        """
+        return self._violation_variable_types
 
     @abstractmethod
     def apply(self, **context: Any) -> None:

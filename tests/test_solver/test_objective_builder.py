@@ -8,7 +8,7 @@ from ortools.sat.python import cp_model
 from shift_solver.constraints.base import ConstraintConfig
 from shift_solver.constraints.fairness import FairnessConstraint
 from shift_solver.constraints.frequency import FrequencyConstraint
-from shift_solver.models import Worker, ShiftType
+from shift_solver.models import ShiftType, Worker
 from shift_solver.solver.objective_builder import ObjectiveBuilder
 from shift_solver.solver.types import SolverVariables
 from shift_solver.solver.variable_builder import VariableBuilder

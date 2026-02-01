@@ -74,26 +74,26 @@ class ObjectiveBuilder:
             base_weight = constraint.weight
 
             for var_name, var in constraint.violation_variables.items():
-                # Skip aggregate variables (like "total")
-                if var_name in (
-                    "total",
-                    "spread",
-                    "max_undesirable",
-                    "min_undesirable",
-                ):
-                    # For fairness, we want to minimize spread directly
-                    if var_name == "spread":
-                        term = ObjectiveTerm(
-                            constraint_id=constraint.constraint_id,
-                            variable_name=var_name,
-                            variable=var,
-                            base_weight=base_weight,
-                            priority_multiplier=1,
-                        )
-                        self.objective_terms.append(term)
+                # Get variable type from metadata (defaults to "violation")
+                var_type = constraint.violation_variable_types.get(var_name, "violation")
+
+                # Skip auxiliary variables (helper variables not for objective)
+                if var_type == "auxiliary":
                     continue
 
-                # Get priority from metadata dict if available, otherwise from name
+                # Handle objective_target variables (like fairness spread)
+                if var_type == "objective_target":
+                    term = ObjectiveTerm(
+                        constraint_id=constraint.constraint_id,
+                        variable_name=var_name,
+                        variable=var,
+                        base_weight=base_weight,
+                        priority_multiplier=1,
+                    )
+                    self.objective_terms.append(term)
+                    continue
+
+                # Standard violation variables - get priority from metadata or name
                 priority = self._get_priority(constraint, var_name)
 
                 term = ObjectiveTerm(

@@ -8,12 +8,10 @@ from datetime import date, time, timedelta
 
 import pytest
 
-from shift_solver.constraints.base import ConstraintConfig
-from shift_solver.models import Availability, ShiftType, Worker
-from shift_solver.solver import ShiftSolver
+from shift_solver.models import Availability, ShiftType
 from shift_solver.validation import FeasibilityChecker
 
-from .conftest import create_period_dates, solve_and_verify
+from .conftest import solve_and_verify
 
 
 @pytest.mark.e2e
