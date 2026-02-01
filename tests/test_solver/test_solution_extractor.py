@@ -8,7 +8,10 @@ from ortools.sat.python import cp_model
 from shift_solver.constraints import CoverageConstraint
 from shift_solver.models import Schedule, ShiftType, Worker
 from shift_solver.solver import SolverVariables, VariableBuilder
-from shift_solver.solver.solution_extractor import SolutionExtractor, _derive_period_type
+from shift_solver.solver.solution_extractor import (
+    SolutionExtractor,
+    _derive_period_type,
+)
 
 
 class TestSolutionExtractor:

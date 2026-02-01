@@ -140,8 +140,9 @@ class TestExcelLoaderErrorHandling:
 
     def test_availability_error_includes_row_number(self, tmp_path: Path) -> None:
         """Test that availability parsing errors include row number."""
-        import openpyxl
         from datetime import date
+
+        import openpyxl
 
         wb = openpyxl.Workbook()
         ws = wb.active
@@ -159,8 +160,9 @@ class TestExcelLoaderErrorHandling:
 
     def test_request_error_includes_row_number(self, tmp_path: Path) -> None:
         """Test that request parsing errors include row number."""
-        import openpyxl
         from datetime import date
+
+        import openpyxl
 
         wb = openpyxl.Workbook()
         ws = wb.active

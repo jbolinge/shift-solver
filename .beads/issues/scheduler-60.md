@@ -2,7 +2,7 @@
 id: scheduler-60
 title: "Derive period_type from period_dates"
 type: bug
-status: open
+status: closed
 priority: 2
 created: 2026-02-01
 updated: 2026-02-01
@@ -31,5 +31,12 @@ schedule = Schedule(
 
 ## Acceptance Criteria
 
-- [ ] Infer period_type from period_dates duration (1 day = "day", 7 days = "week", etc.)
-- [ ] Add test verifying period_type matches actual period length
+- [x] Infer period_type from period_dates duration (1 day = "day", 7 days = "week", etc.)
+- [x] Add test verifying period_type matches actual period length
+
+## Resolution
+
+Added _derive_period_type() helper function that determines period type
+from the duration of the first period. Returns "day" (1 day), "week"
+(7 days), "biweek" (14 days), "month" (28-31 days), or "custom" (other).
+Added 8 tests in TestDerivePeriodType and TestSolutionExtractorPeriodType.
