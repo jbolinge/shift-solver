@@ -29,7 +29,7 @@ Analysis revealed:
 ### Medium Priority (Priority 1) - IN PROGRESS
 - **scheduler-55** ✓ Unify soft constraint default config with registry
 - **scheduler-56** ✓ Respect explicit constraint_configs for RequestConstraint
-- **scheduler-57** Make Fairness-ObjectiveBuilder coupling explicit
+- **scheduler-57** ✓ Make Fairness-ObjectiveBuilder coupling explicit
 - **scheduler-58** Unify CSV and Excel error handling
 - **scheduler-59** Add date format configuration to avoid ambiguity
 
