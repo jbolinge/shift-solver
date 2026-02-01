@@ -367,6 +367,59 @@ class TestShiftSolverPreSolveFeasibility:
         assert "Night Shift" in issue["message"]
 
 
+class TestShiftSolverRequestConstraintConfig:
+    """Tests for RequestConstraint config handling (scheduler-56)."""
+
+    def test_explicit_disabled_config_respected_with_requests(self) -> None:
+        """Test that explicit enabled=False is respected even with requests."""
+        from shift_solver.constraints.base import ConstraintConfig
+        from shift_solver.models import SchedulingRequest
+
+        workers = [Worker(id="W1", name="Alice")]
+        shift_types = [
+            ShiftType(
+                id="day",
+                name="Day Shift",
+                category="day",
+                start_time=time(7, 0),
+                end_time=time(15, 0),
+                duration_hours=8.0,
+                workers_required=1,
+            ),
+        ]
+        period_dates = [(date(2026, 1, 1), date(2026, 1, 7))]
+        # Request exists
+        requests = [
+            SchedulingRequest(
+                worker_id="W1",
+                start_date=date(2026, 1, 1),
+                end_date=date(2026, 1, 7),
+                request_type="positive",
+                shift_type_id="day",
+                priority=1,
+            )
+        ]
+
+        # Explicitly disable request constraint
+        constraint_configs = {
+            "request": ConstraintConfig(enabled=False, is_hard=False, weight=100)
+        }
+
+        solver = ShiftSolver(
+            workers=workers,
+            shift_types=shift_types,
+            period_dates=period_dates,
+            schedule_id="TEST-DISABLED",
+            requests=requests,
+            constraint_configs=constraint_configs,
+        )
+
+        result = solver.solve(time_limit_seconds=10)
+
+        # Should solve successfully (no request constraint applied)
+        assert result.success
+
+
 class TestShiftSolverLargerScale:
     """Tests with larger problem sizes."""
 

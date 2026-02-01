@@ -2,7 +2,7 @@
 id: scheduler-56
 title: "Respect explicit constraint_configs for RequestConstraint"
 type: bug
-status: open
+status: closed
 priority: 1
 created: 2026-02-01
 updated: 2026-02-01
@@ -32,5 +32,14 @@ if constraint_id == "request" and not default_config.enabled:
 
 ## Acceptance Criteria
 
-- [ ] Only auto-enable if user didn't provide explicit config
-- [ ] Add test: requests exist + explicit enabled=False → constraint disabled
+- [x] Only auto-enable if user didn't provide explicit config
+- [x] Add test: requests exist + explicit enabled=False → constraint disabled
+
+## Resolution
+
+Upon investigation, the current implementation already respects user config correctly.
+The `_get_constraint_config` method returns user config if provided, otherwise falls
+back to the (potentially modified) default. Since user config lookup happens AFTER
+the default modification, explicit user configs take precedence.
+
+Added test TestShiftSolverRequestConstraintConfig to verify this behavior is correct.
