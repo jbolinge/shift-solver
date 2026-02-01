@@ -151,6 +151,26 @@ class CSVLoader:
                     f"Found columns: {sorted(columns)}"
                 )
 
+    def _parse_priority(self, priority_str: str, line_num: int) -> int:
+        """Parse and validate priority value."""
+        if not priority_str:
+            return 1  # Default priority
+
+        try:
+            priority = int(priority_str)
+        except ValueError as e:
+            raise CSVLoaderError(
+                f"Invalid priority value '{priority_str}' on line {line_num}. "
+                f"Must be a positive integer."
+            ) from e
+
+        if priority <= 0:
+            raise CSVLoaderError(
+                f"priority must be positive, got '{priority}' on line {line_num}"
+            )
+
+        return priority
+
     def _parse_worker_row(self, row: dict[str, str], line_num: int) -> Worker:
         """Parse a single worker row."""
         worker_id = row.get("id", "").strip()
@@ -242,7 +262,7 @@ class CSVLoader:
             raise CSVLoaderError(f"empty 'shift_type_id' on line {line_num}")
 
         priority_str = row.get("priority", "").strip()
-        priority = int(priority_str) if priority_str else 1
+        priority = self._parse_priority(priority_str, line_num)
 
         return SchedulingRequest(
             worker_id=worker_id,

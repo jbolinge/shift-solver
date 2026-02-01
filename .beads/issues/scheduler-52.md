@@ -2,7 +2,7 @@
 id: scheduler-52
 title: "Add type coercion validation in IO layer"
 type: bug
-status: open
+status: closed
 priority: 0
 created: 2026-02-01
 updated: 2026-02-01
@@ -31,7 +31,14 @@ return time(int(parts[0]), int(parts[1]))  # IndexError if "14" instead of "14:3
 
 ## Acceptance Criteria
 
-- [ ] Wrap `int(priority_str)` in try-except with descriptive error
-- [ ] Validate time string format before parsing (must contain ":")
-- [ ] Add tests for malformed priority values ("high", "1.5", "")
-- [ ] Add tests for malformed time values ("14", "25:00", "abc")
+- [x] Wrap `int(priority_str)` in try-except with descriptive error
+- [x] Validate time string format before parsing (must contain ":")
+- [x] Add tests for malformed priority values ("high", "1.5", "")
+- [x] Add tests for malformed time values ("14", "25:00", "abc")
+
+## Resolution
+
+- Added `_parse_priority()` method to CSVLoader that validates priority is a positive integer
+- Updated `parse_time()` validator in ShiftTypeConfig to check for colon separator, valid hour (0-23) and minute (0-59) ranges
+- Added test class `TestCSVLoaderTypeCoercion` with 4 tests for priority validation
+- Added test class `TestTimeParsingValidation` with 5 tests for time parsing validation

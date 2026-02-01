@@ -5,7 +5,6 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 import pytest
-import yaml
 
 from shift_solver.config.schema import (
     ConstraintConfig,
@@ -150,6 +149,71 @@ class TestShiftTypeConfigValidation:
                 end_time=time(17, 0),
                 duration_hours=0,
             )
+
+
+class TestTimeParsingValidation:
+    """Tests for time parsing validation (scheduler-52)."""
+
+    def test_malformed_time_no_colon(self) -> None:
+        """Test error on time without colon separator."""
+        with pytest.raises(ValueError, match="Invalid time format.*14.*must be HH:MM"):
+            ShiftTypeConfig(
+                id="test",
+                name="Test",
+                category="day",
+                start_time="14",  # type: ignore
+                end_time="17:00",  # type: ignore
+                duration_hours=8.0,
+            )
+
+    def test_malformed_time_invalid_hour(self) -> None:
+        """Test error on time with invalid hour."""
+        with pytest.raises(ValueError, match="Invalid time.*25:00"):
+            ShiftTypeConfig(
+                id="test",
+                name="Test",
+                category="day",
+                start_time="25:00",  # type: ignore
+                end_time="17:00",  # type: ignore
+                duration_hours=8.0,
+            )
+
+    def test_malformed_time_text(self) -> None:
+        """Test error on text time value."""
+        with pytest.raises(ValueError, match="Invalid time format.*abc"):
+            ShiftTypeConfig(
+                id="test",
+                name="Test",
+                category="day",
+                start_time="abc",  # type: ignore
+                end_time="17:00",  # type: ignore
+                duration_hours=8.0,
+            )
+
+    def test_malformed_time_invalid_minute(self) -> None:
+        """Test error on time with invalid minute."""
+        with pytest.raises(ValueError, match="Invalid time.*14:61"):
+            ShiftTypeConfig(
+                id="test",
+                name="Test",
+                category="day",
+                start_time="14:61",  # type: ignore
+                end_time="17:00",  # type: ignore
+                duration_hours=8.0,
+            )
+
+    def test_valid_time_parsing(self) -> None:
+        """Test valid time parsing works correctly."""
+        config = ShiftTypeConfig(
+            id="test",
+            name="Test",
+            category="day",
+            start_time="09:30",  # type: ignore
+            end_time="17:45",  # type: ignore
+            duration_hours=8.0,
+        )
+        assert config.start_time == time(9, 30)
+        assert config.end_time == time(17, 45)
 
 
 class TestShiftSolverConfig:

@@ -1,14 +1,11 @@
 """Tests for CSV loader."""
 
-import csv
 from datetime import date
 from pathlib import Path
-from tempfile import TemporaryDirectory
 
 import pytest
 
 from shift_solver.io.csv_loader import CSVLoader, CSVLoaderError
-from shift_solver.models import Worker, Availability, SchedulingRequest
 
 
 class TestCSVLoaderWorkers:
@@ -244,3 +241,55 @@ class TestCSVLoaderValidation:
         loader = CSVLoader()
         with pytest.raises(CSVLoaderError, match="line 3"):
             loader.load_workers(csv_file)
+
+
+class TestCSVLoaderTypeCoercion:
+    """Tests for type coercion validation (scheduler-52)."""
+
+    def test_malformed_priority_text(self, tmp_path: Path) -> None:
+        """Test error on non-numeric priority value."""
+        csv_file = tmp_path / "requests.csv"
+        csv_file.write_text(
+            "worker_id,start_date,end_date,request_type,shift_type_id,priority\n"
+            "W001,2026-01-10,2026-01-10,positive,day,high\n"
+        )
+
+        loader = CSVLoader()
+        with pytest.raises(CSVLoaderError, match="Invalid priority.*high.*line 2"):
+            loader.load_requests(csv_file)
+
+    def test_malformed_priority_float(self, tmp_path: Path) -> None:
+        """Test error on float priority value."""
+        csv_file = tmp_path / "requests.csv"
+        csv_file.write_text(
+            "worker_id,start_date,end_date,request_type,shift_type_id,priority\n"
+            "W001,2026-01-10,2026-01-10,positive,day,1.5\n"
+        )
+
+        loader = CSVLoader()
+        with pytest.raises(CSVLoaderError, match="Invalid priority.*1.5.*line 2"):
+            loader.load_requests(csv_file)
+
+    def test_malformed_priority_empty_with_comma(self, tmp_path: Path) -> None:
+        """Test that empty priority defaults to 1 (valid case)."""
+        csv_file = tmp_path / "requests.csv"
+        csv_file.write_text(
+            "worker_id,start_date,end_date,request_type,shift_type_id,priority\n"
+            "W001,2026-01-10,2026-01-10,positive,day,\n"
+        )
+
+        loader = CSVLoader()
+        requests = loader.load_requests(csv_file)
+        assert requests[0].priority == 1
+
+    def test_negative_priority(self, tmp_path: Path) -> None:
+        """Test error on negative priority value."""
+        csv_file = tmp_path / "requests.csv"
+        csv_file.write_text(
+            "worker_id,start_date,end_date,request_type,shift_type_id,priority\n"
+            "W001,2026-01-10,2026-01-10,positive,day,-1\n"
+        )
+
+        loader = CSVLoader()
+        with pytest.raises(CSVLoaderError, match="priority must be positive.*-1.*line 2"):
+            loader.load_requests(csv_file)

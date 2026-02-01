@@ -51,8 +51,31 @@ class ShiftTypeConfig(BaseModel):
     def parse_time(cls, v: Any) -> time:
         """Parse time from string if needed."""
         if isinstance(v, str):
+            if ":" not in v:
+                raise ValueError(
+                    f"Invalid time format '{v}': must be HH:MM format"
+                )
             parts = v.split(":")
-            return time(int(parts[0]), int(parts[1]))
+            if len(parts) < 2:
+                raise ValueError(
+                    f"Invalid time format '{v}': must be HH:MM format"
+                )
+            try:
+                hour = int(parts[0])
+                minute = int(parts[1])
+            except ValueError as e:
+                raise ValueError(
+                    f"Invalid time format '{v}': hour and minute must be integers"
+                ) from e
+            if not (0 <= hour <= 23):
+                raise ValueError(
+                    f"Invalid time '{v}': hour must be 0-23"
+                )
+            if not (0 <= minute <= 59):
+                raise ValueError(
+                    f"Invalid time '{v}': minute must be 0-59"
+                )
+            return time(hour, minute)
         if isinstance(v, time):
             return v
         raise ValueError(f"Cannot parse time from {type(v).__name__}")
