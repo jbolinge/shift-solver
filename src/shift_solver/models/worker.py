@@ -35,6 +35,14 @@ class Worker:
         if not self.name:
             raise ValueError("name cannot be empty")
 
+        # Check for conflicts between restricted and preferred shifts
+        conflicting = self.restricted_shifts & self.preferred_shifts
+        if conflicting:
+            shifts_str = ", ".join(sorted(conflicting))
+            raise ValueError(
+                f"Shifts cannot be both restricted and preferred: {shifts_str}"
+            )
+
     def __eq__(self, other: object) -> bool:
         """Workers are equal if all fields except attributes are equal."""
         if not isinstance(other, Worker):

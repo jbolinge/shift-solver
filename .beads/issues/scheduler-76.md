@@ -2,10 +2,11 @@
 id: scheduler-76
 title: "Test Empty Frozenset CSV Parsing"
 type: task
-status: open
+status: closed
 priority: 2
 created: 2026-02-02T12:00:00Z
-updated: 2026-02-02T12:00:00Z
+updated: 2026-02-02T16:30:00Z
+closed: 2026-02-02T16:30:00Z
 labels: [testing, edge-case, io]
 parent: scheduler-65
 ---
@@ -50,3 +51,21 @@ frozenset()  # Correct: empty frozenset
 
 ## Notes
 
+### Resolution (2026-02-02)
+
+**Finding:** The existing implementation was already correct. Both CSV and Excel loaders use:
+```python
+frozenset(s.strip() for s in value.split(",") if s.strip())
+```
+
+The `if s.strip()` filter properly handles all edge cases:
+- Empty strings → filtered out
+- Whitespace-only → filtered out
+- Trailing/leading commas → empty elements filtered out
+
+**Tests Added:** Created `tests/test_io/test_frozenset_parsing.py` with 32 tests:
+- 12 CSV loader tests
+- 10 Excel loader tests
+- 10 parameterized consistency tests
+
+All edge cases from the issue now have explicit test coverage to prevent regressions.

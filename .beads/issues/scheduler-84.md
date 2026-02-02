@@ -2,10 +2,11 @@
 id: scheduler-84
 title: "Test Industry-Specific Complex Scenarios"
 type: task
-status: open
+status: closed
 priority: 2
 created: 2026-02-02T12:00:00Z
-updated: 2026-02-02T12:00:00Z
+updated: 2026-02-02T19:00:00Z
+closed: 2026-02-02T19:00:00Z
 labels: [testing, complex-scheduling, e2e]
 parent: scheduler-65
 ---
@@ -59,3 +60,34 @@ Different industries have unique scheduling challenges that combine constraints 
 
 Some scenarios may require new constraint types not yet implemented.
 
+### Resolution (2026-02-02)
+
+**Tests Added:** Created `tests/test_e2e/test_industry_complex_scenarios.py` with 11 tests:
+
+**Healthcare (3 tests):**
+- `TestHealthcare24x7Coverage`: Day/evening/night shifts for continuous coverage
+- `TestHealthcareSkillMatching`: RN vs LPN using restrictions for skill levels
+- `TestHealthcareWeekendRotation`: Fair weekend night distribution
+
+**Retail (3 tests):**
+- `TestRetailVariableDemand`: Higher weekend staffing (6 vs 3 workers)
+- `TestRetailPartTimeMix`: Full-time + part-time with availability restrictions
+- `TestRetailHolidayCoverage`: 70% unavailable during holiday still covered
+
+**Warehouse (2 tests):**
+- `TestWarehouseShiftHandoff`: Overlapping 3-shift continuous operation
+- `TestWarehouseEquipmentCertification`: Forklift certification via restrictions
+
+**Logistics (2 tests):**
+- `TestLogisticsRouteCoverage`: Local vs long-haul driver restrictions
+- `TestLogisticsMultipleTimeWindows`: Multiple delivery time windows
+
+**Cross-Industry (1 test):**
+- `TestComplexConstraintCombinations`: Restrictions + availability + requests combined
+
+**Modeling Approach:**
+Industry-specific requirements modeled using available features:
+- Worker `restricted_shifts` for skill/certification requirements
+- Multiple shift types for 24/7 coverage
+- `fairness` constraint for rotation equity
+- `availability` constraint for time-off handling

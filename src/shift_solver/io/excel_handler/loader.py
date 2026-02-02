@@ -244,6 +244,53 @@ class ExcelLoader:
             shift_type_id=shift_type_id,
         )
 
+    def _parse_priority(self, priority_val: Any, line_num: int) -> int:
+        """Parse and validate priority value.
+
+        Args:
+            priority_val: Priority value from Excel cell (can be int, float, str, or None)
+            line_num: Line number for error messages
+
+        Returns:
+            Validated integer priority
+
+        Raises:
+            ExcelHandlerError: If priority is invalid
+        """
+        # Handle empty/None values
+        if priority_val is None or priority_val == "":
+            return 1  # Default priority
+
+        # Handle numeric values (int or float from Excel)
+        if isinstance(priority_val, (int, float)):
+            # Reject floats that aren't whole numbers
+            if isinstance(priority_val, float) and priority_val != int(priority_val):
+                raise ExcelHandlerError(
+                    f"Invalid priority value '{priority_val}' on line {line_num}. "
+                    f"Must be a positive integer."
+                )
+            priority = int(priority_val)
+        else:
+            # Handle string values
+            priority_str = str(priority_val).strip()
+            if not priority_str:
+                return 1  # Default priority
+
+            try:
+                priority = int(priority_str)
+            except ValueError as e:
+                raise ExcelHandlerError(
+                    f"Invalid priority value '{priority_str}' on line {line_num}. "
+                    f"Must be a positive integer."
+                ) from e
+
+        if priority <= 0:
+            raise ExcelHandlerError(
+                f"priority must be positive, got '{priority}' on line {line_num}"
+            )
+
+        return priority
+
     def _parse_request_row(
         self, row: dict[str, Any], line_num: int
     ) -> SchedulingRequest:
@@ -269,8 +316,7 @@ class ExcelLoader:
         if not shift_type_id:
             raise ExcelHandlerError(f"empty 'shift_type_id' on line {line_num}")
 
-        priority_val = row.get("priority")
-        priority = int(priority_val) if priority_val else 1
+        priority = self._parse_priority(row.get("priority"), line_num)
 
         return SchedulingRequest(
             worker_id=worker_id,
