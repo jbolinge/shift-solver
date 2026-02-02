@@ -2,7 +2,7 @@
 id: scheduler-69
 title: "Test Hard vs Soft Request Constraint Enforcement Semantics"
 type: task
-status: open
+status: closed
 priority: 2
 created: 2026-02-02T12:00:00Z
 updated: 2026-02-02T12:00:00Z

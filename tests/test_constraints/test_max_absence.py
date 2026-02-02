@@ -246,3 +246,205 @@ class TestMaxAbsenceConstraintSolve:
 
         # Should find solution even with violations
         assert status in (cp_model.OPTIMAL, cp_model.FEASIBLE)
+
+
+class TestMaxAbsenceWindowEdgeCases:
+    """
+    Tests for max absence constraint window size edge cases (scheduler-72).
+
+    Tests boundary conditions when window size approaches or exceeds num_periods.
+    """
+
+    def test_window_equals_num_periods(
+        self,
+        workers: list[Worker],
+        shift_types: list[ShiftType],
+    ) -> None:
+        """Test when window_size == num_periods (exactly 1 window)."""
+        num_periods = 5
+        model = cp_model.CpModel()
+        builder = VariableBuilder(model, workers, shift_types, num_periods=num_periods)
+        variables = builder.build()
+
+        # max_periods_absent = 4 means window_size = 5 = num_periods
+        config = ConstraintConfig(
+            enabled=True,
+            is_hard=False,
+            weight=100,
+            parameters={"max_periods_absent": num_periods - 1},
+        )
+        constraint = MaxAbsenceConstraint(model, variables, config)
+        constraint.apply(workers=workers, shift_types=shift_types, num_periods=num_periods)
+
+        # Should have exactly 1 window per worker per shift type
+        abs_viol_vars = [k for k in constraint.violation_variables if k.startswith("abs_viol_")]
+        assert len(abs_viol_vars) == len(workers) * len(shift_types)
+
+    def test_window_exceeds_num_periods(
+        self,
+        workers: list[Worker],
+        shift_types: list[ShiftType],
+    ) -> None:
+        """Test when window_size > num_periods (constraint silently skipped)."""
+        num_periods = 4
+        model = cp_model.CpModel()
+        builder = VariableBuilder(model, workers, shift_types, num_periods=num_periods)
+        variables = builder.build()
+
+        # max_periods_absent = 4 means window_size = 5 > num_periods (4)
+        config = ConstraintConfig(
+            enabled=True,
+            is_hard=False,
+            weight=100,
+            parameters={"max_periods_absent": num_periods},  # window = num_periods + 1
+        )
+        constraint = MaxAbsenceConstraint(model, variables, config)
+        constraint.apply(workers=workers, shift_types=shift_types, num_periods=num_periods)
+
+        # No violation variables should be created when window > num_periods
+        assert len(constraint.violation_variables) == 0
+
+    def test_window_much_larger_than_num_periods(
+        self,
+        workers: list[Worker],
+        shift_types: list[ShiftType],
+    ) -> None:
+        """Test when window_size >> num_periods (large config, small schedule)."""
+        num_periods = 2
+        model = cp_model.CpModel()
+        builder = VariableBuilder(model, workers, shift_types, num_periods=num_periods)
+        variables = builder.build()
+
+        # max_periods_absent = 100 means window_size = 101 >> num_periods (2)
+        config = ConstraintConfig(
+            enabled=True,
+            is_hard=False,
+            weight=100,
+            parameters={"max_periods_absent": 100},
+        )
+        constraint = MaxAbsenceConstraint(model, variables, config)
+        constraint.apply(workers=workers, shift_types=shift_types, num_periods=num_periods)
+
+        # Should be silently skipped
+        assert len(constraint.violation_variables) == 0
+
+    def test_max_periods_absent_zero(
+        self,
+        workers: list[Worker],
+        shift_types: list[ShiftType],
+    ) -> None:
+        """Test when max_periods_absent = 0 (window_size = 1, each period independent)."""
+        num_periods = 4
+        model = cp_model.CpModel()
+        builder = VariableBuilder(model, workers, shift_types, num_periods=num_periods)
+        variables = builder.build()
+
+        # max_periods_absent = 0 means window_size = 1
+        # Each period is a separate window
+        config = ConstraintConfig(
+            enabled=True,
+            is_hard=False,
+            weight=100,
+            parameters={"max_periods_absent": 0},
+        )
+        constraint = MaxAbsenceConstraint(model, variables, config)
+        constraint.apply(workers=workers, shift_types=shift_types, num_periods=num_periods)
+
+        # Should have num_periods windows per worker per shift type
+        abs_viol_vars = [k for k in constraint.violation_variables if k.startswith("abs_viol_")]
+        expected_count = len(workers) * len(shift_types) * num_periods
+        assert len(abs_viol_vars) == expected_count
+
+    def test_max_periods_absent_maximum_useful(
+        self,
+        workers: list[Worker],
+        shift_types: list[ShiftType],
+    ) -> None:
+        """Test when max_periods_absent = num_periods - 1 (maximum useful value)."""
+        num_periods = 6
+        model = cp_model.CpModel()
+        builder = VariableBuilder(model, workers, shift_types, num_periods=num_periods)
+        variables = builder.build()
+
+        # max_periods_absent = 5 means window_size = 6 = num_periods
+        # Maximum useful value - exactly 1 window
+        config = ConstraintConfig(
+            enabled=True,
+            is_hard=False,
+            weight=100,
+            parameters={"max_periods_absent": num_periods - 1},
+        )
+        constraint = MaxAbsenceConstraint(model, variables, config)
+        constraint.apply(workers=workers, shift_types=shift_types, num_periods=num_periods)
+
+        # Should have exactly 1 window per worker per shift type
+        abs_viol_vars = [k for k in constraint.violation_variables if k.startswith("abs_viol_")]
+        assert len(abs_viol_vars) == len(workers) * len(shift_types)
+
+    def test_window_size_one_more_than_periods_boundary(
+        self,
+        workers: list[Worker],
+        shift_types: list[ShiftType],
+    ) -> None:
+        """Test boundary: window_size = num_periods + 1 (just over the edge)."""
+        num_periods = 3
+        model = cp_model.CpModel()
+        builder = VariableBuilder(model, workers, shift_types, num_periods=num_periods)
+        variables = builder.build()
+
+        # max_periods_absent = 3 means window_size = 4 > num_periods (3)
+        config = ConstraintConfig(
+            enabled=True,
+            is_hard=False,
+            weight=100,
+            parameters={"max_periods_absent": num_periods},
+        )
+        constraint = MaxAbsenceConstraint(model, variables, config)
+        constraint.apply(workers=workers, shift_types=shift_types, num_periods=num_periods)
+
+        # Should be skipped since window > num_periods
+        assert len(constraint.violation_variables) == 0
+
+    def test_solve_with_boundary_window(
+        self,
+        workers: list[Worker],
+        shift_types: list[ShiftType],
+    ) -> None:
+        """Test that solve works correctly at boundary conditions."""
+        num_periods = 4
+        model = cp_model.CpModel()
+        builder = VariableBuilder(model, workers, shift_types, num_periods=num_periods)
+        variables = builder.build()
+
+        # window_size = 4 = num_periods (exactly at boundary)
+        config = ConstraintConfig(
+            enabled=True,
+            is_hard=False,
+            weight=1000,
+            parameters={"max_periods_absent": num_periods - 1},
+        )
+        constraint = MaxAbsenceConstraint(model, variables, config)
+        constraint.apply(workers=workers, shift_types=shift_types, num_periods=num_periods)
+
+        # Add coverage
+        for period in range(num_periods):
+            for shift_type in shift_types:
+                vars_for_shift = [
+                    variables.get_assignment_var(w.id, period, shift_type.id)
+                    for w in workers
+                ]
+                model.add(sum(vars_for_shift) == shift_type.workers_required)
+
+        # Minimize violations
+        if constraint.violation_variables:
+            abs_viols = [
+                v for k, v in constraint.violation_variables.items()
+                if k.startswith("abs_viol_")
+            ]
+            if abs_viols:
+                model.minimize(sum(abs_viols) * config.weight)
+
+        solver = cp_model.CpSolver()
+        status = solver.solve(model)
+
+        assert status in (cp_model.OPTIMAL, cp_model.FEASIBLE)
