@@ -2,10 +2,10 @@
 id: scheduler-79
 title: "Test Infeasible Coverage + Restriction Combinations"
 type: task
-status: open
+status: closed
 priority: 1
 created: 2026-02-02T12:00:00Z
-updated: 2026-02-02T12:00:00Z
+updated: 2026-02-02T14:30:00Z
 labels: [testing, complex-scheduling, solver]
 parent: scheduler-65
 ---

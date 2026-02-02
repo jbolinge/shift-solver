@@ -2,10 +2,10 @@
 id: scheduler-66
 title: "Test Fairness Constraint Category Filter Validation"
 type: task
-status: open
+status: closed
 priority: 2
 created: 2026-02-02T12:00:00Z
-updated: 2026-02-02T12:00:00Z
+updated: 2026-02-02T14:30:00Z
 labels: [testing, api-mismatch, constraints]
 parent: scheduler-65
 ---

@@ -2,10 +2,10 @@
 id: scheduler-71
 title: "Test Single Worker Schedule Edge Cases"
 type: task
-status: open
+status: closed
 priority: 2
 created: 2026-02-02T12:00:00Z
-updated: 2026-02-02T12:00:00Z
+updated: 2026-02-02T14:30:00Z
 labels: [testing, edge-case, constraints]
 parent: scheduler-65
 ---
