@@ -8,8 +8,6 @@ import json
 from datetime import time
 from typing import Any
 
-import pytest
-
 from shift_solver.models import ShiftType, Worker
 
 

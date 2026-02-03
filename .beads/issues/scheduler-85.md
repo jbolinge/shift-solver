@@ -2,10 +2,10 @@
 id: scheduler-85
 title: "Test Full I/O Pipeline Round-Trip"
 type: task
-status: open
+status: closed
 priority: 2
 created: 2026-02-02T12:00:00Z
-updated: 2026-02-02T12:00:00Z
+updated: 2026-02-03T12:00:00Z
 labels: [testing, integration, io]
 parent: scheduler-65
 ---

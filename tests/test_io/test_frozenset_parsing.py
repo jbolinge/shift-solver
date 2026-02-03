@@ -7,7 +7,6 @@ and malformed comma-separated values.
 Issue: scheduler-76
 """
 
-from datetime import date
 from pathlib import Path
 
 import openpyxl

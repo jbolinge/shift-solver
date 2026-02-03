@@ -14,12 +14,10 @@ from datetime import time
 import pytest
 
 from shift_solver.constraints.base import ConstraintConfig
-from shift_solver.models import Availability, SchedulingRequest, ShiftType, Worker
-from shift_solver.solver import ShiftSolver
+from shift_solver.models import Availability, SchedulingRequest, ShiftType
 from shift_solver.validation import ScheduleValidator
 
 from .conftest import create_period_dates, solve_and_verify
-
 
 # -----------------------------------------------------------------------------
 # Healthcare Complex Scenarios
@@ -367,7 +365,7 @@ class TestRetailPartTimeMix:
         assert result.success
 
         # Verify part-timers never assigned to morning
-        parttime_ids = {f"PT-{i}" for i in range(5)}
+        _parttime_ids = {f"PT-{i}" for i in range(5)}  # Reference set (not used directly)
         for period in result.schedule.periods:
             for assignment in period.assignments.get("morning", []):
                 # Part-timer names start with "PT-"

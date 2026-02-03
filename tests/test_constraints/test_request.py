@@ -917,8 +917,8 @@ class TestRequestConstraintViolationVariableCoupling:
             period_dates=period_dates[:1],
         )
 
-        violation_var = list(constraint.violation_variables.values())[0]
-        assignment_var = variables.get_assignment_var("W001", 0, "day")
+        _violation_var = list(constraint.violation_variables.values())[0]
+        _assignment_var = variables.get_assignment_var("W001", 0, "day")
 
         # Test case 1: Force violation=1, verify assignment=0
         model_test1 = cp_model.CpModel()
@@ -1021,13 +1021,12 @@ class TestHardVsSoftRequestSemantics:
 
     def test_multiple_hard_positive_requests_same_period(
         self,
-        workers: list[Worker],
         shift_types: list[ShiftType],
         period_dates: list[tuple[date, date]],
     ) -> None:
         """Test multiple workers with hard positive requests for same shift."""
         model = cp_model.CpModel()
-        # Need more workers to test this scenario
+        # Need more workers to test this scenario (not using fixture)
         more_workers = [
             Worker(id="W001", name="Worker 1"),
             Worker(id="W002", name="Worker 2"),

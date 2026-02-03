@@ -10,18 +10,16 @@ Issue: scheduler-82
 """
 
 import time as time_module
-from datetime import date, time, timedelta
+from datetime import time
 
 import pytest
 
 from shift_solver.constraints.base import ConstraintConfig
-from shift_solver.models import Availability, SchedulingRequest, ShiftType, Worker
+from shift_solver.models import Availability, SchedulingRequest, ShiftType
 from shift_solver.solver import ShiftSolver
 from shift_solver.solver.variable_builder import VariableBuilder
-from shift_solver.validation import FeasibilityChecker
 
 from .conftest import create_period_dates, solve_and_verify
-
 
 # -----------------------------------------------------------------------------
 # Extended Time Horizon Tests
@@ -408,7 +406,7 @@ class TestVariableConstraintCounts:
             workers = [worker_factory() for _ in range(num_workers)]
             model = cp_model.CpModel()
             builder = VariableBuilder(model, workers, shift_types, num_periods)
-            variables = builder.build()
+            _variables = builder.build()  # Build to verify structure
 
             # Count assignment variables
             assignment_count = sum(
