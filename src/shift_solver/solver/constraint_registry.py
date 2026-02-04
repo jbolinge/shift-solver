@@ -132,6 +132,7 @@ def register_builtin_constraints() -> None:
         RequestConstraint,
         RestrictionConstraint,
         SequenceConstraint,
+        ShiftFrequencyConstraint,
     )
 
     # Register hard constraints if not already registered by decorators
@@ -198,4 +199,12 @@ def register_builtin_constraints() -> None:
             constraint_class=MaxAbsenceConstraint,
             is_hard=False,
             default_config=ConstraintConfig(enabled=False, is_hard=False, weight=100),
+        )
+
+    if "shift_frequency" not in ConstraintRegistry._soft_constraints:
+        ConstraintRegistry._soft_constraints["shift_frequency"] = ConstraintRegistration(
+            constraint_id="shift_frequency",
+            constraint_class=ShiftFrequencyConstraint,
+            is_hard=False,
+            default_config=ConstraintConfig(enabled=False, is_hard=False, weight=500),
         )
