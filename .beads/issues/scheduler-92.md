@@ -2,10 +2,11 @@
 id: scheduler-92
 title: "Create ShiftFrequencyRequirement data model"
 type: task
-status: open
+status: closed
 priority: 1
 created: 2026-02-04
 updated: 2026-02-04
+closed: 2026-02-04
 parent: scheduler-91
 ---
 
@@ -36,6 +37,13 @@ class ShiftFrequencyRequirement:
 
 ## Acceptance Criteria
 
-- [ ] Dataclass with validation (max_periods_between > 0, shift_types non-empty)
-- [ ] Follows pattern of Availability and SchedulingRequest
-- [ ] Unit tests for validation
+- [x] Dataclass with validation (max_periods_between > 0, shift_types non-empty)
+- [x] Follows pattern of Availability and SchedulingRequest
+- [x] Unit tests for validation
+
+## Resolution
+
+- Added `ShiftFrequencyRequirement` dataclass to `models/data_models.py`
+- Validation in `__post_init__`: max_periods_between > 0, shift_types non-empty
+- Exported via `models/__init__.py`
+- Added 5 tests to `tests/test_models/test_data_models.py`

@@ -2,10 +2,11 @@
 id: scheduler-95
 title: "Integrate shift_frequency into solver context"
 type: task
-status: open
+status: closed
 priority: 1
 created: 2026-02-04
 updated: 2026-02-04
+closed: 2026-02-04
 parent: scheduler-91
 depends-on: scheduler-94
 ---
@@ -39,6 +40,13 @@ context = {
 
 ## Acceptance Criteria
 
-- [ ] Requirements accessible in constraint via `context["shift_frequency_requirements"]`
-- [ ] Empty list if no requirements configured
-- [ ] Integration test: requirements flow from config to constraint
+- [x] Requirements accessible in constraint via `context["shift_frequency_requirements"]`
+- [x] Empty list if no requirements configured
+- [x] Integration test: requirements flow from config to constraint
+
+## Resolution
+
+- Added `shift_frequency_requirements` parameter to ShiftSolver.__init__
+- Parse from config if not provided directly via `parse_shift_frequency_requirements()`
+- Added `shift_frequency_requirements` to constraints_context dict
+- 3 integration tests in `tests/test_solver/test_shift_solver.py`

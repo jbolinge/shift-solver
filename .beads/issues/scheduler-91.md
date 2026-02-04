@@ -2,10 +2,11 @@
 id: scheduler-91
 title: "Shift Frequency Constraints"
 type: epic
-status: open
+status: closed
 priority: 1
 created: 2026-02-04
 updated: 2026-02-04
+closed: 2026-02-04
 ---
 
 # Shift Frequency Constraints
@@ -52,9 +53,19 @@ for req in requirements:
 
 ## Acceptance Criteria
 
-- [ ] Per-worker configurable frequency requirements
-- [ ] References groups of shift type IDs (no new "location" concept)
-- [ ] Soft/hard constraint support
-- [ ] Sliding window enforcement
-- [ ] All tests pass
-- [ ] No regressions in existing functionality
+- [x] Per-worker configurable frequency requirements
+- [x] References groups of shift type IDs (no new "location" concept)
+- [x] Soft/hard constraint support
+- [x] Sliding window enforcement
+- [x] All tests pass (1012 tests)
+- [x] No regressions in existing functionality
+
+## Resolution
+
+All 6 child tasks completed:
+- **scheduler-92**: ShiftFrequencyRequirement data model
+- **scheduler-93**: Configuration schema with Pydantic validation
+- **scheduler-94**: ShiftFrequencyConstraint with sliding window algorithm
+- **scheduler-95**: Solver context integration
+- **scheduler-96**: Pre-solve feasibility validation
+- **scheduler-97**: Comprehensive test suite (17 tests)

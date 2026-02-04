@@ -2,10 +2,11 @@
 id: scheduler-94
 title: "Implement ShiftFrequencyConstraint"
 type: task
-status: open
+status: closed
 priority: 1
 created: 2026-02-04
 updated: 2026-02-04
+closed: 2026-02-04
 parent: scheduler-91
 depends-on: scheduler-93
 ---
@@ -46,7 +47,16 @@ Based on physician-scheduler's special_frequencies implementation:
 
 ## Acceptance Criteria
 
-- [ ] Constraint class following BaseConstraint pattern
-- [ ] Soft mode creates violation variables with proper naming
-- [ ] Hard mode enforces assignment in every window
-- [ ] Registered via @register_soft() decorator
+- [x] Constraint class following BaseConstraint pattern
+- [x] Soft mode creates violation variables with proper naming
+- [x] Hard mode enforces assignment in every window
+- [x] Registered in ConstraintRegistry (manual registration, not decorator)
+
+## Resolution
+
+- Created `ShiftFrequencyConstraint` class in `constraints/shift_frequency.py`
+- Soft mode: creates `sf_viol_{worker_id}_w{window_start}` violation variables
+- Hard mode: adds `sum(window_assignments) >= 1` constraints
+- Registered in `constraint_registry.py` with default weight=500, disabled by default
+- Added to `constraints/__init__.py` exports
+- 12 unit tests in `tests/test_constraints/test_shift_frequency.py`

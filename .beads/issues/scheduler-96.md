@@ -2,10 +2,11 @@
 id: scheduler-96
 title: "Pre-solve feasibility validation for shift frequency"
 type: task
-status: open
+status: closed
 priority: 1
 created: 2026-02-04
 updated: 2026-02-04
+closed: 2026-02-04
 parent: scheduler-91
 depends-on: scheduler-92
 ---
@@ -44,6 +45,17 @@ has 8 periods.
 
 ## Acceptance Criteria
 
-- [ ] FeasibilityChecker.check_shift_frequency_requirements() method
-- [ ] Clear error messages for each failure mode
-- [ ] Unit tests for each validation case
+- [x] FeasibilityChecker._check_shift_frequency_requirements() method
+- [x] Clear error messages for each failure mode
+- [x] Unit tests for each validation case
+
+## Resolution
+
+- Added shift_frequency_requirements parameter to FeasibilityChecker.__init__
+- Added _check_shift_frequency_requirements() method with validation for:
+  - Worker restricted from all required shift types (error)
+  - All shift types unknown (error)
+  - Unknown worker (warning)
+  - max_periods_between > num_periods (warning)
+- Updated ShiftSolver._check_feasibility() to pass requirements
+- 6 unit tests in `tests/test_validation/test_feasibility.py`

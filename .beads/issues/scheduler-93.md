@@ -2,10 +2,11 @@
 id: scheduler-93
 title: "Add shift_frequency to configuration schema"
 type: task
-status: open
+status: closed
 priority: 1
 created: 2026-02-04
 updated: 2026-02-04
+closed: 2026-02-04
 parent: scheduler-91
 depends-on: scheduler-92
 ---
@@ -52,6 +53,13 @@ class ShiftFrequencyParameters(BaseModel):
 
 ## Acceptance Criteria
 
-- [ ] Pydantic model for requirement list
-- [ ] Validation: worker_id exists, shift_types exist, max_periods_between valid
-- [ ] Config loader parses requirements into ShiftFrequencyRequirement objects
+- [x] Pydantic model for requirement list
+- [x] Validation: worker_id exists, shift_types exist, max_periods_between valid
+- [x] Config loader parses requirements into ShiftFrequencyRequirement objects
+
+## Resolution
+
+- Added `ShiftFrequencyRequirementConfig` Pydantic model with validation
+- Added `ShiftFrequencyParametersConfig` Pydantic model for parameters.requirements
+- Added `parse_shift_frequency_requirements()` function to convert config to domain objects
+- Added 7 tests in `tests/test_config/test_config.py`
