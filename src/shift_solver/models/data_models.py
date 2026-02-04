@@ -115,3 +115,31 @@ class SchedulingRequest:
             True if the date is within [start_date, end_date]
         """
         return self.start_date <= check_date <= self.end_date
+
+
+@dataclass
+class ShiftFrequencyRequirement:
+    """
+    Per-worker shift frequency requirement.
+
+    Specifies that a worker must work at least one of a set of shift types
+    within every N periods. Used for constraints like "Worker X must work
+    at least one of [mvsc_day, mvsc_night] within every 4 weeks."
+
+    Attributes:
+        worker_id: ID of the worker this requirement applies to
+        shift_types: Set of shift type IDs the worker must work at least one of
+        max_periods_between: Maximum number of periods between assignments
+            (e.g., 4 means must work at least once every 4 periods)
+    """
+
+    worker_id: str
+    shift_types: frozenset[str]
+    max_periods_between: int
+
+    def __post_init__(self) -> None:
+        """Validate shift frequency requirement fields."""
+        if self.max_periods_between <= 0:
+            raise ValueError("max_periods_between must be > 0")
+        if not self.shift_types:
+            raise ValueError("shift_types must not be empty")

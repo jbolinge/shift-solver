@@ -374,3 +374,149 @@ shift_types:
         assert config.solver.max_time_seconds == 3600
         assert config.schedule.period_type == "week"
         assert config.database.path == "shift_solver.db"
+
+
+class TestShiftFrequencyConfig:
+    """Tests for shift_frequency constraint configuration (scheduler-93)."""
+
+    def test_load_shift_frequency_config(self) -> None:
+        """Load config with shift_frequency constraint parameters."""
+        yaml_content = """
+shift_types:
+  - id: mvsc_day
+    name: MVSC Day
+    category: day
+    start_time: "07:00"
+    end_time: "15:00"
+    duration_hours: 8.0
+  - id: mvsc_night
+    name: MVSC Night
+    category: night
+    start_time: "23:00"
+    end_time: "07:00"
+    duration_hours: 8.0
+
+constraints:
+  shift_frequency:
+    enabled: true
+    is_hard: false
+    weight: 500
+    parameters:
+      requirements:
+        - worker_id: "Olinger"
+          shift_types: ["mvsc_day", "mvsc_night"]
+          max_periods_between: 4
+        - worker_id: "Beckley"
+          shift_types: ["mvsc_day"]
+          max_periods_between: 2
+"""
+
+        with NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            f.write(yaml_content)
+            f.flush()
+
+            config = ShiftSolverConfig.load_from_yaml(Path(f.name))
+
+        assert "shift_frequency" in config.constraints
+        sf_config = config.constraints["shift_frequency"]
+        assert sf_config.enabled is True
+        assert sf_config.is_hard is False
+        assert sf_config.weight == 500
+        assert "requirements" in sf_config.parameters
+        reqs = sf_config.parameters["requirements"]
+        assert len(reqs) == 2
+        assert reqs[0]["worker_id"] == "Olinger"
+        assert reqs[0]["shift_types"] == ["mvsc_day", "mvsc_night"]
+        assert reqs[0]["max_periods_between"] == 4
+
+    def test_shift_frequency_parameters_model_valid(self) -> None:
+        """Test ShiftFrequencyParametersConfig validation with valid data."""
+        from shift_solver.config.schema import ShiftFrequencyParametersConfig
+
+        params = ShiftFrequencyParametersConfig(
+            requirements=[
+                {
+                    "worker_id": "W001",
+                    "shift_types": ["day", "night"],
+                    "max_periods_between": 4,
+                }
+            ]
+        )
+        assert len(params.requirements) == 1
+        assert params.requirements[0].worker_id == "W001"
+        assert params.requirements[0].shift_types == ["day", "night"]
+        assert params.requirements[0].max_periods_between == 4
+
+    def test_shift_frequency_requirement_config_validation(self) -> None:
+        """Test validation of individual requirement config."""
+        from shift_solver.config.schema import ShiftFrequencyRequirementConfig
+
+        req = ShiftFrequencyRequirementConfig(
+            worker_id="W001",
+            shift_types=["day_shift"],
+            max_periods_between=2,
+        )
+        assert req.worker_id == "W001"
+        assert req.max_periods_between == 2
+
+    def test_shift_frequency_requirement_max_periods_must_be_positive(self) -> None:
+        """max_periods_between must be > 0."""
+        from pydantic import ValidationError
+
+        from shift_solver.config.schema import ShiftFrequencyRequirementConfig
+
+        with pytest.raises(ValidationError):
+            ShiftFrequencyRequirementConfig(
+                worker_id="W001",
+                shift_types=["day_shift"],
+                max_periods_between=0,
+            )
+
+    def test_shift_frequency_requirement_shift_types_required(self) -> None:
+        """shift_types must not be empty."""
+        from pydantic import ValidationError
+
+        from shift_solver.config.schema import ShiftFrequencyRequirementConfig
+
+        with pytest.raises(ValidationError):
+            ShiftFrequencyRequirementConfig(
+                worker_id="W001",
+                shift_types=[],
+                max_periods_between=4,
+            )
+
+    def test_parse_shift_frequency_requirements(self) -> None:
+        """Test parsing config dict to ShiftFrequencyRequirement objects."""
+        from shift_solver.config.schema import parse_shift_frequency_requirements
+        from shift_solver.models import ShiftFrequencyRequirement
+
+        params = {
+            "requirements": [
+                {
+                    "worker_id": "Olinger",
+                    "shift_types": ["mvsc_day", "mvsc_night"],
+                    "max_periods_between": 4,
+                },
+                {
+                    "worker_id": "Beckley",
+                    "shift_types": ["stf_day"],
+                    "max_periods_between": 2,
+                },
+            ]
+        }
+
+        reqs = parse_shift_frequency_requirements(params)
+        assert len(reqs) == 2
+        assert all(isinstance(r, ShiftFrequencyRequirement) for r in reqs)
+        assert reqs[0].worker_id == "Olinger"
+        assert reqs[0].shift_types == frozenset(["mvsc_day", "mvsc_night"])
+        assert reqs[0].max_periods_between == 4
+        assert reqs[1].worker_id == "Beckley"
+
+    def test_parse_shift_frequency_requirements_empty(self) -> None:
+        """Return empty list when no requirements in parameters."""
+        from shift_solver.config.schema import parse_shift_frequency_requirements
+
+        assert parse_shift_frequency_requirements({}) == []
+        assert parse_shift_frequency_requirements({"requirements": []}) == []
+        assert parse_shift_frequency_requirements(None) == []

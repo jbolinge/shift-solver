@@ -6,10 +6,12 @@ from typing import Any
 
 from ortools.sat.python import cp_model
 
+from shift_solver.config.schema import parse_shift_frequency_requirements
 from shift_solver.constraints.base import ConstraintConfig
 from shift_solver.models import (
     Availability,
     SchedulingRequest,
+    ShiftFrequencyRequirement,
     ShiftType,
     Worker,
 )
@@ -58,6 +60,7 @@ class ShiftSolver:
         availabilities: list[Availability] | None = None,
         requests: list[SchedulingRequest] | None = None,
         constraint_configs: dict[str, ConstraintConfig] | None = None,
+        shift_frequency_requirements: list[ShiftFrequencyRequirement] | None = None,
     ) -> None:
         """
         Initialize the ShiftSolver.
@@ -70,6 +73,8 @@ class ShiftSolver:
             availabilities: Optional list of availability records
             requests: Optional list of scheduling requests (preferences)
             constraint_configs: Optional dict mapping constraint_id to config
+            shift_frequency_requirements: Optional list of shift frequency requirements.
+                If not provided, will be parsed from constraint_configs["shift_frequency"]
 
         Raises:
             ValueError: If required parameters are invalid
@@ -89,6 +94,18 @@ class ShiftSolver:
         self.requests = requests or []
         self.constraint_configs = constraint_configs or {}
         self.num_periods = len(period_dates)
+
+        # Parse shift_frequency_requirements from config if not provided
+        if shift_frequency_requirements is not None:
+            self.shift_frequency_requirements = shift_frequency_requirements
+        else:
+            sf_config = self.constraint_configs.get("shift_frequency")
+            if sf_config and sf_config.parameters:
+                self.shift_frequency_requirements = parse_shift_frequency_requirements(
+                    sf_config.parameters
+                )
+            else:
+                self.shift_frequency_requirements = []
 
         # These are set during solve
         self._model: cp_model.CpModel | None = None
@@ -191,6 +208,7 @@ class ShiftSolver:
             "availabilities": self.availabilities,
             "period_dates": self.period_dates,
             "requests": self.requests,
+            "shift_frequency_requirements": self.shift_frequency_requirements,
         }
 
         # Initialize objective builder for soft constraints
@@ -273,5 +291,6 @@ class ShiftSolver:
             shift_types=self.shift_types,
             period_dates=self.period_dates,
             availabilities=self.availabilities,
+            shift_frequency_requirements=self.shift_frequency_requirements,
         )
         return checker.check()

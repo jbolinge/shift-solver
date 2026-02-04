@@ -9,6 +9,7 @@ from shift_solver.constraints.max_absence import MaxAbsenceConstraint
 from shift_solver.constraints.request import RequestConstraint
 from shift_solver.constraints.restriction import RestrictionConstraint
 from shift_solver.constraints.sequence import SequenceConstraint
+from shift_solver.constraints.shift_frequency import ShiftFrequencyConstraint
 
 __all__ = [
     "BaseConstraint",
@@ -21,4 +22,5 @@ __all__ = [
     "RequestConstraint",
     "RestrictionConstraint",
     "SequenceConstraint",
+    "ShiftFrequencyConstraint",
 ]
