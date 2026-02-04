@@ -217,3 +217,71 @@ class TestSchedulingRequestValidation:
                 shift_type_id="day_shift",
                 priority=0,
             )
+
+
+class TestShiftFrequencyRequirement:
+    """Tests for ShiftFrequencyRequirement dataclass."""
+
+    def test_create_requirement(self) -> None:
+        """Create a shift frequency requirement."""
+        from shift_solver.models.data_models import ShiftFrequencyRequirement
+
+        req = ShiftFrequencyRequirement(
+            worker_id="W001",
+            shift_types=frozenset(["mvsc_day", "mvsc_night"]),
+            max_periods_between=4,
+        )
+
+        assert req.worker_id == "W001"
+        assert req.shift_types == frozenset(["mvsc_day", "mvsc_night"])
+        assert req.max_periods_between == 4
+
+    def test_create_with_single_shift_type(self) -> None:
+        """Create requirement with a single shift type."""
+        from shift_solver.models.data_models import ShiftFrequencyRequirement
+
+        req = ShiftFrequencyRequirement(
+            worker_id="W002",
+            shift_types=frozenset(["stf_day"]),
+            max_periods_between=2,
+        )
+
+        assert len(req.shift_types) == 1
+        assert "stf_day" in req.shift_types
+
+
+class TestShiftFrequencyRequirementValidation:
+    """Tests for ShiftFrequencyRequirement validation."""
+
+    def test_max_periods_between_must_be_positive(self) -> None:
+        """max_periods_between must be > 0."""
+        from shift_solver.models.data_models import ShiftFrequencyRequirement
+
+        with pytest.raises(ValueError, match="max_periods_between must be > 0"):
+            ShiftFrequencyRequirement(
+                worker_id="W001",
+                shift_types=frozenset(["day_shift"]),
+                max_periods_between=0,
+            )
+
+    def test_max_periods_between_negative(self) -> None:
+        """max_periods_between must be > 0 (negative case)."""
+        from shift_solver.models.data_models import ShiftFrequencyRequirement
+
+        with pytest.raises(ValueError, match="max_periods_between must be > 0"):
+            ShiftFrequencyRequirement(
+                worker_id="W001",
+                shift_types=frozenset(["day_shift"]),
+                max_periods_between=-1,
+            )
+
+    def test_shift_types_must_not_be_empty(self) -> None:
+        """shift_types must not be empty."""
+        from shift_solver.models.data_models import ShiftFrequencyRequirement
+
+        with pytest.raises(ValueError, match="shift_types must not be empty"):
+            ShiftFrequencyRequirement(
+                worker_id="W001",
+                shift_types=frozenset(),
+                max_periods_between=4,
+            )
