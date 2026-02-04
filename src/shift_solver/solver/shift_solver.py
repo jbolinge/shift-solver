@@ -291,5 +291,6 @@ class ShiftSolver:
             shift_types=self.shift_types,
             period_dates=self.period_dates,
             availabilities=self.availabilities,
+            shift_frequency_requirements=self.shift_frequency_requirements,
         )
         return checker.check()

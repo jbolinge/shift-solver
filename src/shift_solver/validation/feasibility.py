@@ -4,7 +4,12 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Any
 
-from shift_solver.models import Availability, ShiftType, Worker
+from shift_solver.models import (
+    Availability,
+    ShiftFrequencyRequirement,
+    ShiftType,
+    Worker,
+)
 from shift_solver.utils import get_logger
 
 logger = get_logger("validation.feasibility")
@@ -52,6 +57,7 @@ class FeasibilityChecker:
         shift_types: list[ShiftType],
         period_dates: list[tuple[date, date]],
         availabilities: list[Availability] | None = None,
+        shift_frequency_requirements: list[ShiftFrequencyRequirement] | None = None,
     ) -> None:
         """
         Initialize the feasibility checker.
@@ -61,11 +67,13 @@ class FeasibilityChecker:
             shift_types: List of shift types with requirements
             period_dates: List of (start_date, end_date) for each period
             availabilities: Optional list of availability records
+            shift_frequency_requirements: Optional list of shift frequency requirements
         """
         self.workers = workers
         self.shift_types = shift_types
         self.period_dates = period_dates
         self.availabilities = availabilities or []
+        self.shift_frequency_requirements = shift_frequency_requirements or []
 
     def check(self) -> FeasibilityResult:
         """
@@ -82,6 +90,7 @@ class FeasibilityChecker:
         self._check_restrictions(result)
         self._check_availability_conflicts(result)
         self._check_combined_feasibility(result)
+        self._check_shift_frequency_requirements(result)
 
         if result.is_feasible:
             logger.info("Feasibility check passed")
@@ -216,3 +225,68 @@ class FeasibilityChecker:
                         workers_available=available_count,
                         workers_required=shift_type.workers_required,
                     )
+
+    def _check_shift_frequency_requirements(self, result: FeasibilityResult) -> None:
+        """Check that shift frequency requirements are satisfiable."""
+        if not self.shift_frequency_requirements:
+            return
+
+        worker_map = {w.id: w for w in self.workers}
+        shift_type_ids = {st.id for st in self.shift_types}
+        num_periods = len(self.period_dates)
+
+        for req in self.shift_frequency_requirements:
+            # Check if worker exists
+            if req.worker_id not in worker_map:
+                result.add_warning(
+                    "shift_frequency",
+                    f"Shift frequency requirement references unknown worker "
+                    f"'{req.worker_id}'",
+                    worker_id=req.worker_id,
+                )
+                continue
+
+            worker = worker_map[req.worker_id]
+
+            # Check if all shift types exist
+            unknown_shifts = req.shift_types - shift_type_ids
+            if unknown_shifts:
+                # If ALL shift types are unknown, it's an error
+                valid_shifts = req.shift_types & shift_type_ids
+                if not valid_shifts:
+                    result.add_issue(
+                        "shift_frequency",
+                        f"Shift frequency requirement for worker '{req.worker_id}' "
+                        f"references unknown shift types: {sorted(unknown_shifts)}",
+                        worker_id=req.worker_id,
+                        unknown_shift_types=sorted(unknown_shifts),
+                    )
+                    continue
+
+            # Check if worker can work any of the required shift types
+            valid_shifts = req.shift_types & shift_type_ids
+            workable_shifts = {
+                st for st in valid_shifts if worker.can_work_shift(st)
+            }
+
+            if not workable_shifts:
+                result.add_issue(
+                    "shift_frequency",
+                    f"Worker '{req.worker_id}' has shift frequency requirement "
+                    f"for shift types {sorted(req.shift_types)} but is restricted "
+                    f"from all of them",
+                    worker_id=req.worker_id,
+                    required_shift_types=sorted(req.shift_types),
+                )
+
+            # Warn if max_periods_between > num_periods
+            if req.max_periods_between > num_periods:
+                result.add_warning(
+                    "shift_frequency",
+                    f"Worker '{req.worker_id}' has max_periods_between="
+                    f"{req.max_periods_between} but schedule only has "
+                    f"{num_periods} periods. Constraint will use single window.",
+                    worker_id=req.worker_id,
+                    max_periods_between=req.max_periods_between,
+                    num_periods=num_periods,
+                )

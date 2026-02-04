@@ -489,3 +489,235 @@ class TestCoverageVsRestrictions:
         assert not result.is_feasible
         # Should get combined issue
         assert any(i["type"] == "combined" for i in result.issues)
+
+
+class TestShiftFrequencyFeasibility:
+    """Tests for shift frequency requirement feasibility checks (scheduler-96)."""
+
+    def test_worker_restricted_from_all_required_shift_types(
+        self,
+        period_dates: list[tuple[date, date]],
+    ) -> None:
+        """Infeasible when worker is restricted from ALL required shift types."""
+        from shift_solver.models import ShiftFrequencyRequirement
+
+        workers = [
+            # W1 restricted from both mvsc_day and mvsc_night
+            Worker(
+                id="W1",
+                name="Alice",
+                restricted_shifts=frozenset(["mvsc_day", "mvsc_night"]),
+            ),
+            Worker(id="W2", name="Bob"),
+        ]
+        shift_types = [
+            ShiftType(
+                id="mvsc_day",
+                name="MVSC Day",
+                category="day",
+                start_time=time(7, 0),
+                end_time=time(15, 0),
+                duration_hours=8.0,
+                workers_required=1,
+            ),
+            ShiftType(
+                id="mvsc_night",
+                name="MVSC Night",
+                category="night",
+                start_time=time(23, 0),
+                end_time=time(7, 0),
+                duration_hours=8.0,
+                workers_required=1,
+            ),
+        ]
+        requirements = [
+            ShiftFrequencyRequirement(
+                worker_id="W1",
+                shift_types=frozenset(["mvsc_day", "mvsc_night"]),
+                max_periods_between=4,
+            )
+        ]
+
+        checker = FeasibilityChecker(
+            workers=workers,
+            shift_types=shift_types,
+            period_dates=period_dates,
+            shift_frequency_requirements=requirements,
+        )
+        result = checker.check()
+
+        assert not result.is_feasible
+        assert any(i["type"] == "shift_frequency" for i in result.issues)
+        issue = next(i for i in result.issues if i["type"] == "shift_frequency")
+        assert "W1" in issue["message"] or "Alice" in issue["message"]
+        assert "restricted" in issue["message"].lower()
+
+    def test_worker_restricted_from_some_shift_types_feasible(
+        self,
+        period_dates: list[tuple[date, date]],
+    ) -> None:
+        """Feasible when worker can work at least one of the required shift types."""
+        from shift_solver.models import ShiftFrequencyRequirement
+
+        workers = [
+            # W1 restricted from only mvsc_day, can still do mvsc_night
+            Worker(id="W1", name="Alice", restricted_shifts=frozenset(["mvsc_day"])),
+            Worker(id="W2", name="Bob"),
+        ]
+        shift_types = [
+            ShiftType(
+                id="mvsc_day",
+                name="MVSC Day",
+                category="day",
+                start_time=time(7, 0),
+                end_time=time(15, 0),
+                duration_hours=8.0,
+                workers_required=1,
+            ),
+            ShiftType(
+                id="mvsc_night",
+                name="MVSC Night",
+                category="night",
+                start_time=time(23, 0),
+                end_time=time(7, 0),
+                duration_hours=8.0,
+                workers_required=1,
+            ),
+        ]
+        requirements = [
+            ShiftFrequencyRequirement(
+                worker_id="W1",
+                shift_types=frozenset(["mvsc_day", "mvsc_night"]),
+                max_periods_between=4,
+            )
+        ]
+
+        checker = FeasibilityChecker(
+            workers=workers,
+            shift_types=shift_types,
+            period_dates=period_dates,
+            shift_frequency_requirements=requirements,
+        )
+        result = checker.check()
+
+        assert result.is_feasible
+
+    def test_unknown_shift_type_in_requirement(
+        self,
+        workers: list[Worker],
+        period_dates: list[tuple[date, date]],
+    ) -> None:
+        """Infeasible when requirement references unknown shift type."""
+        from shift_solver.models import ShiftFrequencyRequirement
+
+        shift_types = [
+            ShiftType(
+                id="day",
+                name="Day Shift",
+                category="day",
+                start_time=time(7, 0),
+                end_time=time(15, 0),
+                duration_hours=8.0,
+                workers_required=1,
+            ),
+        ]
+        requirements = [
+            ShiftFrequencyRequirement(
+                worker_id="W1",
+                shift_types=frozenset(["unknown_shift"]),
+                max_periods_between=4,
+            )
+        ]
+
+        checker = FeasibilityChecker(
+            workers=workers,
+            shift_types=shift_types,
+            period_dates=period_dates,
+            shift_frequency_requirements=requirements,
+        )
+        result = checker.check()
+
+        assert not result.is_feasible
+        assert any(i["type"] == "shift_frequency" for i in result.issues)
+        issue = next(i for i in result.issues if i["type"] == "shift_frequency")
+        assert "unknown_shift" in issue["message"]
+
+    def test_max_periods_between_exceeds_num_periods(
+        self,
+        workers: list[Worker],
+        shift_types: list[ShiftType],
+    ) -> None:
+        """Warning when max_periods_between > num_periods."""
+        from shift_solver.models import ShiftFrequencyRequirement
+
+        # Only 2 periods
+        period_dates = [
+            (date(2026, 1, 1), date(2026, 1, 7)),
+            (date(2026, 1, 8), date(2026, 1, 14)),
+        ]
+        requirements = [
+            ShiftFrequencyRequirement(
+                worker_id="W1",
+                shift_types=frozenset(["day"]),
+                max_periods_between=10,  # Much larger than 2 periods
+            )
+        ]
+
+        checker = FeasibilityChecker(
+            workers=workers,
+            shift_types=shift_types,
+            period_dates=period_dates,
+            shift_frequency_requirements=requirements,
+        )
+        result = checker.check()
+
+        # This is a warning, not an error (still feasible)
+        assert result.is_feasible
+        assert any(w["type"] == "shift_frequency" for w in result.warnings)
+
+    def test_unknown_worker_in_requirement(
+        self,
+        workers: list[Worker],
+        shift_types: list[ShiftType],
+        period_dates: list[tuple[date, date]],
+    ) -> None:
+        """Warning when requirement references unknown worker."""
+        from shift_solver.models import ShiftFrequencyRequirement
+
+        requirements = [
+            ShiftFrequencyRequirement(
+                worker_id="UNKNOWN_WORKER",
+                shift_types=frozenset(["day"]),
+                max_periods_between=4,
+            )
+        ]
+
+        checker = FeasibilityChecker(
+            workers=workers,
+            shift_types=shift_types,
+            period_dates=period_dates,
+            shift_frequency_requirements=requirements,
+        )
+        result = checker.check()
+
+        # This is a warning, not an error
+        assert result.is_feasible
+        assert any(w["type"] == "shift_frequency" for w in result.warnings)
+        warning = next(w for w in result.warnings if w["type"] == "shift_frequency")
+        assert "UNKNOWN_WORKER" in warning["message"]
+
+    def test_no_requirements_is_feasible(
+        self,
+        workers: list[Worker],
+        shift_types: list[ShiftType],
+        period_dates: list[tuple[date, date]],
+    ) -> None:
+        """No shift_frequency_requirements should be feasible."""
+        checker = FeasibilityChecker(
+            workers=workers,
+            shift_types=shift_types,
+            period_dates=period_dates,
+            shift_frequency_requirements=[],
+        )
+        result = checker.check()
+        assert result.is_feasible
