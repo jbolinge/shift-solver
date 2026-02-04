@@ -485,3 +485,149 @@ class TestShiftSolverLargerScale:
         assert result.success
         assert result.schedule is not None
         assert len(result.schedule.periods) == 8
+
+
+class TestShiftSolverShiftFrequencyIntegration:
+    """Integration tests for shift_frequency constraint (scheduler-95)."""
+
+    def test_shift_frequency_requirements_from_parameter(self) -> None:
+        """Test shift_frequency_requirements passed directly to solver."""
+        from shift_solver.constraints.base import ConstraintConfig
+        from shift_solver.models import ShiftFrequencyRequirement
+
+        workers = [
+            Worker(id="W1", name="Alice"),
+            Worker(id="W2", name="Bob"),
+            Worker(id="W3", name="Charlie"),
+        ]
+        shift_types = [
+            ShiftType(
+                id="mvsc_day",
+                name="MVSC Day",
+                category="day",
+                start_time=time(7, 0),
+                end_time=time(15, 0),
+                duration_hours=8.0,
+                workers_required=1,
+            ),
+            ShiftType(
+                id="mvsc_night",
+                name="MVSC Night",
+                category="night",
+                start_time=time(23, 0),
+                end_time=time(7, 0),
+                duration_hours=8.0,
+                workers_required=1,
+            ),
+        ]
+        base = date(2026, 1, 5)
+        period_dates = [
+            (base + timedelta(weeks=i), base + timedelta(weeks=i, days=6))
+            for i in range(8)
+        ]
+
+        requirements = [
+            ShiftFrequencyRequirement(
+                worker_id="W1",
+                shift_types=frozenset(["mvsc_day", "mvsc_night"]),
+                max_periods_between=4,
+            )
+        ]
+
+        constraint_configs = {
+            "shift_frequency": ConstraintConfig(
+                enabled=True, is_hard=False, weight=500
+            )
+        }
+
+        solver = ShiftSolver(
+            workers=workers,
+            shift_types=shift_types,
+            period_dates=period_dates,
+            schedule_id="TEST-SF-PARAM",
+            constraint_configs=constraint_configs,
+            shift_frequency_requirements=requirements,
+        )
+
+        assert solver.shift_frequency_requirements == requirements
+        result = solver.solve(time_limit_seconds=30)
+        assert result.success
+
+    def test_shift_frequency_requirements_from_config(self) -> None:
+        """Test shift_frequency_requirements parsed from config."""
+        from shift_solver.constraints.base import ConstraintConfig
+
+        workers = [
+            Worker(id="W1", name="Alice"),
+            Worker(id="W2", name="Bob"),
+        ]
+        shift_types = [
+            ShiftType(
+                id="day",
+                name="Day",
+                category="day",
+                start_time=time(7, 0),
+                end_time=time(15, 0),
+                duration_hours=8.0,
+                workers_required=1,
+            ),
+        ]
+        period_dates = [(date(2026, 1, 5), date(2026, 1, 11))]
+
+        constraint_configs = {
+            "shift_frequency": ConstraintConfig(
+                enabled=True,
+                is_hard=False,
+                weight=500,
+                parameters={
+                    "requirements": [
+                        {
+                            "worker_id": "W1",
+                            "shift_types": ["day"],
+                            "max_periods_between": 1,
+                        }
+                    ]
+                },
+            )
+        }
+
+        solver = ShiftSolver(
+            workers=workers,
+            shift_types=shift_types,
+            period_dates=period_dates,
+            schedule_id="TEST-SF-CONFIG",
+            constraint_configs=constraint_configs,
+        )
+
+        # Requirements should be parsed from config
+        assert len(solver.shift_frequency_requirements) == 1
+        assert solver.shift_frequency_requirements[0].worker_id == "W1"
+        assert solver.shift_frequency_requirements[0].shift_types == frozenset(["day"])
+
+        result = solver.solve(time_limit_seconds=30)
+        assert result.success
+
+    def test_empty_requirements_when_no_config(self) -> None:
+        """Test empty requirements when no shift_frequency config."""
+        workers = [Worker(id="W1", name="Alice")]
+        shift_types = [
+            ShiftType(
+                id="day",
+                name="Day",
+                category="day",
+                start_time=time(7, 0),
+                end_time=time(15, 0),
+                duration_hours=8.0,
+                workers_required=1,
+            ),
+        ]
+        period_dates = [(date(2026, 1, 5), date(2026, 1, 11))]
+
+        solver = ShiftSolver(
+            workers=workers,
+            shift_types=shift_types,
+            period_dates=period_dates,
+            schedule_id="TEST-NO-SF",
+        )
+
+        assert solver.shift_frequency_requirements == []
