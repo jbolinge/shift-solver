@@ -3,10 +3,13 @@
 from datetime import time
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
+
+if TYPE_CHECKING:
+    from shift_solver.models import ShiftFrequencyRequirement
 
 
 class DateFormat(str, Enum):
@@ -42,6 +45,54 @@ class ConstraintConfig(BaseModel):
     is_hard: bool = Field(default=True)
     weight: int = Field(default=100, ge=0)
     parameters: dict[str, Any] = Field(default_factory=dict)
+
+
+class ShiftFrequencyRequirementConfig(BaseModel):
+    """Configuration for a single shift frequency requirement."""
+
+    worker_id: str = Field(min_length=1)
+    shift_types: list[str] = Field(min_length=1)
+    max_periods_between: int = Field(gt=0)
+
+
+class ShiftFrequencyParametersConfig(BaseModel):
+    """Configuration for shift_frequency constraint parameters."""
+
+    requirements: list[ShiftFrequencyRequirementConfig] = Field(default_factory=list)
+
+
+def parse_shift_frequency_requirements(
+    parameters: dict[str, Any] | None,
+) -> list["ShiftFrequencyRequirement"]:
+    """
+    Parse shift_frequency constraint parameters into ShiftFrequencyRequirement objects.
+
+    Args:
+        parameters: The constraint parameters dict from config
+
+    Returns:
+        List of ShiftFrequencyRequirement objects
+    """
+    from shift_solver.models import ShiftFrequencyRequirement
+
+    if not parameters:
+        return []
+
+    requirements_data = parameters.get("requirements", [])
+    if not requirements_data:
+        return []
+
+    # Validate using Pydantic model
+    validated = ShiftFrequencyParametersConfig(requirements=requirements_data)
+
+    return [
+        ShiftFrequencyRequirement(
+            worker_id=req.worker_id,
+            shift_types=frozenset(req.shift_types),
+            max_periods_between=req.max_periods_between,
+        )
+        for req in validated.requirements
+    ]
 
 
 class ShiftTypeConfig(BaseModel):
