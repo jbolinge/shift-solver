@@ -442,3 +442,267 @@ class TestShiftFrequencyEdgeCases:
 
         # 8 periods with window=1 means 8 windows (one per period)
         assert len(constraint.violation_variables) == 8
+
+    def test_max_periods_between_equals_num_periods(
+        self,
+        workers: list[Worker],
+        shift_types: list[ShiftType],
+    ) -> None:
+        """Test when max_periods_between=num_periods (exactly 1 window)."""
+        model = cp_model.CpModel()
+        num_periods = 5
+        builder = VariableBuilder(model, workers, shift_types, num_periods=num_periods)
+        variables = builder.build()
+
+        config = ConstraintConfig(enabled=True, is_hard=False, weight=500)
+        constraint = ShiftFrequencyConstraint(model, variables, config)
+
+        requirements = [
+            ShiftFrequencyRequirement(
+                worker_id="W001",
+                shift_types=frozenset(["mvsc_day"]),
+                max_periods_between=num_periods,  # Equals num_periods
+            )
+        ]
+
+        constraint.apply(
+            workers=workers,
+            shift_types=shift_types,
+            num_periods=num_periods,
+            shift_frequency_requirements=requirements,
+        )
+
+        # window_size = 5, num_periods = 5, so 1 window
+        assert len(constraint.violation_variables) == 1
+
+    def test_worker_partially_restricted(
+        self,
+        shift_types: list[ShiftType],
+    ) -> None:
+        """Test worker restricted from some but not all shift types in group."""
+        # Worker restricted from mvsc_day but can work mvsc_night
+        workers = [
+            Worker(id="W001", name="Worker 1", restricted_shifts=frozenset(["mvsc_day"])),
+            Worker(id="W002", name="Worker 2"),
+        ]
+
+        model = cp_model.CpModel()
+        builder = VariableBuilder(model, workers, shift_types, num_periods=4)
+        variables = builder.build()
+
+        config = ConstraintConfig(enabled=True, is_hard=False, weight=500)
+        constraint = ShiftFrequencyConstraint(model, variables, config)
+
+        requirements = [
+            ShiftFrequencyRequirement(
+                worker_id="W001",
+                shift_types=frozenset(["mvsc_day", "mvsc_night"]),  # Can only work mvsc_night
+                max_periods_between=2,
+            )
+        ]
+
+        constraint.apply(
+            workers=workers,
+            shift_types=shift_types,
+            num_periods=4,
+            shift_frequency_requirements=requirements,
+        )
+
+        # Should still create constraints (worker can work mvsc_night)
+        assert len(constraint.violation_variables) == 3  # 4 periods, window=2, 3 windows
+
+
+class TestShiftFrequencyIntegration:
+    """Integration tests for shift frequency constraint (scheduler-97)."""
+
+    def test_combined_with_coverage_and_fairness(
+        self,
+        workers: list[Worker],
+        shift_types: list[ShiftType],
+    ) -> None:
+        """Test shift frequency combined with coverage constraint."""
+        from datetime import date, timedelta
+
+        from shift_solver.constraints.base import ConstraintConfig
+        from shift_solver.models import ShiftFrequencyRequirement
+        from shift_solver.solver.shift_solver import ShiftSolver
+
+        base = date(2026, 1, 5)
+        period_dates = [
+            (base + timedelta(weeks=i), base + timedelta(weeks=i, days=6))
+            for i in range(4)
+        ]
+
+        requirements = [
+            ShiftFrequencyRequirement(
+                worker_id="W001",
+                shift_types=frozenset(["mvsc_day", "mvsc_night"]),
+                max_periods_between=4,
+            )
+        ]
+
+        constraint_configs = {
+            "shift_frequency": ConstraintConfig(
+                enabled=True, is_hard=False, weight=500
+            ),
+        }
+
+        solver = ShiftSolver(
+            workers=workers,
+            shift_types=shift_types,
+            period_dates=period_dates,
+            schedule_id="TEST-COMBINED",
+            constraint_configs=constraint_configs,
+            shift_frequency_requirements=requirements,
+        )
+
+        result = solver.solve(time_limit_seconds=30)
+        assert result.success
+
+    def test_e2e_config_loading(self) -> None:
+        """End-to-end test with config loaded from YAML."""
+        from datetime import date
+        from pathlib import Path
+        from tempfile import NamedTemporaryFile
+
+        from shift_solver.config.schema import ShiftSolverConfig
+        from shift_solver.models import ShiftType, Worker
+        from shift_solver.solver.shift_solver import ShiftSolver
+
+        yaml_content = """
+solver:
+  max_time_seconds: 30
+
+shift_types:
+  - id: day_shift
+    name: Day Shift
+    category: day
+    start_time: "07:00"
+    end_time: "15:00"
+    duration_hours: 8.0
+    workers_required: 1
+  - id: night_shift
+    name: Night Shift
+    category: night
+    start_time: "23:00"
+    end_time: "07:00"
+    duration_hours: 8.0
+    workers_required: 1
+
+constraints:
+  shift_frequency:
+    enabled: true
+    is_hard: false
+    weight: 500
+    parameters:
+      requirements:
+        - worker_id: "W001"
+          shift_types: ["day_shift", "night_shift"]
+          max_periods_between: 2
+"""
+
+        with NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            f.write(yaml_content)
+            f.flush()
+
+            config = ShiftSolverConfig.load_from_yaml(Path(f.name))
+
+        # Create workers and shift_types from config
+        workers = [
+            Worker(id="W001", name="Alice"),
+            Worker(id="W002", name="Bob"),
+        ]
+
+        shift_types_list = [
+            ShiftType(
+                id=st.id,
+                name=st.name,
+                category=st.category,
+                start_time=st.start_time,
+                end_time=st.end_time,
+                duration_hours=st.duration_hours,
+                workers_required=st.workers_required,
+            )
+            for st in config.shift_types
+        ]
+
+        from datetime import timedelta
+
+        base = date(2026, 1, 5)
+        period_dates = [
+            (base + timedelta(weeks=i), base + timedelta(weeks=i, days=6))
+            for i in range(4)
+        ]
+
+        solver = ShiftSolver(
+            workers=workers,
+            shift_types=shift_types_list,
+            period_dates=period_dates,
+            schedule_id="TEST-E2E",
+            constraint_configs=config.constraints,
+        )
+
+        # Requirements should be parsed from config
+        assert len(solver.shift_frequency_requirements) == 1
+        assert solver.shift_frequency_requirements[0].worker_id == "W001"
+
+        result = solver.solve(time_limit_seconds=30)
+        assert result.success
+
+    def test_violation_count_in_solution(
+        self,
+        workers: list[Worker],
+        shift_types: list[ShiftType],
+    ) -> None:
+        """Test that violation count can be extracted from solution."""
+        model = cp_model.CpModel()
+        builder = VariableBuilder(model, workers, shift_types, num_periods=8)
+        variables = builder.build()
+
+        config = ConstraintConfig(enabled=True, is_hard=False, weight=1000)
+        constraint = ShiftFrequencyConstraint(model, variables, config)
+
+        requirements = [
+            ShiftFrequencyRequirement(
+                worker_id="W001",
+                shift_types=frozenset(["mvsc_day"]),
+                max_periods_between=2,  # Must work mvsc_day every 2 periods
+            )
+        ]
+
+        constraint.apply(
+            workers=workers,
+            shift_types=shift_types,
+            num_periods=8,
+            shift_frequency_requirements=requirements,
+        )
+
+        # Force W001 to NEVER work mvsc_day - this forces all windows to be violated
+        for period in range(8):
+            model.add(variables.get_assignment_var("W001", period, "mvsc_day") == 0)
+
+        # Add basic coverage for all shifts
+        for period in range(8):
+            for shift_type in shift_types:
+                vars_for_shift = [
+                    variables.get_assignment_var(w.id, period, shift_type.id)
+                    for w in workers
+                ]
+                model.add(sum(vars_for_shift) == shift_type.workers_required)
+
+        # Minimize violations
+        model.minimize(
+            sum(constraint.violation_variables.values()) * constraint.weight
+        )
+
+        solver = cp_model.CpSolver()
+        status = solver.solve(model)
+
+        assert status in (cp_model.OPTIMAL, cp_model.FEASIBLE)
+
+        # Count violations
+        violation_count = sum(
+            solver.value(v) for v in constraint.violation_variables.values()
+        )
+        # All windows should be violated since W001 never works mvsc_day
+        assert violation_count == 7  # 8 periods, window=2, 7 windows
