@@ -209,6 +209,196 @@ class TestShiftInstance:
         assert instance.override_end_time == time(16, 0)
 
 
+class TestShiftTypeApplicableDays:
+    """Tests for ShiftType applicable_days field."""
+
+    def test_applicable_days_default_is_none(self) -> None:
+        """ShiftType applicable_days defaults to None (all days)."""
+        shift = ShiftType(
+            id="test",
+            name="Test",
+            category="day",
+            start_time=time(9, 0),
+            end_time=time(17, 0),
+            duration_hours=8.0,
+        )
+        assert shift.applicable_days is None
+
+    def test_applicable_days_weekdays(self) -> None:
+        """ShiftType can be created with weekday-only applicable_days."""
+        weekdays = frozenset([0, 1, 2, 3, 4])  # Mon-Fri
+        shift = ShiftType(
+            id="weekday",
+            name="Weekday Shift",
+            category="day",
+            start_time=time(9, 0),
+            end_time=time(17, 0),
+            duration_hours=8.0,
+            applicable_days=weekdays,
+        )
+        assert shift.applicable_days == weekdays
+
+    def test_applicable_days_weekends(self) -> None:
+        """ShiftType can be created with weekend-only applicable_days."""
+        weekend = frozenset([5, 6])  # Sat-Sun
+        shift = ShiftType(
+            id="weekend",
+            name="Weekend Shift",
+            category="weekend",
+            start_time=time(9, 0),
+            end_time=time(17, 0),
+            duration_hours=8.0,
+            applicable_days=weekend,
+        )
+        assert shift.applicable_days == weekend
+
+    def test_applicable_days_validates_range(self) -> None:
+        """ShiftType rejects applicable_days outside 0-6."""
+        with pytest.raises(ValueError, match="applicable_days must be 0-6"):
+            ShiftType(
+                id="test",
+                name="Test",
+                category="day",
+                start_time=time(9, 0),
+                end_time=time(17, 0),
+                duration_hours=8.0,
+                applicable_days=frozenset([7]),  # Invalid: 7 is out of range
+            )
+
+    def test_applicable_days_validates_negative(self) -> None:
+        """ShiftType rejects negative applicable_days values."""
+        with pytest.raises(ValueError, match="applicable_days must be 0-6"):
+            ShiftType(
+                id="test",
+                name="Test",
+                category="day",
+                start_time=time(9, 0),
+                end_time=time(17, 0),
+                duration_hours=8.0,
+                applicable_days=frozenset([-1, 0, 1]),
+            )
+
+    def test_is_applicable_on_none_means_all_days(self) -> None:
+        """is_applicable_on returns True for all days when applicable_days is None."""
+        shift = ShiftType(
+            id="test",
+            name="Test",
+            category="day",
+            start_time=time(9, 0),
+            end_time=time(17, 0),
+            duration_hours=8.0,
+            applicable_days=None,
+        )
+        for day in range(7):
+            assert shift.is_applicable_on(day) is True
+
+    def test_is_applicable_on_weekdays(self) -> None:
+        """is_applicable_on correctly checks weekday shifts."""
+        shift = ShiftType(
+            id="weekday",
+            name="Weekday",
+            category="day",
+            start_time=time(9, 0),
+            end_time=time(17, 0),
+            duration_hours=8.0,
+            applicable_days=frozenset([0, 1, 2, 3, 4]),  # Mon-Fri
+        )
+        # Weekdays should be applicable
+        assert shift.is_applicable_on(0) is True  # Monday
+        assert shift.is_applicable_on(4) is True  # Friday
+        # Weekends should not be applicable
+        assert shift.is_applicable_on(5) is False  # Saturday
+        assert shift.is_applicable_on(6) is False  # Sunday
+
+    def test_is_applicable_on_weekends(self) -> None:
+        """is_applicable_on correctly checks weekend shifts."""
+        shift = ShiftType(
+            id="weekend",
+            name="Weekend",
+            category="weekend",
+            start_time=time(9, 0),
+            end_time=time(17, 0),
+            duration_hours=8.0,
+            applicable_days=frozenset([5, 6]),  # Sat-Sun
+        )
+        # Weekdays should not be applicable
+        assert shift.is_applicable_on(0) is False  # Monday
+        assert shift.is_applicable_on(4) is False  # Friday
+        # Weekends should be applicable
+        assert shift.is_applicable_on(5) is True  # Saturday
+        assert shift.is_applicable_on(6) is True  # Sunday
+
+    def test_equality_includes_applicable_days(self) -> None:
+        """Two ShiftTypes with different applicable_days are not equal."""
+        shift1 = ShiftType(
+            id="test",
+            name="Test",
+            category="day",
+            start_time=time(9, 0),
+            end_time=time(17, 0),
+            duration_hours=8.0,
+            applicable_days=frozenset([0, 1, 2, 3, 4]),
+        )
+        shift2 = ShiftType(
+            id="test",
+            name="Test",
+            category="day",
+            start_time=time(9, 0),
+            end_time=time(17, 0),
+            duration_hours=8.0,
+            applicable_days=frozenset([5, 6]),
+        )
+        assert shift1 != shift2
+
+    def test_equality_same_applicable_days(self) -> None:
+        """Two ShiftTypes with same applicable_days are equal."""
+        weekdays = frozenset([0, 1, 2, 3, 4])
+        shift1 = ShiftType(
+            id="test",
+            name="Test",
+            category="day",
+            start_time=time(9, 0),
+            end_time=time(17, 0),
+            duration_hours=8.0,
+            applicable_days=weekdays,
+        )
+        shift2 = ShiftType(
+            id="test",
+            name="Test",
+            category="day",
+            start_time=time(9, 0),
+            end_time=time(17, 0),
+            duration_hours=8.0,
+            applicable_days=weekdays,
+        )
+        assert shift1 == shift2
+
+    def test_hash_includes_applicable_days(self) -> None:
+        """ShiftType hash includes applicable_days."""
+        weekdays = frozenset([0, 1, 2, 3, 4])
+        weekend = frozenset([5, 6])
+        shift1 = ShiftType(
+            id="test",
+            name="Test",
+            category="day",
+            start_time=time(9, 0),
+            end_time=time(17, 0),
+            duration_hours=8.0,
+            applicable_days=weekdays,
+        )
+        shift2 = ShiftType(
+            id="test",
+            name="Test",
+            category="day",
+            start_time=time(9, 0),
+            end_time=time(17, 0),
+            duration_hours=8.0,
+            applicable_days=weekend,
+        )
+        # Different applicable_days should produce different hashes
+        assert hash(shift1) != hash(shift2)
+
+
 class TestShiftInstanceValidation:
     """Tests for ShiftInstance validation."""
 

@@ -36,6 +36,7 @@ class ShiftType:
     required_attributes: dict[str, Any] = field(
         default_factory=dict, compare=False, hash=False
     )
+    applicable_days: frozenset[int] | None = None  # 0=Mon, 6=Sun; None=all days
 
     def __post_init__(self) -> None:
         """Validate shift type fields after initialization."""
@@ -45,6 +46,10 @@ class ShiftType:
             raise ValueError("duration_hours must be positive")
         if self.workers_required < 1:
             raise ValueError("workers_required must be at least 1")
+        if self.applicable_days is not None:
+            invalid = {d for d in self.applicable_days if d < 0 or d > 6}
+            if invalid:
+                raise ValueError(f"applicable_days must be 0-6, got: {invalid}")
 
     def __eq__(self, other: object) -> bool:
         """ShiftTypes are equal if all fields except required_attributes are equal."""
@@ -59,6 +64,7 @@ class ShiftType:
             and self.duration_hours == other.duration_hours
             and self.is_undesirable == other.is_undesirable
             and self.workers_required == other.workers_required
+            and self.applicable_days == other.applicable_days
         )
 
     def __hash__(self) -> int:
@@ -73,8 +79,21 @@ class ShiftType:
                 self.duration_hours,
                 self.is_undesirable,
                 self.workers_required,
+                self.applicable_days,
             )
         )
+
+    def is_applicable_on(self, day_of_week: int) -> bool:
+        """
+        Check if this shift applies on a given day of the week.
+
+        Args:
+            day_of_week: Day of week where 0=Monday, 6=Sunday
+
+        Returns:
+            True if shift applies on this day, False otherwise
+        """
+        return self.applicable_days is None or day_of_week in self.applicable_days
 
 
 @dataclass

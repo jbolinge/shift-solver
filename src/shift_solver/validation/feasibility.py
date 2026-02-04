@@ -1,7 +1,7 @@
 """FeasibilityChecker for pre-solve validation."""
 
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 from shift_solver.models import (
@@ -187,6 +187,35 @@ class FeasibilityChecker:
                     period_end=str(period_end),
                 )
 
+    def _count_applicable_days(
+        self,
+        shift_type: ShiftType,
+        period_start: date,
+        period_end: date,
+    ) -> int:
+        """
+        Count how many days in the period the shift type applies to.
+
+        Args:
+            shift_type: Shift type with applicable_days
+            period_start: Start date of the period
+            period_end: End date of the period
+
+        Returns:
+            Number of days in the period where the shift applies
+        """
+        if shift_type.applicable_days is None:
+            # None means all days - count all days in period
+            return (period_end - period_start).days + 1
+
+        count = 0
+        current = period_start
+        while current <= period_end:
+            if current.weekday() in shift_type.applicable_days:
+                count += 1
+            current += timedelta(days=1)
+        return count
+
     def _check_combined_feasibility(self, result: FeasibilityResult) -> None:
         """Check combined restrictions and availability for each period/shift."""
         if result.issues:
@@ -204,6 +233,15 @@ class FeasibilityChecker:
 
             # For each shift type, count truly available workers
             for shift_type in self.shift_types:
+                # Skip coverage check if shift has no applicable days in this period
+                if shift_type.applicable_days is not None:
+                    applicable_count = self._count_applicable_days(
+                        shift_type, period_start, period_end
+                    )
+                    if applicable_count == 0:
+                        # No applicable days - no coverage required
+                        continue
+
                 available_count = 0
                 for worker in self.workers:
                     # Worker must not be unavailable

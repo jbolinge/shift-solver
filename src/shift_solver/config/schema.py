@@ -107,6 +107,17 @@ class ShiftTypeConfig(BaseModel):
     is_undesirable: bool = Field(default=False)
     workers_required: int = Field(default=1, ge=1)
     required_attributes: dict[str, Any] = Field(default_factory=dict)
+    applicable_days: list[int] | None = Field(default=None)
+
+    @field_validator("applicable_days")
+    @classmethod
+    def validate_applicable_days(cls, v: list[int] | None) -> list[int] | None:
+        """Validate that applicable_days contains valid day numbers (0-6)."""
+        if v is not None:
+            for day in v:
+                if not 0 <= day <= 6:
+                    raise ValueError(f"Day must be 0-6, got: {day}")
+        return v
 
     @field_validator("start_time", "end_time", mode="before")
     @classmethod
