@@ -65,6 +65,25 @@ constraints:
     parameters:
       max_periods_absent: 8
 
+  # shift_order_preference:
+  #   enabled: true
+  #   is_hard: false
+  #   weight: 200
+  #   parameters:
+  #     rules:
+  #       - rule_id: weekend_then_night
+  #         trigger_type: category
+  #         trigger_value: weekend
+  #         direction: after
+  #         preferred_type: category
+  #         preferred_value: night
+  #         priority: 2
+  #       - rule_id: night_before_vacation
+  #         trigger_type: unavailability
+  #         direction: before
+  #         preferred_type: shift_type
+  #         preferred_value: night_shift
+
 # Shift type definitions
 shift_types:
   - id: "day_shift"

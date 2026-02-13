@@ -721,3 +721,241 @@ class TestShiftFrequencyFeasibility:
         )
         result = checker.check()
         assert result.is_feasible
+
+
+class TestShiftOrderPreferenceFeasibility:
+    """Tests for shift order preference feasibility checks."""
+
+    def test_no_preferences_is_feasible(
+        self,
+        workers: list[Worker],
+        shift_types: list[ShiftType],
+        period_dates: list[tuple[date, date]],
+    ) -> None:
+        """No shift_order_preferences should be feasible."""
+        checker = FeasibilityChecker(
+            workers=workers,
+            shift_types=shift_types,
+            period_dates=period_dates,
+            shift_order_preferences=[],
+        )
+        result = checker.check()
+        assert result.is_feasible
+
+    def test_unknown_trigger_shift_type(
+        self,
+        workers: list[Worker],
+        shift_types: list[ShiftType],
+        period_dates: list[tuple[date, date]],
+    ) -> None:
+        """Warning when trigger references unknown shift type."""
+        from shift_solver.models import ShiftOrderPreference
+
+        prefs = [
+            ShiftOrderPreference(
+                rule_id="test",
+                trigger_type="shift_type",
+                trigger_value="nonexistent",
+                direction="after",
+                preferred_type="shift_type",
+                preferred_value="day",
+            )
+        ]
+        checker = FeasibilityChecker(
+            workers=workers,
+            shift_types=shift_types,
+            period_dates=period_dates,
+            shift_order_preferences=prefs,
+        )
+        result = checker.check()
+        assert result.is_feasible
+        assert any(
+            w["type"] == "shift_order_preference" and "nonexistent" in w["message"]
+            for w in result.warnings
+        )
+
+    def test_unknown_trigger_category(
+        self,
+        workers: list[Worker],
+        shift_types: list[ShiftType],
+        period_dates: list[tuple[date, date]],
+    ) -> None:
+        """Warning when trigger references unknown category."""
+        from shift_solver.models import ShiftOrderPreference
+
+        prefs = [
+            ShiftOrderPreference(
+                rule_id="test",
+                trigger_type="category",
+                trigger_value="nonexistent_cat",
+                direction="after",
+                preferred_type="shift_type",
+                preferred_value="day",
+            )
+        ]
+        checker = FeasibilityChecker(
+            workers=workers,
+            shift_types=shift_types,
+            period_dates=period_dates,
+            shift_order_preferences=prefs,
+        )
+        result = checker.check()
+        assert result.is_feasible
+        assert any(
+            w["type"] == "shift_order_preference" and "nonexistent_cat" in w["message"]
+            for w in result.warnings
+        )
+
+    def test_unknown_preferred_shift_type(
+        self,
+        workers: list[Worker],
+        shift_types: list[ShiftType],
+        period_dates: list[tuple[date, date]],
+    ) -> None:
+        """Warning when preferred references unknown shift type."""
+        from shift_solver.models import ShiftOrderPreference
+
+        prefs = [
+            ShiftOrderPreference(
+                rule_id="test",
+                trigger_type="shift_type",
+                trigger_value="day",
+                direction="after",
+                preferred_type="shift_type",
+                preferred_value="nonexistent",
+            )
+        ]
+        checker = FeasibilityChecker(
+            workers=workers,
+            shift_types=shift_types,
+            period_dates=period_dates,
+            shift_order_preferences=prefs,
+        )
+        result = checker.check()
+        assert result.is_feasible
+        assert any(
+            w["type"] == "shift_order_preference"
+            and "preferred" in w["message"]
+            and "nonexistent" in w["message"]
+            for w in result.warnings
+        )
+
+    def test_unknown_worker_ids(
+        self,
+        workers: list[Worker],
+        shift_types: list[ShiftType],
+        period_dates: list[tuple[date, date]],
+    ) -> None:
+        """Warning when worker_ids references unknown workers."""
+        from shift_solver.models import ShiftOrderPreference
+
+        prefs = [
+            ShiftOrderPreference(
+                rule_id="test",
+                trigger_type="shift_type",
+                trigger_value="day",
+                direction="after",
+                preferred_type="shift_type",
+                preferred_value="night",
+                worker_ids=frozenset(["UNKNOWN_W"]),
+            )
+        ]
+        checker = FeasibilityChecker(
+            workers=workers,
+            shift_types=shift_types,
+            period_dates=period_dates,
+            shift_order_preferences=prefs,
+        )
+        result = checker.check()
+        assert result.is_feasible
+        assert any(
+            w["type"] == "shift_order_preference" and "UNKNOWN_W" in w["message"]
+            for w in result.warnings
+        )
+
+    def test_few_periods_warning(
+        self,
+        workers: list[Worker],
+        shift_types: list[ShiftType],
+    ) -> None:
+        """Warning when schedule has fewer than 2 periods."""
+        from shift_solver.models import ShiftOrderPreference
+
+        prefs = [
+            ShiftOrderPreference(
+                rule_id="test",
+                trigger_type="shift_type",
+                trigger_value="day",
+                direction="after",
+                preferred_type="shift_type",
+                preferred_value="night",
+            )
+        ]
+        checker = FeasibilityChecker(
+            workers=workers,
+            shift_types=shift_types,
+            period_dates=[(date(2026, 1, 1), date(2026, 1, 7))],
+            shift_order_preferences=prefs,
+        )
+        result = checker.check()
+        assert result.is_feasible
+        assert any(
+            w["type"] == "shift_order_preference" and "fewer than 2" in w["message"]
+            for w in result.warnings
+        )
+
+    def test_all_workers_restricted_from_preferred(
+        self,
+        period_dates: list[tuple[date, date]],
+    ) -> None:
+        """Warning when all applicable workers are restricted from preferred shift."""
+        from shift_solver.models import ShiftOrderPreference
+
+        workers = [
+            Worker(id="W1", name="Alice", restricted_shifts=frozenset(["night"])),
+            Worker(id="W2", name="Bob", restricted_shifts=frozenset(["night"])),
+            Worker(id="W3", name="Charlie"),  # Can work night (for coverage)
+        ]
+        shift_types = [
+            ShiftType(
+                id="day",
+                name="Day Shift",
+                category="day",
+                start_time=time(7, 0),
+                end_time=time(15, 0),
+                duration_hours=8.0,
+                workers_required=1,
+            ),
+            ShiftType(
+                id="night",
+                name="Night Shift",
+                category="night",
+                start_time=time(23, 0),
+                end_time=time(7, 0),
+                duration_hours=8.0,
+                workers_required=1,
+            ),
+        ]
+        prefs = [
+            ShiftOrderPreference(
+                rule_id="test",
+                trigger_type="shift_type",
+                trigger_value="day",
+                direction="after",
+                preferred_type="shift_type",
+                preferred_value="night",
+                worker_ids=frozenset(["W1", "W2"]),  # Only restricted workers
+            )
+        ]
+        checker = FeasibilityChecker(
+            workers=workers,
+            shift_types=shift_types,
+            period_dates=period_dates,
+            shift_order_preferences=prefs,
+        )
+        result = checker.check()
+        assert result.is_feasible
+        assert any(
+            w["type"] == "shift_order_preference" and "restricted" in w["message"]
+            for w in result.warnings
+        )

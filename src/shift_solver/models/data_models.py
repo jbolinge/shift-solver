@@ -143,3 +143,71 @@ class ShiftFrequencyRequirement:
             raise ValueError("max_periods_between must be > 0")
         if not self.shift_types:
             raise ValueError("shift_types must not be empty")
+
+
+TRIGGER_TYPES = ("shift_type", "category", "unavailability")
+DIRECTIONS = ("after", "before")
+PREFERRED_TYPES = ("shift_type", "category")
+
+
+@dataclass(frozen=True)
+class ShiftOrderPreference:
+    """
+    Preference for shift transitions between adjacent periods.
+
+    Specifies that when a trigger condition is met (worker works a shift type,
+    a category, or is unavailable), a preferred shift/category should be
+    assigned in the adjacent period.
+
+    Attributes:
+        rule_id: Unique identifier for this rule
+        trigger_type: What triggers the preference
+            - "shift_type": worker works a specific shift type
+            - "category": worker works any shift in a category
+            - "unavailability": worker is unavailable
+        trigger_value: The shift type ID or category name that triggers.
+            None only for unavailability trigger.
+        direction: Whether the preferred shift is after or before the trigger
+            - "after": preferred at N+1 when trigger at N
+            - "before": preferred at N when trigger at N+1
+        preferred_type: Type of preferred assignment
+            - "shift_type": prefer a specific shift type
+            - "category": prefer any shift in a category
+        preferred_value: The shift type ID or category name preferred
+        priority: Multiplier for penalty weight (higher = more important)
+        worker_ids: If set, only apply to these workers. None = all workers.
+    """
+
+    rule_id: str
+    trigger_type: Literal["shift_type", "category", "unavailability"]
+    trigger_value: str | None
+    direction: Literal["after", "before"]
+    preferred_type: Literal["shift_type", "category"]
+    preferred_value: str
+    priority: int = 1
+    worker_ids: frozenset[str] | None = None
+
+    def __post_init__(self) -> None:
+        """Validate shift order preference fields."""
+        if not self.rule_id:
+            raise ValueError("rule_id must not be empty")
+        if self.trigger_type not in TRIGGER_TYPES:
+            raise ValueError(
+                f"trigger_type must be one of {TRIGGER_TYPES}, "
+                f"got '{self.trigger_type}'"
+            )
+        if self.trigger_type != "unavailability" and self.trigger_value is None:
+            raise ValueError(
+                f"trigger_value is required for trigger_type '{self.trigger_type}'"
+            )
+        if self.direction not in DIRECTIONS:
+            raise ValueError(
+                f"direction must be one of {DIRECTIONS}, got '{self.direction}'"
+            )
+        if self.preferred_type not in PREFERRED_TYPES:
+            raise ValueError(
+                f"preferred_type must be one of {PREFERRED_TYPES}, "
+                f"got '{self.preferred_type}'"
+            )
+        if self.priority < 1:
+            raise ValueError("priority must be >= 1")

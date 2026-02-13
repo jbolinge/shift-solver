@@ -520,3 +520,230 @@ constraints:
         assert parse_shift_frequency_requirements({}) == []
         assert parse_shift_frequency_requirements({"requirements": []}) == []
         assert parse_shift_frequency_requirements(None) == []
+
+
+class TestShiftOrderPreferenceConfig:
+    """Tests for shift_order_preference constraint configuration."""
+
+    def test_valid_rule_config(self) -> None:
+        """Test valid ShiftOrderRuleConfig creation."""
+        from shift_solver.config.schema import ShiftOrderRuleConfig
+
+        rule = ShiftOrderRuleConfig(
+            rule_id="weekend_then_night",
+            trigger_type="category",
+            trigger_value="weekend",
+            direction="after",
+            preferred_type="category",
+            preferred_value="night",
+            priority=2,
+        )
+        assert rule.rule_id == "weekend_then_night"
+        assert rule.trigger_type == "category"
+        assert rule.trigger_value == "weekend"
+        assert rule.direction == "after"
+        assert rule.preferred_type == "category"
+        assert rule.preferred_value == "night"
+        assert rule.priority == 2
+        assert rule.worker_ids is None
+
+    def test_unavailability_rule_config(self) -> None:
+        """Test unavailability trigger (trigger_value optional)."""
+        from shift_solver.config.schema import ShiftOrderRuleConfig
+
+        rule = ShiftOrderRuleConfig(
+            rule_id="night_before_vacation",
+            trigger_type="unavailability",
+            direction="before",
+            preferred_type="shift_type",
+            preferred_value="night_shift",
+        )
+        assert rule.trigger_type == "unavailability"
+        assert rule.trigger_value is None
+
+    def test_trigger_value_required_for_shift_type(self) -> None:
+        """trigger_value is required for shift_type trigger."""
+        from pydantic import ValidationError
+
+        from shift_solver.config.schema import ShiftOrderRuleConfig
+
+        with pytest.raises(ValidationError, match="trigger_value"):
+            ShiftOrderRuleConfig(
+                rule_id="test",
+                trigger_type="shift_type",
+                trigger_value=None,
+                direction="after",
+                preferred_type="shift_type",
+                preferred_value="night_shift",
+            )
+
+    def test_trigger_value_required_for_category(self) -> None:
+        """trigger_value is required for category trigger."""
+        from pydantic import ValidationError
+
+        from shift_solver.config.schema import ShiftOrderRuleConfig
+
+        with pytest.raises(ValidationError, match="trigger_value"):
+            ShiftOrderRuleConfig(
+                rule_id="test",
+                trigger_type="category",
+                trigger_value=None,
+                direction="after",
+                preferred_type="shift_type",
+                preferred_value="night_shift",
+            )
+
+    def test_rule_with_worker_ids(self) -> None:
+        """Test rule scoped to specific workers."""
+        from shift_solver.config.schema import ShiftOrderRuleConfig
+
+        rule = ShiftOrderRuleConfig(
+            rule_id="test",
+            trigger_type="shift_type",
+            trigger_value="day_shift",
+            direction="after",
+            preferred_type="shift_type",
+            preferred_value="night_shift",
+            worker_ids=["W001", "W002"],
+        )
+        assert rule.worker_ids == ["W001", "W002"]
+
+    def test_parameters_config(self) -> None:
+        """Test ShiftOrderPreferenceParametersConfig with rules."""
+        from shift_solver.config.schema import ShiftOrderPreferenceParametersConfig
+
+        params = ShiftOrderPreferenceParametersConfig(
+            rules=[
+                {
+                    "rule_id": "weekend_then_night",
+                    "trigger_type": "category",
+                    "trigger_value": "weekend",
+                    "direction": "after",
+                    "preferred_type": "category",
+                    "preferred_value": "night",
+                }
+            ]
+        )
+        assert len(params.rules) == 1
+        assert params.rules[0].rule_id == "weekend_then_night"
+
+    def test_parse_shift_order_preferences(self) -> None:
+        """Test parsing config dict to ShiftOrderPreference objects."""
+        from shift_solver.config.schema import parse_shift_order_preferences
+        from shift_solver.models import ShiftOrderPreference
+
+        params = {
+            "rules": [
+                {
+                    "rule_id": "weekend_then_night",
+                    "trigger_type": "category",
+                    "trigger_value": "weekend",
+                    "direction": "after",
+                    "preferred_type": "category",
+                    "preferred_value": "night",
+                    "priority": 2,
+                },
+                {
+                    "rule_id": "night_before_vacation",
+                    "trigger_type": "unavailability",
+                    "direction": "before",
+                    "preferred_type": "shift_type",
+                    "preferred_value": "night_shift",
+                },
+            ]
+        }
+
+        prefs = parse_shift_order_preferences(params)
+        assert len(prefs) == 2
+        assert all(isinstance(p, ShiftOrderPreference) for p in prefs)
+        assert prefs[0].rule_id == "weekend_then_night"
+        assert prefs[0].trigger_type == "category"
+        assert prefs[0].priority == 2
+        assert prefs[0].worker_ids is None
+        assert prefs[1].rule_id == "night_before_vacation"
+        assert prefs[1].trigger_type == "unavailability"
+        assert prefs[1].trigger_value is None
+
+    def test_parse_shift_order_preferences_with_worker_ids(self) -> None:
+        """Test parsing with worker_ids."""
+        from shift_solver.config.schema import parse_shift_order_preferences
+
+        params = {
+            "rules": [
+                {
+                    "rule_id": "test",
+                    "trigger_type": "shift_type",
+                    "trigger_value": "day_shift",
+                    "direction": "after",
+                    "preferred_type": "shift_type",
+                    "preferred_value": "night_shift",
+                    "worker_ids": ["W001", "W002"],
+                },
+            ]
+        }
+
+        prefs = parse_shift_order_preferences(params)
+        assert len(prefs) == 1
+        assert prefs[0].worker_ids == frozenset(["W001", "W002"])
+
+    def test_parse_shift_order_preferences_empty(self) -> None:
+        """Return empty list when no rules in parameters."""
+        from shift_solver.config.schema import parse_shift_order_preferences
+
+        assert parse_shift_order_preferences({}) == []
+        assert parse_shift_order_preferences({"rules": []}) == []
+        assert parse_shift_order_preferences(None) == []
+
+    def test_load_shift_order_preference_from_yaml(self) -> None:
+        """Load config with shift_order_preference constraint from YAML."""
+        yaml_content = """
+shift_types:
+  - id: day_shift
+    name: Day Shift
+    category: day
+    start_time: "07:00"
+    end_time: "15:00"
+    duration_hours: 8.0
+  - id: night_shift
+    name: Night Shift
+    category: night
+    start_time: "23:00"
+    end_time: "07:00"
+    duration_hours: 8.0
+
+constraints:
+  shift_order_preference:
+    enabled: true
+    is_hard: false
+    weight: 200
+    parameters:
+      rules:
+        - rule_id: weekend_then_night
+          trigger_type: category
+          trigger_value: weekend
+          direction: after
+          preferred_type: category
+          preferred_value: night
+          priority: 2
+        - rule_id: night_before_vacation
+          trigger_type: unavailability
+          direction: before
+          preferred_type: shift_type
+          preferred_value: night_shift
+"""
+
+        with NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            f.write(yaml_content)
+            f.flush()
+
+            config = ShiftSolverConfig.load_from_yaml(Path(f.name))
+
+        assert "shift_order_preference" in config.constraints
+        sop_config = config.constraints["shift_order_preference"]
+        assert sop_config.enabled is True
+        assert sop_config.is_hard is False
+        assert sop_config.weight == 200
+        assert "rules" in sop_config.parameters
+        rules = sop_config.parameters["rules"]
+        assert len(rules) == 2
+        assert rules[0]["rule_id"] == "weekend_then_night"

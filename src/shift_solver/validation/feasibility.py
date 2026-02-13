@@ -7,6 +7,7 @@ from typing import Any
 from shift_solver.models import (
     Availability,
     ShiftFrequencyRequirement,
+    ShiftOrderPreference,
     ShiftType,
     Worker,
 )
@@ -58,6 +59,7 @@ class FeasibilityChecker:
         period_dates: list[tuple[date, date]],
         availabilities: list[Availability] | None = None,
         shift_frequency_requirements: list[ShiftFrequencyRequirement] | None = None,
+        shift_order_preferences: list[ShiftOrderPreference] | None = None,
     ) -> None:
         """
         Initialize the feasibility checker.
@@ -68,12 +70,14 @@ class FeasibilityChecker:
             period_dates: List of (start_date, end_date) for each period
             availabilities: Optional list of availability records
             shift_frequency_requirements: Optional list of shift frequency requirements
+            shift_order_preferences: Optional list of shift order preferences
         """
         self.workers = workers
         self.shift_types = shift_types
         self.period_dates = period_dates
         self.availabilities = availabilities or []
         self.shift_frequency_requirements = shift_frequency_requirements or []
+        self.shift_order_preferences = shift_order_preferences or []
 
     def check(self) -> FeasibilityResult:
         """
@@ -91,6 +95,7 @@ class FeasibilityChecker:
         self._check_availability_conflicts(result)
         self._check_combined_feasibility(result)
         self._check_shift_frequency_requirements(result)
+        self._check_shift_order_preferences(result)
 
         if result.is_feasible:
             logger.info("Feasibility check passed")
@@ -328,3 +333,98 @@ class FeasibilityChecker:
                     max_periods_between=req.max_periods_between,
                     num_periods=num_periods,
                 )
+
+    def _check_shift_order_preferences(self, result: FeasibilityResult) -> None:
+        """Check that shift order preference rules reference valid entities."""
+        if not self.shift_order_preferences:
+            return
+
+        worker_map = {w.id: w for w in self.workers}
+        shift_type_ids = {st.id for st in self.shift_types}
+        categories = {st.category for st in self.shift_types}
+        num_periods = len(self.period_dates)
+
+        if num_periods < 2:
+            for pref in self.shift_order_preferences:
+                result.add_warning(
+                    "shift_order_preference",
+                    f"Rule '{pref.rule_id}': schedule has fewer than 2 periods, "
+                    f"constraint will have no effect",
+                    rule_id=pref.rule_id,
+                )
+            return
+
+        for pref in self.shift_order_preferences:
+            # Check trigger references
+            if (
+                pref.trigger_type == "shift_type"
+                and pref.trigger_value not in shift_type_ids
+            ):
+                result.add_warning(
+                    "shift_order_preference",
+                    f"Rule '{pref.rule_id}': unknown trigger shift type "
+                    f"'{pref.trigger_value}'",
+                    rule_id=pref.rule_id,
+                )
+            elif (
+                pref.trigger_type == "category"
+                and pref.trigger_value not in categories
+            ):
+                result.add_warning(
+                    "shift_order_preference",
+                    f"Rule '{pref.rule_id}': unknown trigger category "
+                    f"'{pref.trigger_value}'",
+                    rule_id=pref.rule_id,
+                )
+
+            # Check preferred references
+            if (
+                pref.preferred_type == "shift_type"
+                and pref.preferred_value not in shift_type_ids
+            ):
+                result.add_warning(
+                    "shift_order_preference",
+                    f"Rule '{pref.rule_id}': unknown preferred shift type "
+                    f"'{pref.preferred_value}'",
+                    rule_id=pref.rule_id,
+                )
+            elif (
+                pref.preferred_type == "category"
+                and pref.preferred_value not in categories
+            ):
+                result.add_warning(
+                    "shift_order_preference",
+                    f"Rule '{pref.rule_id}': unknown preferred category "
+                    f"'{pref.preferred_value}'",
+                    rule_id=pref.rule_id,
+                )
+
+            # Check worker_ids
+            if pref.worker_ids:
+                unknown_workers = pref.worker_ids - set(worker_map.keys())
+                if unknown_workers:
+                    result.add_warning(
+                        "shift_order_preference",
+                        f"Rule '{pref.rule_id}': unknown worker IDs: "
+                        f"{sorted(unknown_workers)}",
+                        rule_id=pref.rule_id,
+                    )
+
+            # Check if applicable workers are restricted from all preferred shifts
+            applicable_workers = (
+                [worker_map[wid] for wid in pref.worker_ids if wid in worker_map]
+                if pref.worker_ids
+                else list(self.workers)
+            )
+            if pref.preferred_type == "shift_type" and pref.preferred_value in shift_type_ids:
+                all_restricted = all(
+                    not w.can_work_shift(pref.preferred_value)
+                    for w in applicable_workers
+                )
+                if applicable_workers and all_restricted:
+                    result.add_warning(
+                        "shift_order_preference",
+                        f"Rule '{pref.rule_id}': all applicable workers are "
+                        f"restricted from preferred shift '{pref.preferred_value}'",
+                        rule_id=pref.rule_id,
+                    )

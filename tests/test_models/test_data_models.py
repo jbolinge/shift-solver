@@ -4,7 +4,11 @@ from datetime import date
 
 import pytest
 
-from shift_solver.models.data_models import Availability, SchedulingRequest
+from shift_solver.models.data_models import (
+    Availability,
+    SchedulingRequest,
+    ShiftOrderPreference,
+)
 
 
 class TestAvailability:
@@ -284,4 +288,176 @@ class TestShiftFrequencyRequirementValidation:
                 worker_id="W001",
                 shift_types=frozenset(),
                 max_periods_between=4,
+            )
+
+
+class TestShiftOrderPreference:
+    """Tests for ShiftOrderPreference dataclass."""
+
+    def test_create_shift_type_trigger_after(self) -> None:
+        """Create a shift_type trigger with 'after' direction."""
+        pref = ShiftOrderPreference(
+            rule_id="weekend_then_night",
+            trigger_type="shift_type",
+            trigger_value="weekend",
+            direction="after",
+            preferred_type="shift_type",
+            preferred_value="night_shift",
+        )
+
+        assert pref.rule_id == "weekend_then_night"
+        assert pref.trigger_type == "shift_type"
+        assert pref.trigger_value == "weekend"
+        assert pref.direction == "after"
+        assert pref.preferred_type == "shift_type"
+        assert pref.preferred_value == "night_shift"
+        assert pref.priority == 1
+        assert pref.worker_ids is None
+
+    def test_create_category_trigger_before(self) -> None:
+        """Create a category trigger with 'before' direction."""
+        pref = ShiftOrderPreference(
+            rule_id="night_before_vacation",
+            trigger_type="category",
+            trigger_value="weekend",
+            direction="before",
+            preferred_type="category",
+            preferred_value="night",
+            priority=2,
+        )
+
+        assert pref.trigger_type == "category"
+        assert pref.direction == "before"
+        assert pref.preferred_type == "category"
+        assert pref.priority == 2
+
+    def test_create_unavailability_trigger(self) -> None:
+        """Create an unavailability trigger (trigger_value is None)."""
+        pref = ShiftOrderPreference(
+            rule_id="night_before_vacation",
+            trigger_type="unavailability",
+            trigger_value=None,
+            direction="before",
+            preferred_type="shift_type",
+            preferred_value="night_shift",
+        )
+
+        assert pref.trigger_type == "unavailability"
+        assert pref.trigger_value is None
+
+    def test_create_with_worker_ids(self) -> None:
+        """Create preference scoped to specific workers."""
+        pref = ShiftOrderPreference(
+            rule_id="test_rule",
+            trigger_type="shift_type",
+            trigger_value="day_shift",
+            direction="after",
+            preferred_type="shift_type",
+            preferred_value="night_shift",
+            worker_ids=frozenset(["W001", "W002"]),
+        )
+
+        assert pref.worker_ids == frozenset(["W001", "W002"])
+
+    def test_create_with_priority(self) -> None:
+        """Create preference with custom priority."""
+        pref = ShiftOrderPreference(
+            rule_id="high_priority",
+            trigger_type="shift_type",
+            trigger_value="day_shift",
+            direction="after",
+            preferred_type="shift_type",
+            preferred_value="night_shift",
+            priority=5,
+        )
+
+        assert pref.priority == 5
+
+
+class TestShiftOrderPreferenceValidation:
+    """Tests for ShiftOrderPreference validation."""
+
+    def test_empty_rule_id(self) -> None:
+        """rule_id must not be empty."""
+        with pytest.raises(ValueError, match="rule_id must not be empty"):
+            ShiftOrderPreference(
+                rule_id="",
+                trigger_type="shift_type",
+                trigger_value="day_shift",
+                direction="after",
+                preferred_type="shift_type",
+                preferred_value="night_shift",
+            )
+
+    def test_trigger_value_required_for_shift_type(self) -> None:
+        """trigger_value is required for shift_type trigger."""
+        with pytest.raises(ValueError, match="trigger_value is required"):
+            ShiftOrderPreference(
+                rule_id="test",
+                trigger_type="shift_type",
+                trigger_value=None,
+                direction="after",
+                preferred_type="shift_type",
+                preferred_value="night_shift",
+            )
+
+    def test_trigger_value_required_for_category(self) -> None:
+        """trigger_value is required for category trigger."""
+        with pytest.raises(ValueError, match="trigger_value is required"):
+            ShiftOrderPreference(
+                rule_id="test",
+                trigger_type="category",
+                trigger_value=None,
+                direction="after",
+                preferred_type="shift_type",
+                preferred_value="night_shift",
+            )
+
+    def test_invalid_trigger_type(self) -> None:
+        """trigger_type must be valid."""
+        with pytest.raises(ValueError, match="trigger_type must be one of"):
+            ShiftOrderPreference(
+                rule_id="test",
+                trigger_type="invalid",  # type: ignore
+                trigger_value="day",
+                direction="after",
+                preferred_type="shift_type",
+                preferred_value="night_shift",
+            )
+
+    def test_invalid_direction(self) -> None:
+        """direction must be 'after' or 'before'."""
+        with pytest.raises(ValueError, match="direction must be one of"):
+            ShiftOrderPreference(
+                rule_id="test",
+                trigger_type="shift_type",
+                trigger_value="day",
+                direction="during",  # type: ignore
+                preferred_type="shift_type",
+                preferred_value="night_shift",
+            )
+
+    def test_invalid_preferred_type(self) -> None:
+        """preferred_type must be valid."""
+        with pytest.raises(ValueError, match="preferred_type must be one of"):
+            ShiftOrderPreference(
+                rule_id="test",
+                trigger_type="shift_type",
+                trigger_value="day",
+                direction="after",
+                preferred_type="invalid",  # type: ignore
+                preferred_value="night_shift",
+            )
+
+    def test_priority_must_be_at_least_one(self) -> None:
+        """priority must be >= 1."""
+        with pytest.raises(ValueError, match="priority must be >= 1"):
+            ShiftOrderPreference(
+                rule_id="test",
+                trigger_type="shift_type",
+                trigger_value="day",
+                direction="after",
+                preferred_type="shift_type",
+                preferred_value="night_shift",
+                priority=0,
             )

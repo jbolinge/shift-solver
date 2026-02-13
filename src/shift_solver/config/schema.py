@@ -9,7 +9,7 @@ import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 if TYPE_CHECKING:
-    from shift_solver.models import ShiftFrequencyRequirement
+    from shift_solver.models import ShiftFrequencyRequirement, ShiftOrderPreference
 
 
 class DateFormat(str, Enum):
@@ -92,6 +92,72 @@ def parse_shift_frequency_requirements(
             max_periods_between=req.max_periods_between,
         )
         for req in validated.requirements
+    ]
+
+
+class ShiftOrderRuleConfig(BaseModel):
+    """Configuration for a single shift order preference rule."""
+
+    rule_id: str = Field(min_length=1)
+    trigger_type: str = Field(pattern=r"^(shift_type|category|unavailability)$")
+    trigger_value: str | None = Field(default=None)
+    direction: str = Field(pattern=r"^(after|before)$")
+    preferred_type: str = Field(pattern=r"^(shift_type|category)$")
+    preferred_value: str = Field(min_length=1)
+    priority: int = Field(default=1, ge=1)
+    worker_ids: list[str] | None = Field(default=None)
+
+    @model_validator(mode="after")
+    def validate_trigger_value(self) -> "ShiftOrderRuleConfig":
+        """Ensure trigger_value is set for shift_type and category triggers."""
+        if self.trigger_type in ("shift_type", "category") and not self.trigger_value:
+            raise ValueError(
+                f"trigger_value is required for trigger_type '{self.trigger_type}'"
+            )
+        return self
+
+
+class ShiftOrderPreferenceParametersConfig(BaseModel):
+    """Configuration for shift_order_preference constraint parameters."""
+
+    rules: list[ShiftOrderRuleConfig] = Field(default_factory=list)
+
+
+def parse_shift_order_preferences(
+    parameters: dict[str, Any] | None,
+) -> list["ShiftOrderPreference"]:
+    """
+    Parse shift_order_preference constraint parameters into ShiftOrderPreference objects.
+
+    Args:
+        parameters: The constraint parameters dict from config
+
+    Returns:
+        List of ShiftOrderPreference objects
+    """
+    from shift_solver.models import ShiftOrderPreference
+
+    if not parameters:
+        return []
+
+    rules_data = parameters.get("rules", [])
+    if not rules_data:
+        return []
+
+    validated = ShiftOrderPreferenceParametersConfig(rules=rules_data)
+
+    return [
+        ShiftOrderPreference(
+            rule_id=rule.rule_id,
+            trigger_type=rule.trigger_type,  # type: ignore[arg-type]
+            trigger_value=rule.trigger_value,
+            direction=rule.direction,  # type: ignore[arg-type]
+            preferred_type=rule.preferred_type,  # type: ignore[arg-type]
+            preferred_value=rule.preferred_value,
+            priority=rule.priority,
+            worker_ids=frozenset(rule.worker_ids) if rule.worker_ids else None,
+        )
+        for rule in validated.rules
     ]
 
 

@@ -10,6 +10,9 @@ from shift_solver.constraints.request import RequestConstraint
 from shift_solver.constraints.restriction import RestrictionConstraint
 from shift_solver.constraints.sequence import SequenceConstraint
 from shift_solver.constraints.shift_frequency import ShiftFrequencyConstraint
+from shift_solver.constraints.shift_order_preference import (
+    ShiftOrderPreferenceConstraint,
+)
 
 __all__ = [
     "BaseConstraint",
@@ -23,4 +26,5 @@ __all__ = [
     "RestrictionConstraint",
     "SequenceConstraint",
     "ShiftFrequencyConstraint",
+    "ShiftOrderPreferenceConstraint",
 ]

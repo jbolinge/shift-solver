@@ -6,12 +6,16 @@ from typing import Any
 
 from ortools.sat.python import cp_model
 
-from shift_solver.config.schema import parse_shift_frequency_requirements
+from shift_solver.config.schema import (
+    parse_shift_frequency_requirements,
+    parse_shift_order_preferences,
+)
 from shift_solver.constraints.base import ConstraintConfig
 from shift_solver.models import (
     Availability,
     SchedulingRequest,
     ShiftFrequencyRequirement,
+    ShiftOrderPreference,
     ShiftType,
     Worker,
 )
@@ -61,6 +65,7 @@ class ShiftSolver:
         requests: list[SchedulingRequest] | None = None,
         constraint_configs: dict[str, ConstraintConfig] | None = None,
         shift_frequency_requirements: list[ShiftFrequencyRequirement] | None = None,
+        shift_order_preferences: list[ShiftOrderPreference] | None = None,
     ) -> None:
         """
         Initialize the ShiftSolver.
@@ -75,6 +80,8 @@ class ShiftSolver:
             constraint_configs: Optional dict mapping constraint_id to config
             shift_frequency_requirements: Optional list of shift frequency requirements.
                 If not provided, will be parsed from constraint_configs["shift_frequency"]
+            shift_order_preferences: Optional list of shift order preferences.
+                If not provided, will be parsed from constraint_configs["shift_order_preference"]
 
         Raises:
             ValueError: If required parameters are invalid
@@ -106,6 +113,18 @@ class ShiftSolver:
                 )
             else:
                 self.shift_frequency_requirements = []
+
+        # Parse shift_order_preferences from config if not provided
+        if shift_order_preferences is not None:
+            self.shift_order_preferences = shift_order_preferences
+        else:
+            sop_config = self.constraint_configs.get("shift_order_preference")
+            if sop_config and sop_config.parameters:
+                self.shift_order_preferences = parse_shift_order_preferences(
+                    sop_config.parameters
+                )
+            else:
+                self.shift_order_preferences = []
 
         # These are set during solve
         self._model: cp_model.CpModel | None = None
@@ -209,6 +228,7 @@ class ShiftSolver:
             "period_dates": self.period_dates,
             "requests": self.requests,
             "shift_frequency_requirements": self.shift_frequency_requirements,
+            "shift_order_preferences": self.shift_order_preferences,
         }
 
         # Initialize objective builder for soft constraints
@@ -292,5 +312,6 @@ class ShiftSolver:
             period_dates=self.period_dates,
             availabilities=self.availabilities,
             shift_frequency_requirements=self.shift_frequency_requirements,
+            shift_order_preferences=self.shift_order_preferences,
         )
         return checker.check()

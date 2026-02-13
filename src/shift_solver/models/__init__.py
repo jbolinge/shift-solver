@@ -4,6 +4,7 @@ from shift_solver.models.data_models import (
     Availability,
     SchedulingRequest,
     ShiftFrequencyRequirement,
+    ShiftOrderPreference,
 )
 from shift_solver.models.schedule import PeriodAssignment, Schedule
 from shift_solver.models.shift import ShiftInstance, ShiftType
@@ -18,4 +19,5 @@ __all__ = [
     "Availability",
     "SchedulingRequest",
     "ShiftFrequencyRequirement",
+    "ShiftOrderPreference",
 ]

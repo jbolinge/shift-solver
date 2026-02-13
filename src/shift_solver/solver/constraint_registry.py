@@ -133,6 +133,7 @@ def register_builtin_constraints() -> None:
         RestrictionConstraint,
         SequenceConstraint,
         ShiftFrequencyConstraint,
+        ShiftOrderPreferenceConstraint,
     )
 
     # Register hard constraints if not already registered by decorators
@@ -207,4 +208,16 @@ def register_builtin_constraints() -> None:
             constraint_class=ShiftFrequencyConstraint,
             is_hard=False,
             default_config=ConstraintConfig(enabled=False, is_hard=False, weight=500),
+        )
+
+    if "shift_order_preference" not in ConstraintRegistry._soft_constraints:
+        ConstraintRegistry._soft_constraints["shift_order_preference"] = (
+            ConstraintRegistration(
+                constraint_id="shift_order_preference",
+                constraint_class=ShiftOrderPreferenceConstraint,
+                is_hard=False,
+                default_config=ConstraintConfig(
+                    enabled=False, is_hard=False, weight=200
+                ),
+            )
         )
