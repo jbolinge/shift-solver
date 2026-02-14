@@ -243,8 +243,8 @@ class TestPlotlyVisualizationE2E:
         visualizer.export_all(schedule, output)
 
         # Verify heatmap values by recreating the chart and inspecting data
-        from shift_solver.io.plotly_handler.charts.heatmap import create_heatmap
         from shift_solver.io.plotly_handler.charts.coverage import create_coverage_chart
+        from shift_solver.io.plotly_handler.charts.heatmap import create_heatmap
         from shift_solver.io.plotly_handler.charts.sunburst import create_sunburst
 
         # Heatmap: each worker has 1 shift per period = 2 total

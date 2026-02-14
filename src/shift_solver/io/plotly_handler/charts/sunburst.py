@@ -15,7 +15,6 @@ from shift_solver.models.schedule import Schedule
 def create_sunburst(schedule: Schedule) -> go.Figure:
     """Create a hierarchical sunburst: Schedule > Categories > Shift Types > Workers."""
     flat_records = flatten_assignments(schedule)
-    shift_type_map = {st.id: st for st in schedule.shift_types}
     worker_map = {w.id: w for w in schedule.workers}
 
     total_assignments = len(flat_records)

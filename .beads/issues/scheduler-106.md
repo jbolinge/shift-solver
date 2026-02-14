@@ -2,7 +2,7 @@
 id: scheduler-106
 title: "Dashboard index page and PlotlyVisualizer.export_all()"
 type: task
-status: open
+status: closed
 priority: 1
 created: 2026-02-13
 updated: 2026-02-13

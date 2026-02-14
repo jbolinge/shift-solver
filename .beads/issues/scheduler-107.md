@@ -2,7 +2,7 @@
 id: scheduler-107
 title: "CLI integration: extend export command with plotly format"
 type: task
-status: open
+status: closed
 priority: 1
 created: 2026-02-13
 updated: 2026-02-13

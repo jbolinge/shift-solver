@@ -3,8 +3,6 @@
 from datetime import date, time
 from pathlib import Path
 
-import pytest
-
 from shift_solver.io.plotly_handler import PlotlyVisualizer
 from shift_solver.models import ShiftType, Worker
 from shift_solver.models.schedule import PeriodAssignment, Schedule

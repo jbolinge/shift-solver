@@ -3,7 +3,6 @@
 from datetime import date, time
 
 import plotly.graph_objects as go
-import pytest
 
 from shift_solver.io.plotly_handler.charts.sunburst import create_sunburst
 from shift_solver.models import ShiftType, Worker

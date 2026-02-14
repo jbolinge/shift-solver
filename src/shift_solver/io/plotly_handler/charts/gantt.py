@@ -1,6 +1,8 @@
 """Gantt Timeline chart."""
 
+from dataclasses import dataclass
 from datetime import datetime, timedelta
+from typing import Any
 
 import plotly.graph_objects as go
 
@@ -8,13 +10,21 @@ from shift_solver.io.plotly_handler.utils import get_category_color, get_default
 from shift_solver.models.schedule import Schedule
 
 
+@dataclass
+class _GanttRecord:
+    worker: str
+    start: datetime
+    end: datetime
+    shift: str
+    category: str
+
+
 def create_gantt(schedule: Schedule) -> go.Figure:
     """Create a Gantt timeline showing worker shift assignments."""
     shift_type_map = {st.id: st for st in schedule.shift_types}
     worker_map = {w.id: w for w in schedule.workers}
 
-    # Group records by category for separate traces
-    category_records: dict[str, list[dict[str, str | datetime]]] = {}
+    category_records: dict[str, list[_GanttRecord]] = {}
 
     for period in schedule.periods:
         for worker_id, shifts in period.assignments.items():
@@ -31,32 +41,31 @@ def create_gantt(schedule: Schedule) -> go.Figure:
                 if category not in category_records:
                     category_records[category] = []
                 category_records[category].append(
-                    {
-                        "worker": worker_name,
-                        "start": start,
-                        "end": end,
-                        "shift": st.name,
-                        "category": category,
-                    }
+                    _GanttRecord(
+                        worker=worker_name,
+                        start=start,
+                        end=end,
+                        shift=st.name,
+                        category=category,
+                    )
                 )
 
     fig = go.Figure()
     for category, records in sorted(category_records.items()):
         color = get_category_color(category)
-        # Convert timedelta to milliseconds for Plotly JSON serialization
         durations_ms = [
-            (rec["end"] - rec["start"]).total_seconds() * 1000  # type: ignore[union-attr]
+            (rec.end - rec.start).total_seconds() * 1000
             for rec in records
         ]
         fig.add_trace(
             go.Bar(
                 x=durations_ms,
-                y=[rec["worker"] for rec in records],
-                base=[rec["start"] for rec in records],
+                y=[rec.worker for rec in records],
+                base=[rec.start for rec in records],
                 orientation="h",
                 name=category,
                 marker_color=color,
-                text=[rec["shift"] for rec in records],
+                text=[rec.shift for rec in records],
                 hovertemplate=(
                     "Worker: %{y}<br>"
                     "Shift: %{text}<br>"

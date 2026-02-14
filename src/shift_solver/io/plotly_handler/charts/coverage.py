@@ -1,5 +1,7 @@
 """Coverage Time Series chart."""
 
+from datetime import date, timedelta
+
 import plotly.graph_objects as go
 
 from shift_solver.io.plotly_handler.utils import get_category_color, get_default_layout
@@ -8,14 +10,12 @@ from shift_solver.models.schedule import Schedule
 
 def _has_applicable_days_in_period(
     shift_type_applicable_days: frozenset[int] | None,
-    period_start: "date",
-    period_end: "date",
+    period_start: date,
+    period_end: date,
 ) -> bool:
     """Check if any day in the period matches the shift's applicable days."""
     if shift_type_applicable_days is None:
         return True
-    from datetime import timedelta
-
     current = period_start
     while current <= period_end:
         if current.weekday() in shift_type_applicable_days:
@@ -26,7 +26,6 @@ def _has_applicable_days_in_period(
 
 def create_coverage_chart(schedule: Schedule) -> go.Figure:
     """Create a line chart showing coverage percentage over time per shift type."""
-    from datetime import date  # noqa: F811
 
     fig = go.Figure()
 

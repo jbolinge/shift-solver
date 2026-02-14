@@ -2,8 +2,6 @@
 
 from datetime import date, time
 
-import pytest
-
 from shift_solver.io.plotly_handler.utils import (
     flatten_assignments,
     get_category_color,

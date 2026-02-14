@@ -2,8 +2,6 @@
 
 from pathlib import Path
 
-import pytest
-
 from shift_solver.io.plotly_handler import PlotlyHandlerError, PlotlyVisualizer
 
 
@@ -30,8 +28,7 @@ class TestPlotlyHandlerSkeleton:
         """export_all creates the output directory."""
         from datetime import date
 
-        from shift_solver.models import ShiftType, Worker
-        from shift_solver.models.schedule import PeriodAssignment, Schedule
+        from shift_solver.models.schedule import Schedule
 
         schedule = Schedule(
             schedule_id="test",

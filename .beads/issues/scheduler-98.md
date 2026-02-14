@@ -2,7 +2,7 @@
 id: scheduler-98
 title: "Plotly Interactive Visualization"
 type: epic
-status: open
+status: closed
 priority: 1
 created: 2026-02-13
 updated: 2026-02-13
