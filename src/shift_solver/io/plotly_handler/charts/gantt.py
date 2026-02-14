@@ -43,9 +43,14 @@ def create_gantt(schedule: Schedule) -> go.Figure:
     fig = go.Figure()
     for category, records in sorted(category_records.items()):
         color = get_category_color(category)
+        # Convert timedelta to milliseconds for Plotly JSON serialization
+        durations_ms = [
+            (rec["end"] - rec["start"]).total_seconds() * 1000  # type: ignore[union-attr]
+            for rec in records
+        ]
         fig.add_trace(
             go.Bar(
-                x=[rec["end"] - rec["start"] for rec in records],  # type: ignore[operator]
+                x=durations_ms,
                 y=[rec["worker"] for rec in records],
                 base=[rec["start"] for rec in records],
                 orientation="h",
@@ -56,7 +61,6 @@ def create_gantt(schedule: Schedule) -> go.Figure:
                     "Worker: %{y}<br>"
                     "Shift: %{text}<br>"
                     "Start: %{base}<br>"
-                    "Duration: %{x}<br>"
                     "<extra></extra>"
                 ),
             )
