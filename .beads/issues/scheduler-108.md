@@ -2,7 +2,7 @@
 id: scheduler-108
 title: "E2E integration test for Plotly visualization"
 type: task
-status: open
+status: closed
 priority: 2
 created: 2026-02-13
 updated: 2026-02-13

@@ -182,9 +182,9 @@ def _import_requests(
 @click.option(
     "--format",
     "output_format",
-    type=click.Choice(["excel", "json"]),
+    type=click.Choice(["excel", "json", "plotly"]),
     default="excel",
-    help="Output format",
+    help="Output format (plotly uses output as directory path)",
 )
 @click.option(
     "--include-worker-view/--no-worker-view",
@@ -213,6 +213,16 @@ def export_schedule(
         with open(output, "w") as f:
             json.dump(schedule_data, f, indent=2)
         click.echo(f"Schedule exported to: {output}")
+
+    elif output_format == "plotly":
+        from shift_solver.io import PlotlyVisualizer
+
+        schedule_obj = build_schedule_from_json(schedule_data)
+        visualizer = PlotlyVisualizer()
+        visualizer.export_all(schedule_obj, output)
+
+        chart_count = len(list(output.glob("*.html"))) - 1  # Exclude index
+        click.echo(f"Exported {chart_count} charts + index to: {output}/")
 
     elif output_format == "excel":
         # Build Schedule object using helper
