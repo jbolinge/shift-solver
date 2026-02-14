@@ -2,6 +2,7 @@
 
 from shift_solver.io.csv_loader import CSVLoader, CSVLoaderError
 from shift_solver.io.excel_handler import ExcelExporter, ExcelHandlerError, ExcelLoader
+from shift_solver.io.plotly_handler import PlotlyHandlerError, PlotlyVisualizer
 from shift_solver.io.sample_generator import IndustryPreset, SampleGenerator
 
 __all__ = [
@@ -10,6 +11,8 @@ __all__ = [
     "ExcelLoader",
     "ExcelExporter",
     "ExcelHandlerError",
+    "PlotlyVisualizer",
+    "PlotlyHandlerError",
     "SampleGenerator",
     "IndustryPreset",
 ]
