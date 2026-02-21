@@ -1398,3 +1398,273 @@ class TestHardVsSoftRequestSemantics:
         # Soft constraints SHOULD create violation variables
         assert len(constraint.violation_variables) > 0
         assert len(constraint.violation_priorities) > 0
+
+
+class TestPerRequestHardSoft:
+    """Tests for per-request is_hard override."""
+
+    def test_is_hard_none_falls_back_to_global_soft(
+        self,
+        model_and_variables: tuple[cp_model.CpModel, SolverVariables],
+        workers: list[Worker],
+        shift_types: list[ShiftType],
+        period_dates: list[tuple[date, date]],
+    ) -> None:
+        """is_hard=None on request uses global config (soft)."""
+        model, variables = model_and_variables
+
+        requests = [
+            SchedulingRequest(
+                worker_id="W001",
+                start_date=date(2026, 1, 5),
+                end_date=date(2026, 1, 11),
+                request_type="positive",
+                shift_type_id="day",
+                priority=1,
+                is_hard=None,
+            )
+        ]
+
+        config = ConstraintConfig(enabled=True, is_hard=False, weight=100)
+        constraint = RequestConstraint(model, variables, config)
+        constraint.apply(
+            workers=workers,
+            shift_types=shift_types,
+            num_periods=4,
+            requests=requests,
+            period_dates=period_dates,
+        )
+
+        # Should create violation variables (soft behavior)
+        assert len(constraint.violation_variables) > 0
+
+    def test_is_hard_none_falls_back_to_global_hard(
+        self,
+        model_and_variables: tuple[cp_model.CpModel, SolverVariables],
+        workers: list[Worker],
+        shift_types: list[ShiftType],
+        period_dates: list[tuple[date, date]],
+    ) -> None:
+        """is_hard=None on request uses global config (hard)."""
+        model, variables = model_and_variables
+
+        requests = [
+            SchedulingRequest(
+                worker_id="W001",
+                start_date=date(2026, 1, 5),
+                end_date=date(2026, 1, 11),
+                request_type="positive",
+                shift_type_id="day",
+                priority=1,
+                is_hard=None,
+            )
+        ]
+
+        config = ConstraintConfig(enabled=True, is_hard=True, weight=100)
+        constraint = RequestConstraint(model, variables, config)
+        constraint.apply(
+            workers=workers,
+            shift_types=shift_types,
+            num_periods=4,
+            requests=requests,
+            period_dates=period_dates,
+        )
+
+        # Should NOT create violation variables (hard behavior)
+        assert len(constraint.violation_variables) == 0
+
+    def test_per_request_hard_overrides_global_soft(
+        self,
+        model_and_variables: tuple[cp_model.CpModel, SolverVariables],
+        workers: list[Worker],
+        shift_types: list[ShiftType],
+        period_dates: list[tuple[date, date]],
+    ) -> None:
+        """is_hard=True on request overrides global is_hard=False."""
+        model, variables = model_and_variables
+
+        requests = [
+            SchedulingRequest(
+                worker_id="W001",
+                start_date=date(2026, 1, 5),
+                end_date=date(2026, 1, 11),
+                request_type="positive",
+                shift_type_id="day",
+                priority=1,
+                is_hard=True,
+            )
+        ]
+
+        config = ConstraintConfig(enabled=True, is_hard=False, weight=100)
+        constraint = RequestConstraint(model, variables, config)
+        constraint.apply(
+            workers=workers,
+            shift_types=shift_types,
+            num_periods=4,
+            requests=requests,
+            period_dates=period_dates,
+        )
+
+        # Hard request should NOT create violation variables
+        assert len(constraint.violation_variables) == 0
+
+    def test_per_request_soft_overrides_global_hard(
+        self,
+        model_and_variables: tuple[cp_model.CpModel, SolverVariables],
+        workers: list[Worker],
+        shift_types: list[ShiftType],
+        period_dates: list[tuple[date, date]],
+    ) -> None:
+        """is_hard=False on request overrides global is_hard=True."""
+        model, variables = model_and_variables
+
+        requests = [
+            SchedulingRequest(
+                worker_id="W001",
+                start_date=date(2026, 1, 5),
+                end_date=date(2026, 1, 11),
+                request_type="positive",
+                shift_type_id="day",
+                priority=1,
+                is_hard=False,
+            )
+        ]
+
+        config = ConstraintConfig(enabled=True, is_hard=True, weight=100)
+        constraint = RequestConstraint(model, variables, config)
+        constraint.apply(
+            workers=workers,
+            shift_types=shift_types,
+            num_periods=4,
+            requests=requests,
+            period_dates=period_dates,
+        )
+
+        # Soft request should create violation variables
+        assert len(constraint.violation_variables) > 0
+
+    def test_mixed_hard_soft_requests_in_same_schedule(
+        self,
+        workers: list[Worker],
+        shift_types: list[ShiftType],
+        period_dates: list[tuple[date, date]],
+    ) -> None:
+        """Hard requests enforced, soft requests violated when needed."""
+        model = cp_model.CpModel()
+        builder = VariableBuilder(model, workers, shift_types, num_periods=4)
+        variables = builder.build()
+
+        requests = [
+            # Hard: W001 must NOT work night in period 0
+            SchedulingRequest(
+                worker_id="W001",
+                start_date=date(2026, 1, 5),
+                end_date=date(2026, 1, 11),
+                request_type="negative",
+                shift_type_id="night",
+                priority=1,
+                is_hard=True,
+            ),
+            # Soft: W001 prefers day in period 0
+            SchedulingRequest(
+                worker_id="W001",
+                start_date=date(2026, 1, 5),
+                end_date=date(2026, 1, 11),
+                request_type="positive",
+                shift_type_id="day",
+                priority=1,
+                is_hard=False,
+            ),
+        ]
+
+        # Global config is soft
+        config = ConstraintConfig(enabled=True, is_hard=False, weight=100)
+        constraint = RequestConstraint(model, variables, config)
+        constraint.apply(
+            workers=workers,
+            shift_types=shift_types,
+            num_periods=4,
+            requests=requests,
+            period_dates=period_dates,
+        )
+
+        # Only the soft request should create violation variables
+        assert len(constraint.violation_variables) == 1
+
+        # Add coverage
+        for period in range(4):
+            for shift_type in shift_types:
+                vars_for_shift = [
+                    variables.get_assignment_var(w.id, period, shift_type.id)
+                    for w in workers
+                ]
+                model.add(sum(vars_for_shift) == shift_type.workers_required)
+
+        # Minimize violations
+        if constraint.violation_variables:
+            total = sum(constraint.violation_variables.values())
+            model.minimize(total * constraint.weight)
+
+        solver = cp_model.CpSolver()
+        status = solver.solve(model)
+
+        assert status in (cp_model.OPTIMAL, cp_model.FEASIBLE)
+        # Hard constraint: W001 must NOT have night shift in period 0
+        assert solver.value(variables.get_assignment_var("W001", 0, "night")) == 0
+        # W001 should get day shift (soft request honored since feasible)
+        assert solver.value(variables.get_assignment_var("W001", 0, "day")) == 1
+
+    def test_mixed_hard_soft_hard_enforced_even_when_soft_violated(
+        self,
+        shift_types: list[ShiftType],
+        period_dates: list[tuple[date, date]],
+    ) -> None:
+        """Hard request is inviolable even when it forces soft request violation."""
+        model = cp_model.CpModel()
+        # Only 1 worker - forces conflict
+        single_worker = [Worker(id="W001", name="Worker 1")]
+        builder = VariableBuilder(model, single_worker, shift_types, num_periods=1)
+        variables = builder.build()
+
+        requests = [
+            # Hard: W001 must work night in period 0
+            SchedulingRequest(
+                worker_id="W001",
+                start_date=date(2026, 1, 5),
+                end_date=date(2026, 1, 11),
+                request_type="positive",
+                shift_type_id="night",
+                priority=1,
+                is_hard=True,
+            ),
+            # Soft: W001 prefers day in period 0 (will be violated)
+            SchedulingRequest(
+                worker_id="W001",
+                start_date=date(2026, 1, 5),
+                end_date=date(2026, 1, 11),
+                request_type="positive",
+                shift_type_id="day",
+                priority=1,
+                is_hard=False,
+            ),
+        ]
+
+        config = ConstraintConfig(enabled=True, is_hard=False, weight=100)
+        constraint = RequestConstraint(model, variables, config)
+        constraint.apply(
+            workers=single_worker,
+            shift_types=shift_types,
+            num_periods=1,
+            requests=requests,
+            period_dates=period_dates[:1],
+        )
+
+        # Coverage: exactly 1 worker per shift, but only 1 worker
+        # so only 1 shift can be filled (unless workers_required allows 0)
+        # Don't add coverage; just verify the hard constraint is enforced
+        solver = cp_model.CpSolver()
+        status = solver.solve(model)
+
+        assert status in (cp_model.OPTIMAL, cp_model.FEASIBLE)
+        # Hard constraint must be satisfied
+        assert solver.value(variables.get_assignment_var("W001", 0, "night")) == 1

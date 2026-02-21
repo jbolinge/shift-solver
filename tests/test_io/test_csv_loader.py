@@ -197,6 +197,141 @@ class TestCSVLoaderRequests:
         assert requests[0].priority == 1
 
 
+class TestCSVLoaderRequestIsHard:
+    """Tests for loading requests with is_hard column."""
+
+    def test_load_requests_with_is_hard_true(self, tmp_path: Path) -> None:
+        """Test loading request with is_hard=true."""
+        csv_file = tmp_path / "requests.csv"
+        csv_file.write_text(
+            "worker_id,start_date,end_date,request_type,shift_type_id,priority,is_hard\n"
+            "W001,2026-01-10,2026-01-10,positive,day,1,true\n"
+        )
+
+        loader = CSVLoader()
+        requests = loader.load_requests(csv_file)
+
+        assert len(requests) == 1
+        assert requests[0].is_hard is True
+
+    def test_load_requests_with_is_hard_false(self, tmp_path: Path) -> None:
+        """Test loading request with is_hard=false."""
+        csv_file = tmp_path / "requests.csv"
+        csv_file.write_text(
+            "worker_id,start_date,end_date,request_type,shift_type_id,priority,is_hard\n"
+            "W001,2026-01-10,2026-01-10,positive,day,1,false\n"
+        )
+
+        loader = CSVLoader()
+        requests = loader.load_requests(csv_file)
+
+        assert len(requests) == 1
+        assert requests[0].is_hard is False
+
+    def test_load_requests_with_is_hard_empty(self, tmp_path: Path) -> None:
+        """Test loading request with is_hard empty (defaults to None)."""
+        csv_file = tmp_path / "requests.csv"
+        csv_file.write_text(
+            "worker_id,start_date,end_date,request_type,shift_type_id,priority,is_hard\n"
+            "W001,2026-01-10,2026-01-10,positive,day,1,\n"
+        )
+
+        loader = CSVLoader()
+        requests = loader.load_requests(csv_file)
+
+        assert len(requests) == 1
+        assert requests[0].is_hard is None
+
+    def test_load_requests_without_is_hard_column(self, tmp_path: Path) -> None:
+        """Test backward compat - no is_hard column defaults to None."""
+        csv_file = tmp_path / "requests.csv"
+        csv_file.write_text(
+            "worker_id,start_date,end_date,request_type,shift_type_id,priority\n"
+            "W001,2026-01-10,2026-01-10,positive,day,1\n"
+        )
+
+        loader = CSVLoader()
+        requests = loader.load_requests(csv_file)
+
+        assert len(requests) == 1
+        assert requests[0].is_hard is None
+
+    def test_load_requests_is_hard_case_insensitive(self, tmp_path: Path) -> None:
+        """Test that is_hard parsing is case-insensitive."""
+        csv_file = tmp_path / "requests.csv"
+        csv_file.write_text(
+            "worker_id,start_date,end_date,request_type,shift_type_id,priority,is_hard\n"
+            "W001,2026-01-10,2026-01-10,positive,day,1,TRUE\n"
+            "W002,2026-01-10,2026-01-10,positive,day,1,False\n"
+        )
+
+        loader = CSVLoader()
+        requests = loader.load_requests(csv_file)
+
+        assert requests[0].is_hard is True
+        assert requests[1].is_hard is False
+
+    def test_load_requests_is_hard_yes_no(self, tmp_path: Path) -> None:
+        """Test is_hard with yes/no values."""
+        csv_file = tmp_path / "requests.csv"
+        csv_file.write_text(
+            "worker_id,start_date,end_date,request_type,shift_type_id,priority,is_hard\n"
+            "W001,2026-01-10,2026-01-10,positive,day,1,yes\n"
+            "W002,2026-01-10,2026-01-10,positive,day,1,no\n"
+        )
+
+        loader = CSVLoader()
+        requests = loader.load_requests(csv_file)
+
+        assert requests[0].is_hard is True
+        assert requests[1].is_hard is False
+
+    def test_load_requests_is_hard_1_0(self, tmp_path: Path) -> None:
+        """Test is_hard with 1/0 values."""
+        csv_file = tmp_path / "requests.csv"
+        csv_file.write_text(
+            "worker_id,start_date,end_date,request_type,shift_type_id,priority,is_hard\n"
+            "W001,2026-01-10,2026-01-10,positive,day,1,1\n"
+            "W002,2026-01-10,2026-01-10,positive,day,1,0\n"
+        )
+
+        loader = CSVLoader()
+        requests = loader.load_requests(csv_file)
+
+        assert requests[0].is_hard is True
+        assert requests[1].is_hard is False
+
+    def test_load_requests_is_hard_invalid(self, tmp_path: Path) -> None:
+        """Test error on invalid is_hard value."""
+        csv_file = tmp_path / "requests.csv"
+        csv_file.write_text(
+            "worker_id,start_date,end_date,request_type,shift_type_id,priority,is_hard\n"
+            "W001,2026-01-10,2026-01-10,positive,day,1,maybe\n"
+        )
+
+        loader = CSVLoader()
+        with pytest.raises(CSVLoaderError, match="Invalid is_hard.*maybe.*line 2"):
+            loader.load_requests(csv_file)
+
+    def test_load_requests_mixed_is_hard(self, tmp_path: Path) -> None:
+        """Test mixed is_hard values in same file."""
+        csv_file = tmp_path / "requests.csv"
+        csv_file.write_text(
+            "worker_id,start_date,end_date,request_type,shift_type_id,priority,is_hard\n"
+            "W001,2026-01-10,2026-01-10,negative,night,1,true\n"
+            "W001,2026-01-15,2026-01-15,positive,day,2,false\n"
+            "W002,2026-01-10,2026-01-10,positive,day,1,\n"
+        )
+
+        loader = CSVLoader()
+        requests = loader.load_requests(csv_file)
+
+        assert len(requests) == 3
+        assert requests[0].is_hard is True
+        assert requests[1].is_hard is False
+        assert requests[2].is_hard is None
+
+
 class TestCSVLoaderValidation:
     """Tests for CSV validation and error handling."""
 

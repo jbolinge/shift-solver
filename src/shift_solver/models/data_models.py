@@ -87,6 +87,7 @@ class SchedulingRequest:
     request_type: Literal["positive", "negative"]
     shift_type_id: str
     priority: int = 1
+    is_hard: bool | None = None
 
     def __post_init__(self) -> None:
         """Validate scheduling request fields."""

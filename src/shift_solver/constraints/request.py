@@ -136,7 +136,8 @@ class RequestConstraint(BaseConstraint):
             except KeyError:
                 continue
 
-            if self.is_hard:
+            request_is_hard = request.is_hard if request.is_hard is not None else self.is_hard
+            if request_is_hard:
                 # Hard constraint: enforce directly
                 if request.is_positive:
                     # Must be assigned

@@ -171,6 +171,21 @@ class CSVLoader:
 
         return priority
 
+    def _parse_is_hard(self, value: str, line_num: int) -> bool | None:
+        """Parse optional is_hard value."""
+        if not value:
+            return None
+
+        if value.lower() in ("true", "yes", "1"):
+            return True
+        if value.lower() in ("false", "no", "0"):
+            return False
+
+        raise CSVLoaderError(
+            f"Invalid is_hard value '{value}' on line {line_num}. "
+            f"Must be true/false/yes/no/1/0 or empty."
+        )
+
     def _parse_worker_row(self, row: dict[str, str], line_num: int) -> Worker:
         """Parse a single worker row."""
         worker_id = row.get("id", "").strip()
@@ -264,6 +279,8 @@ class CSVLoader:
         priority_str = row.get("priority", "").strip()
         priority = self._parse_priority(priority_str, line_num)
 
+        is_hard = self._parse_is_hard(row.get("is_hard", "").strip(), line_num)
+
         return SchedulingRequest(
             worker_id=worker_id,
             start_date=start_date,
@@ -271,4 +288,5 @@ class CSVLoader:
             request_type=request_type,  # type: ignore
             shift_type_id=shift_type_id,
             priority=priority,
+            is_hard=is_hard,
         )
