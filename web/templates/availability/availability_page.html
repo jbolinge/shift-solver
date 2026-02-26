@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Availability - Shift Solver{% endblock %}
+
+{% block extra_head %}
+<!-- FullCalendar CSS -->
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <div class="flex items-center justify-between mb-6">
+        <h1 class="text-2xl font-bold text-gray-900">Availability Calendar</h1>
+        <div class="flex items-center gap-3">
+            <label for="worker-select" class="text-sm font-medium text-gray-700">Worker:</label>
+            <select id="worker-select"
+                    class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm px-3 py-2 border">
+                <option value="">-- Select Worker --</option>
+                {% for worker in workers %}
+                <option value="{{ worker.pk }}">{{ worker.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <div class="flex items-center gap-4 mb-4 text-sm text-gray-600">
+        <span class="flex items-center gap-1">
+            <span class="inline-block w-3 h-3 rounded" style="background-color: #22c55e;"></span> Available
+        </span>
+        <span class="flex items-center gap-1">
+            <span class="inline-block w-3 h-3 rounded" style="background-color: #ef4444;"></span> Unavailable
+        </span>
+        <span class="text-gray-400">| Click a date to toggle availability</span>
+    </div>
+
+    <div id="calendar" class="bg-white rounded-lg shadow p-4"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- FullCalendar JS -->
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+{% load static %}
+<script src="{% static 'js/availability_calendar.js' %}"></script>
+{% endblock %}
