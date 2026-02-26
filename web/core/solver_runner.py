@@ -62,9 +62,26 @@ class SolverRunner:
                 schedule_id=schedule_input["schedule_id"],
                 constraint_configs=schedule_input["constraint_configs"],
                 requests=schedule_input.get("requests"),
+                availabilities=schedule_input.get("availabilities"),
             )
 
-            result = solver.solve(time_limit_seconds=time_limit)
+            # Read all solver settings with defaults
+            try:
+                settings = solver_run.schedule_request.solver_settings
+                num_workers = settings.num_search_workers
+                optimality_tolerance = settings.optimality_tolerance
+                log_search = settings.log_search_progress
+            except SolverSettings.DoesNotExist:
+                num_workers = None
+                optimality_tolerance = None
+                log_search = None
+
+            result = solver.solve(
+                time_limit_seconds=time_limit,
+                num_workers=num_workers,
+                relative_gap_limit=optimality_tolerance,
+                log_search_progress=log_search,
+            )
 
             if result.success and result.schedule:
                 assignments = solver_result_to_assignments(

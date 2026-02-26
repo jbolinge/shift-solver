@@ -8,7 +8,7 @@ from core import models as orm
 from shift_solver.constraints.base import ConstraintConfig as DomainConstraintConfig
 from shift_solver.models import ShiftType as DomainShiftType
 from shift_solver.models import Worker as DomainWorker
-from shift_solver.models.data_models import SchedulingRequest
+from shift_solver.models.data_models import Availability as DomainAvailability, SchedulingRequest
 from shift_solver.models.schedule import PeriodAssignment, Schedule
 from shift_solver.models.shift import ShiftInstance
 
@@ -113,6 +113,37 @@ def orm_worker_request_to_domain(
     )
 
 
+def orm_availability_to_domain(
+    orm_avail: orm.Availability,
+) -> DomainAvailability | None:
+    """Convert Django Availability ORM instance to domain Availability dataclass.
+
+    Returns None for neutral entries (is_available=True, preference=0) since
+    those don't need a constraint.
+    """
+    if not orm_avail.is_available:
+        availability_type = "unavailable"
+    elif orm_avail.preference > 0:
+        availability_type = "preferred"
+    elif orm_avail.preference < 0:
+        availability_type = "unavailable"
+    else:
+        # Neutral: is_available=True, preference=0 — skip
+        return None
+
+    shift_type_id = (
+        str(orm_avail.shift_type.shift_type_id) if orm_avail.shift_type_id else None
+    )
+
+    return DomainAvailability(
+        worker_id=str(orm_avail.worker.worker_id),
+        start_date=orm_avail.date,
+        end_date=orm_avail.date,
+        availability_type=availability_type,
+        shift_type_id=shift_type_id,
+    )
+
+
 def build_schedule_input(
     schedule_request: orm.ScheduleRequest,
 ) -> dict[str, Any]:
@@ -162,12 +193,26 @@ def build_schedule_input(
     ).all()
     requests = [orm_worker_request_to_domain(wr) for wr in orm_worker_requests]
 
+    # Convert availability records to domain objects
+    worker_ids = [str(w.worker_id) for w in orm_workers]
+    orm_availabilities = orm.Availability.objects.filter(
+        worker__worker_id__in=worker_ids,
+        date__gte=schedule_request.start_date,
+        date__lte=schedule_request.end_date,
+    ).select_related("worker", "shift_type")
+    availabilities = []
+    for orm_avail in orm_availabilities:
+        domain_avail = orm_availability_to_domain(orm_avail)
+        if domain_avail is not None:
+            availabilities.append(domain_avail)
+
     return {
         "workers": workers,
         "shift_types": shift_types,
         "period_dates": period_dates,
         "constraint_configs": constraint_configs,
         "requests": requests or None,
+        "availabilities": availabilities or None,
         "schedule_id": f"web-{schedule_request.pk}",
     }
 

@@ -6,6 +6,7 @@ import pytest
 
 from core.models import (
     Assignment,
+    Availability,
     ConstraintConfig,
     ScheduleRequest,
     ShiftType,
@@ -168,3 +169,69 @@ class TestSolverRunner:
                 target=runner._execute, daemon=True
             )
             mock_thread.start.assert_called_once()
+
+    def test_solver_run_passes_availability(self, setup_solver_data):
+        """Availability records are passed to the solver."""
+        from unittest.mock import patch
+
+        from core.solver_runner import SolverRunner
+
+        run = setup_solver_data
+        w = Worker.objects.get(worker_id="W001")
+        Availability.objects.create(
+            worker=w, date=date(2026, 3, 3), is_available=False,
+        )
+
+        with patch(
+            "shift_solver.solver.shift_solver.ShiftSolver.__init__",
+            return_value=None,
+        ) as mock_init, patch(
+            "shift_solver.solver.shift_solver.ShiftSolver.solve",
+        ) as mock_solve:
+            from shift_solver.solver.result import SolverResult
+
+            mock_solve.return_value = SolverResult(
+                success=False, schedule=None, status=3,
+                status_name="INFEASIBLE", solve_time_seconds=0.1,
+            )
+            runner = SolverRunner(solver_run_id=run.id)
+            runner._execute()
+
+            call_kwargs = mock_init.call_args
+            assert call_kwargs.kwargs.get("availabilities") is not None
+            avail_list = call_kwargs.kwargs["availabilities"]
+            assert len(avail_list) == 1
+            assert avail_list[0].worker_id == "W001"
+
+    def test_solver_runner_passes_all_settings(self, setup_solver_data):
+        """All SolverSettings fields are forwarded to solver.solve()."""
+        from unittest.mock import patch
+
+        from core.solver_runner import SolverRunner
+
+        run = setup_solver_data
+        settings = SolverSettings.objects.get(schedule_request=run.schedule_request)
+        settings.num_search_workers = 4
+        settings.optimality_tolerance = 0.05
+        settings.log_search_progress = False
+        settings.save()
+
+        with patch(
+            "shift_solver.solver.shift_solver.ShiftSolver.__init__",
+            return_value=None,
+        ), patch(
+            "shift_solver.solver.shift_solver.ShiftSolver.solve",
+        ) as mock_solve:
+            from shift_solver.solver.result import SolverResult
+
+            mock_solve.return_value = SolverResult(
+                success=False, schedule=None, status=3,
+                status_name="INFEASIBLE", solve_time_seconds=0.1,
+            )
+            runner = SolverRunner(solver_run_id=run.id)
+            runner._execute()
+
+            call_kwargs = mock_solve.call_args
+            assert call_kwargs.kwargs.get("num_workers") == 4
+            assert call_kwargs.kwargs.get("relative_gap_limit") == 0.05
+            assert call_kwargs.kwargs.get("log_search_progress") is False

@@ -5,18 +5,11 @@ from datetime import date, time
 import pytest
 
 from core.models import (
+    Availability as ORMAvailability,
     ConstraintConfig as ORMConstraintConfig,
-)
-from core.models import (
     ScheduleRequest as ORMScheduleRequest,
-)
-from core.models import (
     ShiftType as ORMShiftType,
-)
-from core.models import (
     SolverRun as ORMSolverRun,
-)
-from core.models import (
     Worker as ORMWorker,
 )
 
@@ -311,3 +304,124 @@ class TestSolverResultConversion:
         assignments = solver_result_to_assignments(run, schedule)
         for assignment in assignments:
             assert assignment.solver_run == run
+
+
+class TestAvailabilityConversion:
+    """Tests for Availability ORM -> domain conversion."""
+
+    def test_unavailable_maps_to_unavailable_type(self) -> None:
+        """is_available=False maps to availability_type='unavailable'."""
+        from core.converters import orm_availability_to_domain
+
+        worker = ORMWorker.objects.create(worker_id="W001", name="Alice")
+        avail = ORMAvailability.objects.create(
+            worker=worker, date=date(2026, 3, 2), is_available=False, preference=0,
+        )
+        result = orm_availability_to_domain(avail)
+        assert result is not None
+        assert result.availability_type == "unavailable"
+        assert result.worker_id == "W001"
+        assert result.start_date == date(2026, 3, 2)
+        assert result.end_date == date(2026, 3, 2)
+
+    def test_positive_preference_maps_to_preferred(self) -> None:
+        """is_available=True, preference=1 maps to 'preferred'."""
+        from core.converters import orm_availability_to_domain
+
+        worker = ORMWorker.objects.create(worker_id="W001", name="Alice")
+        avail = ORMAvailability.objects.create(
+            worker=worker, date=date(2026, 3, 2), is_available=True, preference=1,
+        )
+        result = orm_availability_to_domain(avail)
+        assert result is not None
+        assert result.availability_type == "preferred"
+
+    def test_negative_preference_maps_to_unavailable(self) -> None:
+        """is_available=True, preference=-1 maps to 'unavailable'."""
+        from core.converters import orm_availability_to_domain
+
+        worker = ORMWorker.objects.create(worker_id="W001", name="Alice")
+        avail = ORMAvailability.objects.create(
+            worker=worker, date=date(2026, 3, 2), is_available=True, preference=-1,
+        )
+        result = orm_availability_to_domain(avail)
+        assert result is not None
+        assert result.availability_type == "unavailable"
+
+    def test_neutral_available_skipped(self) -> None:
+        """is_available=True, preference=0 returns None (skip)."""
+        from core.converters import orm_availability_to_domain
+
+        worker = ORMWorker.objects.create(worker_id="W001", name="Alice")
+        avail = ORMAvailability.objects.create(
+            worker=worker, date=date(2026, 3, 2), is_available=True, preference=0,
+        )
+        result = orm_availability_to_domain(avail)
+        assert result is None
+
+    def test_shift_type_id_forwarded(self) -> None:
+        """Shift-specific availability preserves shift_type_id."""
+        from core.converters import orm_availability_to_domain
+
+        worker = ORMWorker.objects.create(worker_id="W001", name="Alice")
+        shift = ORMShiftType.objects.create(
+            shift_type_id="night", name="Night", start_time=time(23, 0),
+            duration_hours=8.0,
+        )
+        avail = ORMAvailability.objects.create(
+            worker=worker, date=date(2026, 3, 2), shift_type=shift,
+            is_available=False, preference=0,
+        )
+        result = orm_availability_to_domain(avail)
+        assert result is not None
+        assert result.shift_type_id == "night"
+
+    def test_build_schedule_input_includes_availabilities(self) -> None:
+        """build_schedule_input result dict has 'availabilities' key."""
+        from core.converters import build_schedule_input
+
+        w = ORMWorker.objects.create(worker_id="W001", name="Alice")
+        ORMShiftType.objects.create(
+            shift_type_id="day", name="Day", start_time=time(7, 0),
+            duration_hours=8.0, workers_required=1,
+        )
+        request = ORMScheduleRequest.objects.create(
+            name="Test", start_date=date(2026, 3, 2), end_date=date(2026, 3, 8),
+        )
+        request.workers.add(w)
+        ORMAvailability.objects.create(
+            worker=w, date=date(2026, 3, 3), is_available=False,
+        )
+
+        result = build_schedule_input(request)
+        assert "availabilities" in result
+        assert result["availabilities"] is not None
+        assert len(result["availabilities"]) == 1
+        assert result["availabilities"][0].worker_id == "W001"
+        assert result["availabilities"][0].availability_type == "unavailable"
+
+    def test_build_schedule_input_filters_by_date_range(self) -> None:
+        """Only availability entries within the schedule date range are included."""
+        from core.converters import build_schedule_input
+
+        w = ORMWorker.objects.create(worker_id="W001", name="Alice")
+        ORMShiftType.objects.create(
+            shift_type_id="day", name="Day", start_time=time(7, 0),
+            duration_hours=8.0, workers_required=1,
+        )
+        request = ORMScheduleRequest.objects.create(
+            name="Test", start_date=date(2026, 3, 2), end_date=date(2026, 3, 8),
+        )
+        request.workers.add(w)
+        # Within range
+        ORMAvailability.objects.create(
+            worker=w, date=date(2026, 3, 3), is_available=False,
+        )
+        # Outside range
+        ORMAvailability.objects.create(
+            worker=w, date=date(2026, 4, 1), is_available=False,
+        )
+
+        result = build_schedule_input(request)
+        assert result["availabilities"] is not None
+        assert len(result["availabilities"]) == 1
