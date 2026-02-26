@@ -54,6 +54,12 @@ from core.views.solver_views import (
     solve_progress_bar,
     solve_results,
 )
+from core.views.worker_request_views import (
+    worker_request_create,
+    worker_request_delete,
+    worker_request_list,
+    worker_request_update,
+)
 from core.views.worker_views import (
     worker_create,
     worker_delete,
@@ -81,6 +87,26 @@ urlpatterns = [
     path("requests/<int:pk>/", request_detail, name="request-detail"),
     path("requests/<int:pk>/edit/", request_update, name="request-update"),
     path("requests/<int:pk>/delete/", request_delete, name="request-delete"),
+    path(
+        "requests/<int:schedule_request_pk>/worker-requests/",
+        worker_request_list,
+        name="worker-request-list",
+    ),
+    path(
+        "requests/<int:schedule_request_pk>/worker-requests/create/",
+        worker_request_create,
+        name="worker-request-create",
+    ),
+    path(
+        "requests/<int:schedule_request_pk>/worker-requests/<int:pk>/edit/",
+        worker_request_update,
+        name="worker-request-update",
+    ),
+    path(
+        "requests/<int:schedule_request_pk>/worker-requests/<int:pk>/delete/",
+        worker_request_delete,
+        name="worker-request-delete",
+    ),
     path("requests/<int:pk>/settings/", solver_settings, name="solver-settings"),
     path(
         "requests/<int:pk>/settings/edit/",

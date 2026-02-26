@@ -93,6 +93,68 @@
     </dl>
 </div>
 
+<div class="mt-8 bg-white shadow rounded-lg overflow-hidden">
+    <div class="px-6 py-5 border-b border-gray-200 flex items-center justify-between">
+        <h2 class="text-lg font-medium text-gray-900">Worker Requests</h2>
+        <a href="{% url 'worker-request-create' req.pk %}"
+           class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
+            Add Request
+        </a>
+    </div>
+    {% if worker_requests %}
+    <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Worker</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Shift Type</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dates</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Enforcement</th>
+                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+        </thead>
+        <tbody id="worker-request-table-body" class="bg-white divide-y divide-gray-200">
+            {% for wr in worker_requests %}
+            <tr id="worker-request-row-{{ wr.pk }}">
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ wr.worker.name }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ wr.shift_type.name }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ wr.start_date|date:"N j" }} - {{ wr.end_date|date:"N j" }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {% if wr.request_type == "positive" %}
+                        <span class="inline-flex px-2 text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Positive</span>
+                    {% else %}
+                        <span class="inline-flex px-2 text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800">Negative</span>
+                    {% endif %}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                    {% if wr.is_hard is True %}
+                        <span class="inline-flex px-2 text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Hard</span>
+                    {% elif wr.is_hard is False %}
+                        <span class="inline-flex px-2 text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Soft</span>
+                    {% else %}
+                        <span class="inline-flex px-2 text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">Global</span>
+                    {% endif %}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <a href="{% url 'worker-request-update' req.pk wr.pk %}"
+                       class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</a>
+                    <button hx-post="{% url 'worker-request-delete' req.pk wr.pk %}"
+                            hx-target="#worker-request-row-{{ wr.pk }}"
+                            hx-swap="outerHTML"
+                            hx-confirm="Delete this worker request?"
+                            class="text-red-600 hover:text-red-900">Delete</button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="px-6 py-8 text-center">
+        <p class="text-gray-500">No worker requests yet.</p>
+    </div>
+    {% endif %}
+</div>
+
 <div class="mt-6">
     <a href="{% url 'request-list' %}"
        class="text-sm text-indigo-600 hover:text-indigo-900">

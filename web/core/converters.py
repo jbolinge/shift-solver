@@ -8,6 +8,7 @@ from core import models as orm
 from shift_solver.constraints.base import ConstraintConfig as DomainConstraintConfig
 from shift_solver.models import ShiftType as DomainShiftType
 from shift_solver.models import Worker as DomainWorker
+from shift_solver.models.data_models import SchedulingRequest
 from shift_solver.models.schedule import PeriodAssignment, Schedule
 from shift_solver.models.shift import ShiftInstance
 
@@ -97,6 +98,21 @@ def orm_constraint_to_domain(
     )
 
 
+def orm_worker_request_to_domain(
+    orm_wr: orm.WorkerRequest,
+) -> SchedulingRequest:
+    """Convert Django WorkerRequest ORM instance to domain SchedulingRequest."""
+    return SchedulingRequest(
+        worker_id=str(orm_wr.worker.worker_id),
+        start_date=orm_wr.start_date,
+        end_date=orm_wr.end_date,
+        request_type=str(orm_wr.request_type),
+        shift_type_id=str(orm_wr.shift_type.shift_type_id),
+        priority=int(orm_wr.priority),
+        is_hard=orm_wr.is_hard,
+    )
+
+
 def build_schedule_input(
     schedule_request: orm.ScheduleRequest,
 ) -> dict[str, Any]:
@@ -140,11 +156,18 @@ def build_schedule_input(
             orm_config
         )
 
+    # Convert worker requests to domain objects
+    orm_worker_requests = schedule_request.worker_requests.select_related(
+        "worker", "shift_type"
+    ).all()
+    requests = [orm_worker_request_to_domain(wr) for wr in orm_worker_requests]
+
     return {
         "workers": workers,
         "shift_types": shift_types,
         "period_dates": period_dates,
         "constraint_configs": constraint_configs,
+        "requests": requests or None,
         "schedule_id": f"web-{schedule_request.pk}",
     }
 

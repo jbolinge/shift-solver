@@ -1,0 +1,32 @@
+<tr id="worker-request-row-{{ wr.pk }}">
+    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ wr.worker.name }}</td>
+    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ wr.shift_type.name }}</td>
+    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ wr.start_date|date:"N j, Y" }}</td>
+    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ wr.end_date|date:"N j, Y" }}</td>
+    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+        {% if wr.request_type == "positive" %}
+            <span class="inline-flex px-2 text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Positive</span>
+        {% else %}
+            <span class="inline-flex px-2 text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800">Negative</span>
+        {% endif %}
+    </td>
+    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ wr.priority }}</td>
+    <td class="px-6 py-4 whitespace-nowrap text-sm">
+        {% if wr.is_hard is True %}
+            <span class="inline-flex px-2 text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Hard</span>
+        {% elif wr.is_hard is False %}
+            <span class="inline-flex px-2 text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Soft</span>
+        {% else %}
+            <span class="inline-flex px-2 text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">Global</span>
+        {% endif %}
+    </td>
+    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+        <a href="{% url 'worker-request-update' req.pk wr.pk %}"
+           class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</a>
+        <button hx-post="{% url 'worker-request-delete' req.pk wr.pk %}"
+                hx-target="#worker-request-row-{{ wr.pk }}"
+                hx-swap="outerHTML"
+                hx-confirm="Are you sure you want to delete this worker request?"
+                class="text-red-600 hover:text-red-900">Delete</button>
+    </td>
+</tr>

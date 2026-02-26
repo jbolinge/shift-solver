@@ -8,6 +8,7 @@ from core.models import (
     ShiftType,
     SolverSettings,
     Worker,
+    WorkerRequest,
 )
 
 
@@ -298,3 +299,90 @@ class SolverSettingsForm(forms.ModelForm):
         if value is not None and value <= 0:
             raise forms.ValidationError("Time limit must be greater than zero.")
         return value
+
+
+IS_HARD_CHOICES = [
+    ("", "Use global config"),
+    ("true", "Hard"),
+    ("false", "Soft"),
+]
+
+
+class WorkerRequestForm(forms.ModelForm):
+    """ModelForm for creating and editing WorkerRequest instances."""
+
+    is_hard = forms.NullBooleanField(
+        required=False,
+        widget=forms.Select(
+            choices=IS_HARD_CHOICES,
+            attrs={
+                "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+            },
+        ),
+    )
+
+    class Meta:
+        model = WorkerRequest
+        fields = [
+            "worker",
+            "shift_type",
+            "start_date",
+            "end_date",
+            "request_type",
+            "priority",
+            "is_hard",
+        ]
+        widgets = {
+            "worker": forms.Select(
+                attrs={
+                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                }
+            ),
+            "shift_type": forms.Select(
+                attrs={
+                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                }
+            ),
+            "start_date": forms.DateInput(
+                attrs={
+                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "type": "date",
+                }
+            ),
+            "end_date": forms.DateInput(
+                attrs={
+                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "type": "date",
+                }
+            ),
+            "request_type": forms.Select(
+                attrs={
+                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                }
+            ),
+            "priority": forms.NumberInput(
+                attrs={
+                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "min": "1",
+                }
+            ),
+        }
+
+    def __init__(self, *args, schedule_request=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if schedule_request is not None:
+            if schedule_request.workers.exists():
+                self.fields["worker"].queryset = schedule_request.workers.all()
+            if schedule_request.shift_types.exists():
+                self.fields["shift_type"].queryset = schedule_request.shift_types.all()
+
+    def clean(self) -> dict:
+        """Validate that end_date >= start_date."""
+        cleaned_data = super().clean()
+        start_date = cleaned_data.get("start_date")
+        end_date = cleaned_data.get("end_date")
+        if start_date and end_date and end_date < start_date:
+            self.add_error(
+                "end_date", "End date must be on or after start date."
+            )
+        return cleaned_data

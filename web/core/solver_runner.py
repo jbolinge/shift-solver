@@ -61,6 +61,7 @@ class SolverRunner:
                 period_dates=schedule_input["period_dates"],
                 schedule_id=schedule_input["schedule_id"],
                 constraint_configs=schedule_input["constraint_configs"],
+                requests=schedule_input.get("requests"),
             )
 
             result = solver.solve(time_limit_seconds=time_limit)

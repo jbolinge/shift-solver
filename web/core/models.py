@@ -116,6 +116,40 @@ class ScheduleRequest(models.Model):
         return str(self.name)
 
 
+class WorkerRequest(models.Model):
+    """A per-worker scheduling request (preference or restriction)."""
+
+    REQUEST_TYPE_CHOICES = [
+        ("positive", "Positive"),
+        ("negative", "Negative"),
+    ]
+
+    schedule_request = models.ForeignKey(
+        ScheduleRequest, on_delete=models.CASCADE, related_name="worker_requests"
+    )
+    worker = models.ForeignKey(
+        Worker, on_delete=models.CASCADE, related_name="worker_requests"
+    )
+    shift_type = models.ForeignKey(
+        ShiftType, on_delete=models.CASCADE, related_name="worker_requests"
+    )
+    start_date = models.DateField()
+    end_date = models.DateField()
+    request_type = models.CharField(
+        max_length=10, choices=REQUEST_TYPE_CHOICES, default="negative"
+    )
+    priority = models.IntegerField(default=1)
+    is_hard = models.BooleanField(null=True, default=None)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.worker} - {self.shift_type} ({self.request_type})"
+
+
 class SolverSettings(models.Model):
     """Solver configuration parameters for a schedule request."""
 

@@ -11,6 +11,7 @@ from core.models import (
     ShiftType,
     SolverRun,
     Worker,
+    WorkerRequest,
 )
 
 
@@ -55,6 +56,16 @@ class ScheduleRequestAdmin(ModelAdmin):  # type: ignore[type-arg]
 class SolverRunAdmin(ModelAdmin):  # type: ignore[type-arg]
     list_display = ["id", "schedule_request", "status", "progress_percent", "started_at"]
     list_filter = ["status"]
+
+
+@admin.register(WorkerRequest)
+class WorkerRequestAdmin(ModelAdmin):  # type: ignore[type-arg]
+    list_display = [
+        "id", "schedule_request", "worker", "shift_type",
+        "request_type", "priority", "is_hard", "start_date", "end_date",
+    ]
+    list_filter = ["request_type", "is_hard"]
+    search_fields = ["worker__name", "shift_type__name"]
 
 
 @admin.register(Assignment)

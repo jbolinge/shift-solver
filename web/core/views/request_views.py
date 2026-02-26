@@ -48,6 +48,9 @@ def request_detail(request: HttpRequest, pk: int) -> HttpResponse:
     schedule_request = get_object_or_404(ScheduleRequest, pk=pk)
     workers = schedule_request.workers.all()
     shift_types = schedule_request.shift_types.all()
+    worker_requests = schedule_request.worker_requests.select_related(
+        "worker", "shift_type"
+    ).all()
     return render(
         request,
         "requests/request_detail.html",
@@ -55,6 +58,7 @@ def request_detail(request: HttpRequest, pk: int) -> HttpResponse:
             "req": schedule_request,
             "workers": workers,
             "shift_types": shift_types,
+            "worker_requests": worker_requests,
         },
     )
 
