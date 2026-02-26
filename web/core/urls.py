@@ -23,6 +23,12 @@ from core.views.settings_views import (
     solver_settings,
     solver_settings_edit,
 )
+from core.views.plotly_views import (
+    chart_download,
+    chart_download_single,
+    chart_page,
+    chart_view,
+)
 from core.views.schedule_views import (
     schedule_events,
     schedule_view,
@@ -93,5 +99,25 @@ urlpatterns = [
         "solver-runs/<int:pk>/schedule/events/",
         schedule_events,
         name="schedule-events",
+    ),
+    path(
+        "solver-runs/<int:pk>/charts/",
+        chart_page,
+        name="chart-page",
+    ),
+    path(
+        "solver-runs/<int:pk>/charts/download/",
+        chart_download,
+        name="chart-download",
+    ),
+    path(
+        "solver-runs/<int:pk>/charts/download/<str:chart_type>/",
+        chart_download_single,
+        name="chart-download-single",
+    ),
+    path(
+        "solver-runs/<int:pk>/charts/<str:chart_type>/",
+        chart_view,
+        name="chart-view",
     ),
 ]

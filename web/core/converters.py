@@ -1,5 +1,6 @@
 """Conversion layer between Django ORM models and domain dataclasses."""
 
+from collections import defaultdict
 from datetime import timedelta
 from typing import Any
 
@@ -7,7 +8,8 @@ from core import models as orm
 from shift_solver.constraints.base import ConstraintConfig as DomainConstraintConfig
 from shift_solver.models import ShiftType as DomainShiftType
 from shift_solver.models import Worker as DomainWorker
-from shift_solver.models.schedule import Schedule
+from shift_solver.models.schedule import PeriodAssignment, Schedule
+from shift_solver.models.shift import ShiftInstance
 
 
 def orm_worker_to_domain(orm_worker: orm.Worker) -> DomainWorker:
@@ -183,3 +185,72 @@ def solver_result_to_assignments(
                 )
 
     return assignments
+
+
+def solver_run_to_schedule(solver_run: orm.SolverRun) -> Schedule:
+    """Reconstruct a domain Schedule from a completed SolverRun's assignments.
+
+    This enables reuse of existing chart/visualization functions that expect
+    a Schedule object.
+    """
+    request = solver_run.schedule_request
+    assignments = solver_run.assignments.select_related(
+        "worker", "shift_type"
+    ).all()
+
+    # Collect unique workers and shift types from assignments
+    worker_map: dict[str, DomainWorker] = {}
+    shift_map: dict[str, DomainShiftType] = {}
+    for a in assignments:
+        wid = str(a.worker.worker_id)
+        if wid not in worker_map:
+            worker_map[wid] = orm_worker_to_domain(a.worker)
+        sid = str(a.shift_type.shift_type_id)
+        if sid not in shift_map:
+            shift_map[sid] = orm_shift_type_to_domain(a.shift_type)
+
+    # Build period dates
+    period_length = int(str(request.period_length_days))
+    period_dates: list[tuple[Any, Any]] = []
+    current = request.start_date
+    while current < request.end_date:
+        period_end = min(
+            current + timedelta(days=period_length - 1),
+            request.end_date,
+        )
+        period_dates.append((current, period_end))
+        current = period_end + timedelta(days=1)
+
+    # Group assignments into periods
+    periods: list[PeriodAssignment] = []
+    for idx, (p_start, p_end) in enumerate(period_dates):
+        period_assignments: dict[str, list[ShiftInstance]] = defaultdict(list)
+        for a in assignments:
+            if p_start <= a.date <= p_end:
+                wid = str(a.worker.worker_id)
+                period_assignments[wid].append(
+                    ShiftInstance(
+                        shift_type_id=str(a.shift_type.shift_type_id),
+                        period_index=idx,
+                        date=a.date,
+                        worker_id=wid,
+                    )
+                )
+        periods.append(
+            PeriodAssignment(
+                period_index=idx,
+                period_start=p_start,
+                period_end=p_end,
+                assignments=dict(period_assignments),
+            )
+        )
+
+    return Schedule(
+        schedule_id=f"web-{solver_run.pk}",
+        start_date=request.start_date,
+        end_date=request.end_date,
+        period_type="week" if period_length == 7 else "day",
+        periods=periods,
+        workers=list(worker_map.values()),
+        shift_types=list(shift_map.values()),
+    )
