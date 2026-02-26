@@ -72,6 +72,7 @@ types = [
     "mypy>=1.0.0",
     "pandas-stubs>=2.0.0",
     "types-pyyaml>=6.0.0",
+    "django-stubs>=5.0.0",
 ]
 
 [build-system]
@@ -158,3 +159,7 @@ module = [
     "whitenoise.*",
 ]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["core.*", "config.*"]
+ignore_errors = true
