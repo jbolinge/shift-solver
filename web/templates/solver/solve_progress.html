@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Solving - {{ req.name }} - Shift Solver{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-2xl font-bold text-gray-900">Solving: {{ req.name }}</h1>
+    <p class="mt-1 text-sm text-gray-600">{{ req.start_date|date:"N j, Y" }} - {{ req.end_date|date:"N j, Y" }}</p>
+</div>
+
+<div class="bg-white shadow rounded-lg overflow-hidden p-6">
+    <div id="progress-container"
+         hx-get="{% url 'solve-progress-bar' run.pk %}"
+         hx-trigger="every 2s"
+         hx-swap="innerHTML">
+        {% include "solver/solve_progress_bar.html" %}
+    </div>
+</div>
+
+<div class="mt-6">
+    <a href="{% url 'request-detail' req.pk %}"
+       class="text-sm text-indigo-600 hover:text-indigo-900">
+        &larr; Back to Request
+    </a>
+</div>
+{% endblock %}

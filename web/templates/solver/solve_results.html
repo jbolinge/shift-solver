@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}Results - {{ req.name }} - Shift Solver{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <div class="flex items-center justify-between">
+        <h1 class="text-2xl font-bold text-gray-900">Solver Results</h1>
+        <div class="flex space-x-3">
+            {% if run.status == "completed" %}
+            <a href="{% url 'request-detail' req.pk %}"
+               class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                Back to Request
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    <p class="mt-1 text-sm text-gray-600">{{ req.name }} ({{ req.start_date|date:"N j, Y" }} - {{ req.end_date|date:"N j, Y" }})</p>
+</div>
+
+{% if run.status == "failed" %}
+<div class="mb-6 rounded-md bg-red-50 p-4">
+    <div class="flex">
+        <div class="ml-3">
+            <h3 class="text-sm font-medium text-red-800">Solver Failed</h3>
+            <div class="mt-2 text-sm text-red-700">
+                {{ run.error_message }}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="bg-white shadow rounded-lg overflow-hidden">
+    <div class="px-6 py-5 border-b border-gray-200">
+        <h2 class="text-lg font-medium text-gray-900">Summary</h2>
+    </div>
+    <dl class="divide-y divide-gray-200">
+        <div class="px-6 py-4 grid grid-cols-3 gap-4">
+            <dt class="text-sm font-medium text-gray-500">Status</dt>
+            <dd class="text-sm text-gray-900 col-span-2">
+                {% if run.status == "completed" %}
+                    <span class="inline-flex px-2 text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">{{ status_name }}</span>
+                {% elif run.status == "failed" %}
+                    <span class="inline-flex px-2 text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Failed</span>
+                {% else %}
+                    <span class="inline-flex px-2 text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">{{ status_name }}</span>
+                {% endif %}
+            </dd>
+        </div>
+        {% if solve_time is not None %}
+        <div class="px-6 py-4 grid grid-cols-3 gap-4">
+            <dt class="text-sm font-medium text-gray-500">Solve Duration</dt>
+            <dd class="text-sm text-gray-900 col-span-2">{{ solve_time }} seconds</dd>
+        </div>
+        {% endif %}
+        <div class="px-6 py-4 grid grid-cols-3 gap-4">
+            <dt class="text-sm font-medium text-gray-500">Assignments</dt>
+            <dd class="text-sm text-gray-900 col-span-2">{{ assignment_count }}</dd>
+        </div>
+        {% if objective_value is not None %}
+        <div class="px-6 py-4 grid grid-cols-3 gap-4">
+            <dt class="text-sm font-medium text-gray-500">Objective Value</dt>
+            <dd class="text-sm text-gray-900 col-span-2">{{ objective_value }}</dd>
+        </div>
+        {% endif %}
+    </dl>
+</div>
+
+{% if shift_counts %}
+<div class="mt-6 bg-white shadow rounded-lg overflow-hidden">
+    <div class="px-6 py-5 border-b border-gray-200">
+        <h2 class="text-lg font-medium text-gray-900">Assignments by Shift Type</h2>
+    </div>
+    <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Shift Type</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Count</th>
+            </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+            {% for shift_name, count in shift_counts.items %}
+            <tr>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ shift_name }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ count }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<div class="mt-6">
+    <a href="{% url 'request-detail' req.pk %}"
+       class="text-sm text-indigo-600 hover:text-indigo-900">
+        &larr; Back to Request
+    </a>
+</div>
+{% endblock %}

@@ -23,6 +23,12 @@ from core.views.settings_views import (
     solver_settings,
     solver_settings_edit,
 )
+from core.views.solver_views import (
+    solve_launch,
+    solve_progress,
+    solve_progress_bar,
+    solve_results,
+)
 from core.views.shift_views import (
     shift_create,
     shift_delete,
@@ -61,5 +67,17 @@ urlpatterns = [
         "requests/<int:pk>/settings/edit/",
         solver_settings_edit,
         name="solver-settings-edit",
+    ),
+    path("requests/<int:pk>/solve/", solve_launch, name="solve-launch"),
+    path(
+        "solver-runs/<int:pk>/progress/", solve_progress, name="solve-progress"
+    ),
+    path(
+        "solver-runs/<int:pk>/progress-bar/",
+        solve_progress_bar,
+        name="solve-progress-bar",
+    ),
+    path(
+        "solver-runs/<int:pk>/results/", solve_results, name="solve-results"
     ),
 ]

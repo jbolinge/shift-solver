@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Solve - {{ req.name }} - Shift Solver{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-2xl font-bold text-gray-900">Launch Solver</h1>
+    <p class="mt-1 text-sm text-gray-600">Run the solver for "{{ req.name }}"</p>
+</div>
+
+{% if errors %}
+<div class="mb-6 rounded-md bg-red-50 p-4">
+    <div class="flex">
+        <div class="ml-3">
+            <h3 class="text-sm font-medium text-red-800">Cannot launch solver</h3>
+            <div class="mt-2 text-sm text-red-700">
+                <ul class="list-disc list-inside">
+                    {% for error in errors %}
+                    <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="bg-white shadow rounded-lg overflow-hidden">
+    <div class="px-6 py-5 border-b border-gray-200">
+        <h2 class="text-lg font-medium text-gray-900">Request Summary</h2>
+    </div>
+    <dl class="divide-y divide-gray-200">
+        <div class="px-6 py-4 grid grid-cols-3 gap-4">
+            <dt class="text-sm font-medium text-gray-500">Date Range</dt>
+            <dd class="text-sm text-gray-900 col-span-2">{{ req.start_date|date:"N j, Y" }} - {{ req.end_date|date:"N j, Y" }}</dd>
+        </div>
+        <div class="px-6 py-4 grid grid-cols-3 gap-4">
+            <dt class="text-sm font-medium text-gray-500">Period Length</dt>
+            <dd class="text-sm text-gray-900 col-span-2">{{ req.period_length_days }} days</dd>
+        </div>
+        <div class="px-6 py-4 grid grid-cols-3 gap-4">
+            <dt class="text-sm font-medium text-gray-500">Workers</dt>
+            <dd class="text-sm text-gray-900 col-span-2">
+                {% if workers %}
+                    {{ workers.count }} worker{{ workers.count|pluralize }}
+                {% else %}
+                    All active workers
+                {% endif %}
+            </dd>
+        </div>
+        <div class="px-6 py-4 grid grid-cols-3 gap-4">
+            <dt class="text-sm font-medium text-gray-500">Shift Types</dt>
+            <dd class="text-sm text-gray-900 col-span-2">
+                {% if shift_types %}
+                    {{ shift_types.count }} shift type{{ shift_types.count|pluralize }}
+                {% else %}
+                    All active shift types
+                {% endif %}
+            </dd>
+        </div>
+    </dl>
+</div>
+
+<div class="mt-6 flex space-x-3">
+    <form method="post" action="{% url 'solve-launch' req.pk %}">
+        {% csrf_token %}
+        <button type="submit"
+                class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            Solve Schedule
+        </button>
+    </form>
+    <a href="{% url 'request-detail' req.pk %}"
+       class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+        Cancel
+    </a>
+</div>
+{% endblock %}

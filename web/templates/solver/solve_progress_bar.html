@@ -1,0 +1,30 @@
+<div class="mb-4">
+    <div class="flex justify-between mb-1">
+        <span class="text-sm font-medium text-gray-700">
+            {% if run.status == "completed" %}
+                Completed
+            {% elif run.status == "failed" %}
+                Failed
+            {% elif run.status == "running" %}
+                Running...
+            {% else %}
+                Pending...
+            {% endif %}
+        </span>
+        <span class="text-sm font-medium text-gray-700">{{ run.progress_percent }}%</span>
+    </div>
+    <div class="w-full bg-gray-200 rounded-full h-4">
+        <div class="h-4 rounded-full transition-all duration-500
+            {% if run.status == "completed" %}bg-green-600
+            {% elif run.status == "failed" %}bg-red-600
+            {% else %}bg-indigo-600{% endif %}"
+             style="width: {{ run.progress_percent }}%">
+        </div>
+    </div>
+</div>
+
+{% if run.started_at %}
+<p class="text-sm text-gray-500">
+    Started: {{ run.started_at|date:"N j, Y g:i A" }}
+</p>
+{% endif %}
