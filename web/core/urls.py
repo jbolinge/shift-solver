@@ -7,6 +7,13 @@ from core.views.availability_views import (
     availability_page,
     availability_update,
 )
+from core.views.request_views import (
+    request_create,
+    request_delete,
+    request_detail,
+    request_list,
+    request_update,
+)
 from core.views.shift_views import (
     shift_create,
     shift_delete,
@@ -32,4 +39,9 @@ urlpatterns = [
     path("availability/", availability_page, name="availability-page"),
     path("availability/events/", availability_events, name="availability-events"),
     path("availability/update/", availability_update, name="availability-update"),
+    path("requests/", request_list, name="request-list"),
+    path("requests/create/", request_create, name="request-create"),
+    path("requests/<int:pk>/", request_detail, name="request-detail"),
+    path("requests/<int:pk>/edit/", request_update, name="request-update"),
+    path("requests/<int:pk>/delete/", request_delete, name="request-delete"),
 ]

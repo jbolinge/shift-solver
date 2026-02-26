@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Delete Request - Shift Solver{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto">
+    <div class="bg-white shadow rounded-lg p-6">
+        <h1 class="text-xl font-bold text-gray-900 mb-4">Delete Schedule Request</h1>
+        <p class="text-gray-600 mb-6">
+            Are you sure you want to delete <strong>{{ req.name }}</strong>?
+            This action cannot be undone.
+        </p>
+        <form method="post" action="{% url 'request-delete' req.pk %}">
+            {% csrf_token %}
+            <div class="flex items-center justify-end space-x-3">
+                <a href="{% url 'request-list' %}"
+                   class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                    Cancel
+                </a>
+                <button type="submit"
+                        class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                    Delete Request
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

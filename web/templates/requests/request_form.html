@@ -1,0 +1,48 @@
+<form method="post"
+      {% if req %}
+      action="{% url 'request-update' req.pk %}"
+      {% else %}
+      action="{% url 'request-create' %}"
+      {% endif %}
+      hx-post="{% if req %}{% url 'request-update' req.pk %}{% else %}{% url 'request-create' %}{% endif %}"
+      hx-target="#request-table-body"
+      hx-swap="beforeend">
+    {% csrf_token %}
+
+    <div class="space-y-4">
+        {% for field in form %}
+        <div>
+            <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                {{ field.label }}
+            </label>
+            {{ field }}
+            {% if field.errors %}
+            <ul class="mt-1 text-sm text-red-600">
+                {% for error in field.errors %}
+                <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        {% if form.non_field_errors %}
+        <div class="text-sm text-red-600">
+            {% for error in form.non_field_errors %}
+            <p>{{ error }}</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="mt-6 flex items-center justify-end space-x-3">
+        <a href="{% url 'request-list' %}"
+           class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+            Cancel
+        </a>
+        <button type="submit"
+                class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            {% if req %}Update{% else %}Create{% endif %} Request
+        </button>
+    </div>
+</form>

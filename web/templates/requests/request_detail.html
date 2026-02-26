@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}{{ req.name }} - Shift Solver{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <div class="flex items-center justify-between">
+        <h1 class="text-2xl font-bold text-gray-900">{{ req.name }}</h1>
+        <div class="flex space-x-3">
+            <a href="{% url 'request-update' req.pk %}"
+               class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                Edit
+            </a>
+            <a href="{% url 'request-delete' req.pk %}"
+               class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700">
+                Delete
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="bg-white shadow rounded-lg overflow-hidden">
+    <div class="px-6 py-5 border-b border-gray-200">
+        <h2 class="text-lg font-medium text-gray-900">Request Details</h2>
+    </div>
+    <dl class="divide-y divide-gray-200">
+        <div class="px-6 py-4 grid grid-cols-3 gap-4">
+            <dt class="text-sm font-medium text-gray-500">Status</dt>
+            <dd class="text-sm text-gray-900 col-span-2">
+                {% if req.status == "draft" %}
+                    <span class="inline-flex px-2 text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">Draft</span>
+                {% elif req.status == "running" %}
+                    <span class="inline-flex px-2 text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Running</span>
+                {% elif req.status == "completed" %}
+                    <span class="inline-flex px-2 text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Completed</span>
+                {% elif req.status == "failed" %}
+                    <span class="inline-flex px-2 text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Failed</span>
+                {% endif %}
+            </dd>
+        </div>
+        <div class="px-6 py-4 grid grid-cols-3 gap-4">
+            <dt class="text-sm font-medium text-gray-500">Start Date</dt>
+            <dd class="text-sm text-gray-900 col-span-2">{{ req.start_date|date:"N j, Y" }}</dd>
+        </div>
+        <div class="px-6 py-4 grid grid-cols-3 gap-4">
+            <dt class="text-sm font-medium text-gray-500">End Date</dt>
+            <dd class="text-sm text-gray-900 col-span-2">{{ req.end_date|date:"N j, Y" }}</dd>
+        </div>
+        <div class="px-6 py-4 grid grid-cols-3 gap-4">
+            <dt class="text-sm font-medium text-gray-500">Period Length</dt>
+            <dd class="text-sm text-gray-900 col-span-2">{{ req.period_length_days }} days</dd>
+        </div>
+        <div class="px-6 py-4 grid grid-cols-3 gap-4">
+            <dt class="text-sm font-medium text-gray-500">Workers</dt>
+            <dd class="text-sm text-gray-900 col-span-2">
+                {% if workers %}
+                    <ul class="list-disc list-inside">
+                        {% for worker in workers %}
+                            <li>{{ worker.name }}</li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    All active workers
+                {% endif %}
+            </dd>
+        </div>
+        <div class="px-6 py-4 grid grid-cols-3 gap-4">
+            <dt class="text-sm font-medium text-gray-500">Shift Types</dt>
+            <dd class="text-sm text-gray-900 col-span-2">
+                {% if shift_types %}
+                    <ul class="list-disc list-inside">
+                        {% for shift in shift_types %}
+                            <li>{{ shift.name }}</li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    All active shift types
+                {% endif %}
+            </dd>
+        </div>
+        <div class="px-6 py-4 grid grid-cols-3 gap-4">
+            <dt class="text-sm font-medium text-gray-500">Created</dt>
+            <dd class="text-sm text-gray-900 col-span-2">{{ req.created_at|date:"N j, Y g:i A" }}</dd>
+        </div>
+        <div class="px-6 py-4 grid grid-cols-3 gap-4">
+            <dt class="text-sm font-medium text-gray-500">Last Updated</dt>
+            <dd class="text-sm text-gray-900 col-span-2">{{ req.updated_at|date:"N j, Y g:i A" }}</dd>
+        </div>
+    </dl>
+</div>
+
+<div class="mt-6">
+    <a href="{% url 'request-list' %}"
+       class="text-sm text-indigo-600 hover:text-indigo-900">
+        &larr; Back to Requests
+    </a>
+</div>
+{% endblock %}

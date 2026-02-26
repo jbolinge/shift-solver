@@ -2,7 +2,7 @@
 
 from django import forms
 
-from core.models import ShiftType, Worker
+from core.models import ScheduleRequest, ShiftType, Worker
 
 
 class WorkerForm(forms.ModelForm):
@@ -144,3 +144,53 @@ class ShiftTypeForm(forms.ModelForm):
                 }
             ),
         }
+
+
+class ScheduleRequestForm(forms.ModelForm):
+    """ModelForm for creating and editing ScheduleRequest instances."""
+
+    class Meta:
+        model = ScheduleRequest
+        fields = [
+            "name",
+            "start_date",
+            "end_date",
+            "period_length_days",
+        ]
+        widgets = {
+            "name": forms.TextInput(
+                attrs={
+                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "placeholder": "e.g. March 2026 Schedule",
+                }
+            ),
+            "start_date": forms.DateInput(
+                attrs={
+                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "type": "date",
+                }
+            ),
+            "end_date": forms.DateInput(
+                attrs={
+                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "type": "date",
+                }
+            ),
+            "period_length_days": forms.NumberInput(
+                attrs={
+                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "min": "1",
+                }
+            ),
+        }
+
+    def clean(self) -> dict:
+        """Validate that end_date >= start_date."""
+        cleaned_data = super().clean()
+        start_date = cleaned_data.get("start_date")
+        end_date = cleaned_data.get("end_date")
+        if start_date and end_date and end_date < start_date:
+            self.add_error(
+                "end_date", "End date must be on or after start date."
+            )
+        return cleaned_data
