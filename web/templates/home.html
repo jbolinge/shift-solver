@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Shift Solver{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold text-gray-900 mb-6">Dashboard</h1>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-sm font-medium text-gray-500 uppercase tracking-wider">Workers</h2>
+        <p class="mt-2 text-3xl font-bold text-gray-900">{{ worker_count }}</p>
+        <a href="/workers/" class="mt-2 text-sm text-indigo-600 hover:text-indigo-800">Manage workers</a>
+    </div>
+    <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-sm font-medium text-gray-500 uppercase tracking-wider">Shift Types</h2>
+        <p class="mt-2 text-3xl font-bold text-gray-900">{{ shift_type_count }}</p>
+        <a href="/shifts/" class="mt-2 text-sm text-indigo-600 hover:text-indigo-800">Manage shift types</a>
+    </div>
+    <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-sm font-medium text-gray-500 uppercase tracking-wider">Schedule Requests</h2>
+        <p class="mt-2 text-3xl font-bold text-gray-900">{{ request_count }}</p>
+        <a href="/requests/" class="mt-2 text-sm text-indigo-600 hover:text-indigo-800">Manage requests</a>
+    </div>
+</div>
+{% endblock %}
