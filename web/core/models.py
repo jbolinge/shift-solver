@@ -116,6 +116,24 @@ class ScheduleRequest(models.Model):
         return str(self.name)
 
 
+class SolverSettings(models.Model):
+    """Solver configuration parameters for a schedule request."""
+
+    schedule_request = models.OneToOneField(
+        ScheduleRequest, on_delete=models.CASCADE, related_name="solver_settings"
+    )
+    time_limit_seconds = models.IntegerField(default=60)
+    num_search_workers = models.IntegerField(default=8)
+    optimality_tolerance = models.FloatField(default=0.0)
+    log_search_progress = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name_plural = "solver settings"
+
+    def __str__(self) -> str:
+        return f"Settings for {self.schedule_request}"
+
+
 class SolverRun(models.Model):
     """Tracks a solver execution."""
 

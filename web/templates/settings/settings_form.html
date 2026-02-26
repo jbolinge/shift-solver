@@ -1,0 +1,85 @@
+<form method="post"
+      action="{% url 'solver-settings-edit' req.pk %}"
+      hx-post="{% url 'solver-settings-edit' req.pk %}"
+      hx-target="#settings-form-container"
+      hx-swap="innerHTML">
+    {% csrf_token %}
+
+    <div class="px-6 py-5 border-b border-gray-200">
+        <h2 class="text-lg font-medium text-gray-900">Solver Parameters</h2>
+    </div>
+
+    <div class="px-6 py-5 space-y-6">
+        <div>
+            <label for="{{ form.time_limit_seconds.id_for_label }}"
+                   class="block text-sm font-medium text-gray-700">
+                Time Limit (seconds)
+            </label>
+            {{ form.time_limit_seconds }}
+            <p class="mt-1 text-xs text-gray-500">
+                Maximum time the solver will run before returning the best solution found.
+            </p>
+            {% if form.time_limit_seconds.errors %}
+            <ul class="mt-1 text-sm text-red-600">
+                {% for error in form.time_limit_seconds.errors %}
+                <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </div>
+
+        <div>
+            <label for="{{ form.num_search_workers.id_for_label }}"
+                   class="block text-sm font-medium text-gray-700">
+                Search Workers
+            </label>
+            {{ form.num_search_workers }}
+            <p class="mt-1 text-xs text-gray-500">
+                Number of parallel search workers used by the solver.
+            </p>
+            {% if form.num_search_workers.errors %}
+            <ul class="mt-1 text-sm text-red-600">
+                {% for error in form.num_search_workers.errors %}
+                <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </div>
+
+        <div>
+            <label for="{{ form.optimality_tolerance.id_for_label }}"
+                   class="block text-sm font-medium text-gray-700">
+                Optimality Tolerance
+            </label>
+            {{ form.optimality_tolerance }}
+            <p class="mt-1 text-xs text-gray-500">
+                Acceptable gap from optimal solution (0.0 = exact optimal, 0.05 = within 5%).
+            </p>
+            {% if form.optimality_tolerance.errors %}
+            <ul class="mt-1 text-sm text-red-600">
+                {% for error in form.optimality_tolerance.errors %}
+                <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </div>
+
+        <div class="flex items-center space-x-3">
+            {{ form.log_search_progress }}
+            <label for="{{ form.log_search_progress.id_for_label }}"
+                   class="text-sm font-medium text-gray-700">
+                Log Search Progress
+            </label>
+        </div>
+        <p class="mt-1 text-xs text-gray-500">
+            Enable detailed solver progress logging during execution.
+        </p>
+    </div>
+
+    <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end">
+        <button type="submit"
+                class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            Save Settings
+        </button>
+    </div>
+</form>

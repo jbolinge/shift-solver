@@ -19,6 +19,10 @@ from core.views.request_views import (
     request_list,
     request_update,
 )
+from core.views.settings_views import (
+    solver_settings,
+    solver_settings_edit,
+)
 from core.views.shift_views import (
     shift_create,
     shift_delete,
@@ -52,4 +56,10 @@ urlpatterns = [
     path("requests/<int:pk>/", request_detail, name="request-detail"),
     path("requests/<int:pk>/edit/", request_update, name="request-update"),
     path("requests/<int:pk>/delete/", request_delete, name="request-delete"),
+    path("requests/<int:pk>/settings/", solver_settings, name="solver-settings"),
+    path(
+        "requests/<int:pk>/settings/edit/",
+        solver_settings_edit,
+        name="solver-settings-edit",
+    ),
 ]

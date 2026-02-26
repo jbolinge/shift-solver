@@ -2,7 +2,13 @@
 
 from django import forms
 
-from core.models import ConstraintConfig, ScheduleRequest, ShiftType, Worker
+from core.models import (
+    ConstraintConfig,
+    ScheduleRequest,
+    ShiftType,
+    SolverSettings,
+    Worker,
+)
 
 
 class ConstraintConfigForm(forms.ModelForm):
@@ -246,3 +252,49 @@ class ScheduleRequestForm(forms.ModelForm):
                 "end_date", "End date must be on or after start date."
             )
         return cleaned_data
+
+
+class SolverSettingsForm(forms.ModelForm):
+    """ModelForm for editing SolverSettings instances."""
+
+    class Meta:
+        model = SolverSettings
+        fields = [
+            "time_limit_seconds",
+            "num_search_workers",
+            "optimality_tolerance",
+            "log_search_progress",
+        ]
+        widgets = {
+            "time_limit_seconds": forms.NumberInput(
+                attrs={
+                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "min": "1",
+                }
+            ),
+            "num_search_workers": forms.NumberInput(
+                attrs={
+                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "min": "1",
+                }
+            ),
+            "optimality_tolerance": forms.NumberInput(
+                attrs={
+                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "step": "0.01",
+                    "min": "0",
+                }
+            ),
+            "log_search_progress": forms.CheckboxInput(
+                attrs={
+                    "class": "h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500",
+                }
+            ),
+        }
+
+    def clean_time_limit_seconds(self) -> int:
+        """Reject time limit values that are zero or negative."""
+        value = self.cleaned_data.get("time_limit_seconds")
+        if value is not None and value <= 0:
+            raise forms.ValidationError("Time limit must be greater than zero.")
+        return value
