@@ -1,4 +1,4 @@
-"""Core views for the shift-solver web UI."""
+"""Home/dashboard view."""
 
 from django.views.generic import TemplateView
 
