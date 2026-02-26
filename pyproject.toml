@@ -31,6 +31,9 @@ dependencies = [
     "tqdm>=4.64.0",
     "colorama>=0.4.0",
     "plotly>=5.0.0",
+    "django>=5.0.0",
+    "django-unfold>=0.40.0",
+    "whitenoise>=6.0.0",
 ]
 
 [project.optional-dependencies]
@@ -60,6 +63,7 @@ test = [
     "hypothesis>=6.0.0",
     "freezegun>=1.0.0",
     "faker>=20.0.0",
+    "pytest-django>=4.5.0",
 ]
 lint = [
     "ruff>=0.1.0",
@@ -76,7 +80,7 @@ build-backend = "uv_build"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["tests"]
+pythonpath = ["tests", "web"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
@@ -84,6 +88,7 @@ addopts = [
     "-v",
     "--strict-markers",
 ]
+DJANGO_SETTINGS_MODULE = "config.settings"
 markers = [
     "unit: marks tests as unit tests (fast)",
     "integration: marks tests as integration tests",
@@ -111,7 +116,7 @@ exclude_lines = [
 [tool.ruff]
 target-version = "py312"
 line-length = 88
-src = ["src", "tests"]
+src = ["src", "tests", "web"]
 
 [tool.ruff.lint]
 select = [
@@ -130,7 +135,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["shift_solver"]
+known-first-party = ["shift_solver", "core", "config"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -149,5 +154,7 @@ module = [
     "openpyxl.*",
     "colorama",
     "plotly.*",
+    "unfold.*",
+    "whitenoise.*",
 ]
 ignore_missing_imports = true
