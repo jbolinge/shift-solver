@@ -2,7 +2,7 @@
 id: scheduler-110
 title: "Django project skeleton and settings"
 type: task
-status: open
+status: closed
 priority: 1
 created: 2026-02-21
 updated: 2026-02-21

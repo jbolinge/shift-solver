@@ -2,7 +2,8 @@
 id: scheduler-125
 title: "Import/export from web UI"
 type: feature
-status: open
+status: closed
+closed: 2026-02-26
 priority: 2
 created: 2026-02-21
 updated: 2026-02-21

@@ -2,7 +2,7 @@
 id: scheduler-111
 title: "Django ORM models (migrate from SQLAlchemy)"
 type: task
-status: open
+status: closed
 priority: 1
 created: 2026-02-21
 updated: 2026-02-21

@@ -2,7 +2,8 @@
 id: scheduler-123
 title: "Schedule visualization with FullCalendar"
 type: feature
-status: open
+status: closed
+closed: 2026-02-26
 priority: 1
 created: 2026-02-21
 updated: 2026-02-21

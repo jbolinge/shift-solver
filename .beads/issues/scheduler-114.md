@@ -2,7 +2,7 @@
 id: scheduler-114
 title: "Django admin with django-unfold"
 type: task
-status: open
+status: closed
 priority: 2
 created: 2026-02-21
 updated: 2026-02-21

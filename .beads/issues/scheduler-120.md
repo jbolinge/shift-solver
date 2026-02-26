@@ -2,7 +2,7 @@
 id: scheduler-120
 title: "Schedule parameters and solver settings UI"
 type: feature
-status: open
+status: closed
 priority: 1
 created: 2026-02-21
 updated: 2026-02-21

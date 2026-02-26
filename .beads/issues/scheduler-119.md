@@ -2,7 +2,7 @@
 id: scheduler-119
 title: "Constraint configuration UI"
 type: feature
-status: open
+status: closed
 priority: 1
 created: 2026-02-21
 updated: 2026-02-21

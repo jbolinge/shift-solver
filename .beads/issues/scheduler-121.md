@@ -2,7 +2,7 @@
 id: scheduler-121
 title: "Background solver runner with progress tracking"
 type: task
-status: open
+status: closed
 priority: 1
 created: 2026-02-21
 updated: 2026-02-21

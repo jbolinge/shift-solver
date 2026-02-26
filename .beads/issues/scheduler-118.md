@@ -2,7 +2,7 @@
 id: scheduler-118
 title: "Scheduling request management"
 type: feature
-status: open
+status: closed
 priority: 1
 created: 2026-02-21
 updated: 2026-02-21
