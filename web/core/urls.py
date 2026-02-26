@@ -12,17 +12,6 @@ from core.views.constraint_views import (
     constraint_seed,
     constraint_update,
 )
-from core.views.request_views import (
-    request_create,
-    request_delete,
-    request_detail,
-    request_list,
-    request_update,
-)
-from core.views.settings_views import (
-    solver_settings,
-    solver_settings_edit,
-)
 from core.views.export_views import (
     export_download,
     export_page,
@@ -38,21 +27,32 @@ from core.views.plotly_views import (
     chart_page,
     chart_view,
 )
+from core.views.request_views import (
+    request_create,
+    request_delete,
+    request_detail,
+    request_list,
+    request_update,
+)
 from core.views.schedule_views import (
     schedule_events,
     schedule_view,
 )
-from core.views.solver_views import (
-    solve_launch,
-    solve_progress,
-    solve_progress_bar,
-    solve_results,
+from core.views.settings_views import (
+    solver_settings,
+    solver_settings_edit,
 )
 from core.views.shift_views import (
     shift_create,
     shift_delete,
     shift_list,
     shift_update,
+)
+from core.views.solver_views import (
+    solve_launch,
+    solve_progress,
+    solve_progress_bar,
+    solve_results,
 )
 from core.views.worker_views import (
     worker_create,
