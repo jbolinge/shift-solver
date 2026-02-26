@@ -1,0 +1,24 @@
+<div class="bg-white rounded-lg shadow p-4 mb-4">
+    <div class="flex flex-wrap items-center gap-4">
+        <div>
+            <label for="worker-filter" class="text-sm font-medium text-gray-700">Worker:</label>
+            <select id="worker-filter"
+                    class="ml-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm px-3 py-2 border">
+                <option value="">All Workers</option>
+                {% for worker in workers %}
+                <option value="{{ worker.pk }}">{{ worker.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="flex items-center gap-3">
+            <span class="text-sm font-medium text-gray-700">Shift Types:</span>
+            {% for shift in shift_types %}
+            <label class="inline-flex items-center text-sm">
+                <input type="checkbox" class="shift-type-filter rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                       value="{{ shift.pk }}" checked>
+                <span class="ml-1 text-gray-700">{{ shift.name }}</span>
+            </label>
+            {% endfor %}
+        </div>
+    </div>
+</div>

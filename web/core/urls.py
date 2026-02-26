@@ -23,6 +23,10 @@ from core.views.settings_views import (
     solver_settings,
     solver_settings_edit,
 )
+from core.views.schedule_views import (
+    schedule_events,
+    schedule_view,
+)
 from core.views.solver_views import (
     solve_launch,
     solve_progress,
@@ -79,5 +83,15 @@ urlpatterns = [
     ),
     path(
         "solver-runs/<int:pk>/results/", solve_results, name="solve-results"
+    ),
+    path(
+        "solver-runs/<int:pk>/schedule/",
+        schedule_view,
+        name="schedule-view",
+    ),
+    path(
+        "solver-runs/<int:pk>/schedule/events/",
+        schedule_events,
+        name="schedule-events",
     ),
 ]

@@ -8,6 +8,10 @@
         <h1 class="text-2xl font-bold text-gray-900">Solver Results</h1>
         <div class="flex space-x-3">
             {% if run.status == "completed" %}
+            <a href="{% url 'schedule-view' run.pk %}"
+               class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">
+                View Schedule
+            </a>
             <a href="{% url 'request-detail' req.pk %}"
                class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
                 Back to Request
