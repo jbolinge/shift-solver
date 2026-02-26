@@ -1,5 +1,7 @@
 """Forms for the shift-solver web UI."""
 
+import json
+
 from django import forms
 
 from core.models import (
@@ -50,8 +52,6 @@ class ConstraintConfigForm(forms.ModelForm):
 
     def clean_parameters(self) -> dict:
         """Validate that parameters is valid JSON."""
-        import json
-
         raw = self.cleaned_data.get("parameters", "")
         if not raw or raw.strip() == "":
             return {}
@@ -67,6 +67,42 @@ class ConstraintConfigForm(forms.ModelForm):
 class WorkerForm(forms.ModelForm):
     """ModelForm for creating and editing Worker instances."""
 
+    restricted_shifts = forms.CharField(
+        widget=forms.Textarea(
+            attrs={
+                "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono",
+                "rows": 2,
+                "placeholder": '["night", "weekend"]',
+            }
+        ),
+        required=False,
+        help_text="JSON list of shift type IDs this worker cannot work.",
+    )
+
+    preferred_shifts = forms.CharField(
+        widget=forms.Textarea(
+            attrs={
+                "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono",
+                "rows": 2,
+                "placeholder": '["day", "morning"]',
+            }
+        ),
+        required=False,
+        help_text="JSON list of shift type IDs this worker prefers.",
+    )
+
+    attributes = forms.CharField(
+        widget=forms.Textarea(
+            attrs={
+                "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono",
+                "rows": 2,
+                "placeholder": '{"specialty": "cardiology"}',
+            }
+        ),
+        required=False,
+        help_text="JSON object of worker attributes.",
+    )
+
     class Meta:
         model = Worker
         fields = [
@@ -77,6 +113,9 @@ class WorkerForm(forms.ModelForm):
             "worker_type",
             "fte",
             "is_active",
+            "restricted_shifts",
+            "preferred_shifts",
+            "attributes",
         ]
         widgets = {
             "worker_id": forms.TextInput(
@@ -124,9 +163,92 @@ class WorkerForm(forms.ModelForm):
             ),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            self.initial["restricted_shifts"] = json.dumps(
+                self.instance.restricted_shifts or []
+            )
+            self.initial["preferred_shifts"] = json.dumps(
+                self.instance.preferred_shifts or []
+            )
+            self.initial["attributes"] = json.dumps(
+                self.instance.attributes or {}, indent=2
+            )
+
+    def clean_restricted_shifts(self) -> list:
+        raw = self.cleaned_data.get("restricted_shifts", "")
+        if not raw or raw.strip() == "":
+            return []
+        try:
+            parsed = json.loads(raw)
+        except (json.JSONDecodeError, TypeError) as err:
+            raise forms.ValidationError("Must be valid JSON.") from err
+        if not isinstance(parsed, list):
+            raise forms.ValidationError("Must be a JSON list.")
+        return parsed
+
+    def clean_preferred_shifts(self) -> list:
+        raw = self.cleaned_data.get("preferred_shifts", "")
+        if not raw or raw.strip() == "":
+            return []
+        try:
+            parsed = json.loads(raw)
+        except (json.JSONDecodeError, TypeError) as err:
+            raise forms.ValidationError("Must be valid JSON.") from err
+        if not isinstance(parsed, list):
+            raise forms.ValidationError("Must be a JSON list.")
+        return parsed
+
+    def clean_attributes(self) -> dict:
+        raw = self.cleaned_data.get("attributes", "")
+        if not raw or raw.strip() == "":
+            return {}
+        try:
+            parsed = json.loads(raw)
+        except (json.JSONDecodeError, TypeError) as err:
+            raise forms.ValidationError("Must be valid JSON.") from err
+        if not isinstance(parsed, dict):
+            raise forms.ValidationError("Must be a JSON object.")
+        return parsed
+
+
+DAY_CHOICES = [
+    (0, "Monday"),
+    (1, "Tuesday"),
+    (2, "Wednesday"),
+    (3, "Thursday"),
+    (4, "Friday"),
+    (5, "Saturday"),
+    (6, "Sunday"),
+]
+
 
 class ShiftTypeForm(forms.ModelForm):
     """ModelForm for creating and editing ShiftType instances."""
+
+    applicable_days = forms.MultipleChoiceField(
+        choices=DAY_CHOICES,
+        widget=forms.CheckboxSelectMultiple(
+            attrs={
+                "class": "h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500",
+            }
+        ),
+        required=False,
+        help_text="Days of the week this shift applies to. Leave empty for all days.",
+    )
+
+    required_attributes = forms.CharField(
+        widget=forms.Textarea(
+            attrs={
+                "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono",
+                "rows": 2,
+                "placeholder": '{"specialty": "cardiology"}',
+            }
+        ),
+        required=False,
+        help_text="JSON object of required worker attributes.",
+    )
 
     class Meta:
         model = ShiftType
@@ -141,6 +263,8 @@ class ShiftTypeForm(forms.ModelForm):
             "workers_required",
             "is_undesirable",
             "is_active",
+            "applicable_days",
+            "required_attributes",
         ]
         widgets = {
             "shift_type_id": forms.TextInput(
@@ -203,6 +327,35 @@ class ShiftTypeForm(forms.ModelForm):
                 }
             ),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            if self.instance.applicable_days is not None:
+                self.initial["applicable_days"] = [
+                    str(d) for d in self.instance.applicable_days
+                ]
+            self.initial["required_attributes"] = json.dumps(
+                self.instance.required_attributes or {}, indent=2
+            )
+
+    def clean_applicable_days(self) -> list[int] | None:
+        raw = self.cleaned_data.get("applicable_days", [])
+        if not raw:
+            return None
+        return [int(d) for d in raw]
+
+    def clean_required_attributes(self) -> dict:
+        raw = self.cleaned_data.get("required_attributes", "")
+        if not raw or raw.strip() == "":
+            return {}
+        try:
+            parsed = json.loads(raw)
+        except (json.JSONDecodeError, TypeError) as err:
+            raise forms.ValidationError("Must be valid JSON.") from err
+        if not isinstance(parsed, dict):
+            raise forms.ValidationError("Must be a JSON object.")
+        return parsed
 
 
 class ScheduleRequestForm(forms.ModelForm):

@@ -1,5 +1,7 @@
 """Tests for Worker CRUD views with HTMX support (scheduler-115)."""
 
+import json
+
 import pytest
 from django.test import Client
 
@@ -173,3 +175,131 @@ class TestWorkerDeleteView:
         assert Worker.objects.count() == 0
         assert response.status_code == 200
         assert response.content == b""
+
+
+class TestWorkerFormJsonFields:
+    """Tests for restricted_shifts, preferred_shifts, attributes JSON fields."""
+
+    def test_create_worker_with_restricted_shifts(self, client: Client) -> None:
+        """JSON list of restricted shifts saves correctly."""
+        data = {
+            "worker_id": "W1",
+            "name": "Alice",
+            "fte": "1.0",
+            "is_active": "on",
+            "restricted_shifts": '["night", "weekend"]',
+            "preferred_shifts": "[]",
+            "attributes": "{}",
+        }
+        client.post("/workers/create/", data)
+        worker = Worker.objects.get(worker_id="W1")
+        assert worker.restricted_shifts == ["night", "weekend"]
+
+    def test_create_worker_with_preferred_shifts(self, client: Client) -> None:
+        """JSON list of preferred shifts saves correctly."""
+        data = {
+            "worker_id": "W1",
+            "name": "Alice",
+            "fte": "1.0",
+            "is_active": "on",
+            "restricted_shifts": "[]",
+            "preferred_shifts": '["day", "morning"]',
+            "attributes": "{}",
+        }
+        client.post("/workers/create/", data)
+        worker = Worker.objects.get(worker_id="W1")
+        assert worker.preferred_shifts == ["day", "morning"]
+
+    def test_create_worker_with_attributes(self, client: Client) -> None:
+        """JSON dict of attributes saves correctly."""
+        data = {
+            "worker_id": "W1",
+            "name": "Alice",
+            "fte": "1.0",
+            "is_active": "on",
+            "restricted_shifts": "[]",
+            "preferred_shifts": "[]",
+            "attributes": '{"specialty": "cardiology"}',
+        }
+        client.post("/workers/create/", data)
+        worker = Worker.objects.get(worker_id="W1")
+        assert worker.attributes == {"specialty": "cardiology"}
+
+    def test_restricted_shifts_rejects_invalid_json(self, client: Client) -> None:
+        """Form error on bad JSON for restricted_shifts."""
+        data = {
+            "worker_id": "W1",
+            "name": "Alice",
+            "fte": "1.0",
+            "is_active": "on",
+            "restricted_shifts": "not json",
+            "preferred_shifts": "[]",
+            "attributes": "{}",
+        }
+        response = client.post("/workers/create/", data)
+        assert response.status_code == 200  # re-rendered form
+        assert Worker.objects.count() == 0
+
+    def test_restricted_shifts_rejects_non_list(self, client: Client) -> None:
+        """Form error when restricted_shifts is a dict instead of list."""
+        data = {
+            "worker_id": "W1",
+            "name": "Alice",
+            "fte": "1.0",
+            "is_active": "on",
+            "restricted_shifts": '{"not": "a list"}',
+            "preferred_shifts": "[]",
+            "attributes": "{}",
+        }
+        response = client.post("/workers/create/", data)
+        assert response.status_code == 200
+        assert Worker.objects.count() == 0
+
+    def test_attributes_rejects_non_dict(self, client: Client) -> None:
+        """Form error when attributes is a list instead of dict."""
+        data = {
+            "worker_id": "W1",
+            "name": "Alice",
+            "fte": "1.0",
+            "is_active": "on",
+            "restricted_shifts": "[]",
+            "preferred_shifts": "[]",
+            "attributes": '["not", "a dict"]',
+        }
+        response = client.post("/workers/create/", data)
+        assert response.status_code == 200
+        assert Worker.objects.count() == 0
+
+    def test_empty_json_fields_default_gracefully(self, client: Client) -> None:
+        """Empty JSON fields default to [] or {}."""
+        data = {
+            "worker_id": "W1",
+            "name": "Alice",
+            "fte": "1.0",
+            "is_active": "on",
+            "restricted_shifts": "",
+            "preferred_shifts": "",
+            "attributes": "",
+        }
+        client.post("/workers/create/", data)
+        worker = Worker.objects.get(worker_id="W1")
+        assert worker.restricted_shifts == []
+        assert worker.preferred_shifts == []
+        assert worker.attributes == {}
+
+    def test_update_preserves_json_fields(self, client: Client) -> None:
+        """JSON fields are pre-populated on edit form."""
+        worker = Worker.objects.create(
+            worker_id="W1",
+            name="Alice",
+            fte=1.0,
+            is_active=True,
+            restricted_shifts=["night"],
+            preferred_shifts=["day"],
+            attributes={"level": "senior"},
+        )
+        response = client.get(f"/workers/{worker.pk}/edit/")
+        content = response.content.decode()
+        assert "night" in content
+        assert "day" in content
+        assert "senior" in content
