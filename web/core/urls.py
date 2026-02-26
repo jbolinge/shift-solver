@@ -7,6 +7,11 @@ from core.views.availability_views import (
     availability_page,
     availability_update,
 )
+from core.views.constraint_views import (
+    constraint_list,
+    constraint_seed,
+    constraint_update,
+)
 from core.views.request_views import (
     request_create,
     request_delete,
@@ -39,6 +44,9 @@ urlpatterns = [
     path("availability/", availability_page, name="availability-page"),
     path("availability/events/", availability_events, name="availability-events"),
     path("availability/update/", availability_update, name="availability-update"),
+    path("constraints/", constraint_list, name="constraint-list"),
+    path("constraints/<int:pk>/edit/", constraint_update, name="constraint-update"),
+    path("constraints/seed/", constraint_seed, name="constraint-seed"),
     path("requests/", request_list, name="request-list"),
     path("requests/create/", request_create, name="request-create"),
     path("requests/<int:pk>/", request_detail, name="request-detail"),

@@ -2,7 +2,59 @@
 
 from django import forms
 
-from core.models import ScheduleRequest, ShiftType, Worker
+from core.models import ConstraintConfig, ScheduleRequest, ShiftType, Worker
+
+
+class ConstraintConfigForm(forms.ModelForm):
+    """ModelForm for editing ConstraintConfig instances."""
+
+    parameters = forms.CharField(
+        widget=forms.Textarea(
+            attrs={
+                "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono",
+                "rows": 3,
+                "placeholder": "{}",
+            }
+        ),
+        required=False,
+    )
+
+    class Meta:
+        model = ConstraintConfig
+        fields = ["enabled", "is_hard", "weight", "parameters"]
+        widgets = {
+            "enabled": forms.CheckboxInput(
+                attrs={
+                    "class": "h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500",
+                }
+            ),
+            "is_hard": forms.CheckboxInput(
+                attrs={
+                    "class": "h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500",
+                }
+            ),
+            "weight": forms.NumberInput(
+                attrs={
+                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "min": "0",
+                }
+            ),
+        }
+
+    def clean_parameters(self) -> dict:
+        """Validate that parameters is valid JSON."""
+        import json
+
+        raw = self.cleaned_data.get("parameters", "")
+        if not raw or raw.strip() == "":
+            return {}
+        try:
+            parsed = json.loads(raw)
+        except (json.JSONDecodeError, TypeError) as err:
+            raise forms.ValidationError("Parameters must be valid JSON.") from err
+        if not isinstance(parsed, dict):
+            raise forms.ValidationError("Parameters must be a JSON object.")
+        return parsed
 
 
 class WorkerForm(forms.ModelForm):

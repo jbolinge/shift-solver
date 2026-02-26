@@ -1,0 +1,75 @@
+<tr id="constraint-row-{{ constraint.pk }}">
+    <td colspan="6" class="px-6 py-4">
+        <form method="post"
+              action="{% url 'constraint-update' constraint.pk %}"
+              hx-post="{% url 'constraint-update' constraint.pk %}"
+              hx-target="#constraint-row-{{ constraint.pk }}"
+              hx-swap="outerHTML">
+            {% csrf_token %}
+
+            <div class="bg-gray-50 rounded-lg p-4">
+                <h3 class="text-sm font-medium text-gray-900 mb-3">
+                    Edit: {{ constraint.constraint_type }}
+                </h3>
+
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="flex items-center space-x-2">
+                        <label for="{{ form.enabled.id_for_label }}" class="text-sm font-medium text-gray-700">
+                            Enabled
+                        </label>
+                        {{ form.enabled }}
+                    </div>
+
+                    <div class="flex items-center space-x-2">
+                        <label for="{{ form.is_hard.id_for_label }}" class="text-sm font-medium text-gray-700">
+                            Hard constraint
+                        </label>
+                        {{ form.is_hard }}
+                    </div>
+
+                    <div>
+                        <label for="{{ form.weight.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                            Weight
+                        </label>
+                        {{ form.weight }}
+                        {% if form.weight.errors %}
+                        <ul class="mt-1 text-sm text-red-600">
+                            {% for error in form.weight.errors %}
+                            <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <label for="{{ form.parameters.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                            Parameters (JSON)
+                        </label>
+                        {{ form.parameters }}
+                        {% if form.parameters.errors %}
+                        <ul class="mt-1 text-sm text-red-600">
+                            {% for error in form.parameters.errors %}
+                            <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="mt-4 flex items-center justify-end space-x-3">
+                    <a href="{% url 'constraint-list' %}"
+                       hx-get="{% url 'constraint-list' %}"
+                       hx-target="#main-content"
+                       hx-swap="innerHTML"
+                       class="px-3 py-1.5 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                        Cancel
+                    </a>
+                    <button type="submit"
+                            class="px-3 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        Save
+                    </button>
+                </div>
+            </div>
+        </form>
+    </td>
+</tr>
