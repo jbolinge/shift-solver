@@ -58,6 +58,18 @@ DEFAULT_CONSTRAINTS: list[dict] = [
         "weight": 100,
         "description": "Limit maximum consecutive days off.",
     },
+    {
+        "constraint_type": "shift_frequency",
+        "is_hard": False,
+        "weight": 500,
+        "description": "Per-worker shift frequency requirements. Configure requirements via JSON parameters.",
+    },
+    {
+        "constraint_type": "shift_order_preference",
+        "is_hard": False,
+        "weight": 200,
+        "description": "Preferred shift transitions between adjacent periods. Configure rules via JSON parameters.",
+    },
 ]
 
 

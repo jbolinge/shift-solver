@@ -164,7 +164,7 @@ class TestConstraintSeedView:
         response = client.post("/constraints/seed/")
         assert response.status_code == 302
 
-        assert ConstraintConfig.objects.count() == 8
+        assert ConstraintConfig.objects.count() == 10
 
         expected_types = {
             "coverage",
@@ -175,6 +175,8 @@ class TestConstraintSeedView:
             "request",
             "sequence",
             "max_absence",
+            "shift_frequency",
+            "shift_order_preference",
         }
         actual_types = set(
             ConstraintConfig.objects.values_list("constraint_type", flat=True)
@@ -192,10 +194,19 @@ class TestConstraintSeedView:
         assert fairness.is_hard is False
         assert fairness.weight == 1000
 
+        # Verify new constraint seeds
+        sf = ConstraintConfig.objects.get(constraint_type="shift_frequency")
+        assert sf.is_hard is False
+        assert sf.weight == 500
+
+        sop = ConstraintConfig.objects.get(constraint_type="shift_order_preference")
+        assert sop.is_hard is False
+        assert sop.weight == 200
+
     def test_seed_idempotent(self, client: Client) -> None:
         """Seeding twice does not duplicate constraints."""
         client.post("/constraints/seed/")
-        assert ConstraintConfig.objects.count() == 8
+        assert ConstraintConfig.objects.count() == 10
 
         client.post("/constraints/seed/")
-        assert ConstraintConfig.objects.count() == 8
+        assert ConstraintConfig.objects.count() == 10
