@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Export - {{ req.name }} - Shift Solver{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-2xl font-bold text-gray-900">Export Results</h1>
+    <p class="mt-1 text-sm text-gray-600">Download results from Run #{{ run.pk }} - {{ req.name }}</p>
+</div>
+
+<div class="bg-white shadow rounded-lg overflow-hidden">
+    <div class="px-6 py-5 border-b border-gray-200">
+        <h2 class="text-lg font-medium text-gray-900">Download Formats</h2>
+    </div>
+    <div class="p-6 space-y-4">
+        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            <div>
+                <h3 class="text-sm font-medium text-gray-900">Excel (.xlsx)</h3>
+                <p class="text-sm text-gray-500">Formatted spreadsheet with schedule, statistics, and per-worker views.</p>
+            </div>
+            <a href="{% url 'export-download' run.pk 'excel' %}"
+               class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">
+                Download
+            </a>
+        </div>
+        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            <div>
+                <h3 class="text-sm font-medium text-gray-900">JSON</h3>
+                <p class="text-sm text-gray-500">Machine-readable JSON with all assignments and metadata.</p>
+            </div>
+            <a href="{% url 'export-download' run.pk 'json' %}"
+               class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">
+                Download
+            </a>
+        </div>
+        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            <div>
+                <h3 class="text-sm font-medium text-gray-900">Plotly Charts</h3>
+                <p class="text-sm text-gray-500">Interactive HTML charts for visualization and analysis.</p>
+            </div>
+            <a href="{% url 'chart-download' run.pk %}"
+               class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">
+                Download
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="mt-6">
+    <a href="{% url 'solve-results' run.pk %}"
+       class="text-sm text-indigo-600 hover:text-indigo-900">
+        &larr; Back to Results
+    </a>
+</div>
+{% endblock %}

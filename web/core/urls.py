@@ -23,6 +23,15 @@ from core.views.settings_views import (
     solver_settings,
     solver_settings_edit,
 )
+from core.views.export_views import (
+    export_download,
+    export_page,
+)
+from core.views.import_views import (
+    import_confirm,
+    import_page,
+    import_upload,
+)
 from core.views.plotly_views import (
     chart_download,
     chart_download_single,
@@ -119,5 +128,18 @@ urlpatterns = [
         "solver-runs/<int:pk>/charts/<str:chart_type>/",
         chart_view,
         name="chart-view",
+    ),
+    path("import/", import_page, name="import-page"),
+    path("import/upload/", import_upload, name="import-upload"),
+    path("import/confirm/", import_confirm, name="import-confirm"),
+    path(
+        "solver-runs/<int:pk>/export/",
+        export_page,
+        name="export-page",
+    ),
+    path(
+        "solver-runs/<int:pk>/export/<str:fmt>/",
+        export_download,
+        name="export-download",
     ),
 ]
