@@ -1,0 +1,9 @@
+id,name,worker_type,restricted_shifts
+doctor1,Doctor 1,physician,site_c
+doctor2,Doctor 2,physician,
+doctor3,Doctor 3,physician,site_b
+doctor4,Doctor 4,physician,hospital_day
+doctor5,Doctor 5,physician,site_a
+doctor6,Doctor 6,physician,site_a
+doctor7,Doctor 7,physician,site_b
+doctor8,Doctor 8,physician,

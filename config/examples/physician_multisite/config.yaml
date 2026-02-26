@@ -1,0 +1,184 @@
+# Physician Multi-Site Scheduling Configuration
+# 52-week schedule for 8 physicians across 6 sites (1 hospital + 3 satellite clinics)
+#
+# Based on the proven E2E test scenario in test_physician_scheduler_emulation.py.
+# Customize this configuration for your own multi-site scheduling needs.
+
+# Solver settings
+solver:
+  max_time_seconds: 300           # 5-minute time limit (increase for tighter constraints)
+  num_workers: 8                  # Parallel CPU workers for OR-Tools
+
+# Schedule definition
+schedule:
+  period_type: "week"             # Each period = 1 week
+  num_periods: 52                 # Full year of scheduling
+
+# Constraint configuration
+# Hard constraints MUST be satisfied; soft constraints are optimized with penalties.
+# Higher weight = more important to satisfy.
+constraints:
+
+  # --- Hard constraints (must be satisfied) ---
+
+  coverage:
+    # Every shift type must have its required number of workers each period.
+    enabled: true
+    is_hard: true
+
+  restriction:
+    # Workers cannot be assigned to their restricted shift types.
+    # Restrictions are defined per-worker in workers.csv.
+    enabled: true
+    is_hard: true
+
+  availability:
+    # Workers cannot be assigned during their unavailable periods.
+    # Vacations/absences are defined in availability.csv.
+    enabled: true
+    is_hard: true
+
+  # --- Soft constraints (optimized via penalty weights) ---
+
+  fairness:
+    # Distribute undesirable shifts (night, weekend) evenly across workers.
+    enabled: true
+    is_hard: false
+    weight: 1000                  # Highest priority soft constraint
+
+  shift_frequency:
+    # Ensure specific workers see certain shift types regularly.
+    # Useful for maintaining clinical skills at particular sites.
+    enabled: true
+    is_hard: false
+    weight: 500
+    parameters:
+      requirements:
+        - worker_id: "doctor1"
+          shift_types: ["site_b"]
+          max_periods_between: 4  # Must work Site B at least every 4 weeks
+        - worker_id: "doctor2"
+          shift_types: ["hospital_day"]
+          max_periods_between: 4
+        - worker_id: "doctor3"
+          shift_types: ["site_c"]
+          max_periods_between: 4
+        - worker_id: "doctor4"
+          shift_types: ["site_a"]
+          max_periods_between: 4
+
+  max_absence:
+    # Limit the maximum number of periods a worker can be absent.
+    enabled: true
+    is_hard: false
+    weight: 200
+    parameters:
+      max_periods_absent: 8       # No more than 8 weeks absent per year
+
+  request:
+    # Honor worker scheduling preferences (positive = want, negative = avoid).
+    # Requests are defined in requests.csv.
+    enabled: true
+    is_hard: false
+    weight: 150
+
+  sequence:
+    # Avoid assigning the same worker to the same category on consecutive periods.
+    # Promotes variety in ambulatory site assignments.
+    enabled: true
+    is_hard: false
+    weight: 100
+    parameters:
+      categories: ["ambulatory"]  # Apply to satellite clinic shifts
+
+  shift_order_preference:
+    # Prefer certain shift orderings around events (vacations, weekends).
+    enabled: true
+    is_hard: false
+    weight: 50                    # Lowest priority — nice-to-have ordering
+    parameters:
+      rules:
+        - rule_id: "night_before_vacation"
+          trigger_type: "unavailability"
+          direction: "before"
+          preferred_type: "shift_type"
+          preferred_value: "night"
+          priority: 1
+          # Prefer assigning night shift the period before a vacation starts,
+          # so workers transition smoothly into time off.
+
+        - rule_id: "night_after_weekend"
+          trigger_type: "shift_type"
+          trigger_value: "weekend"
+          direction: "after"
+          preferred_type: "shift_type"
+          preferred_value: "night"
+          priority: 1
+          # When a worker has a weekend shift, prefer night the following period.
+          # Groups undesirable shifts together to free up other weeks.
+
+# Shift type definitions
+# Each shift type defines a role that must be staffed every period.
+shift_types:
+  - id: "hospital_day"
+    name: "Hospital Day"
+    category: "day"
+    start_time: "07:00"
+    end_time: "17:00"
+    duration_hours: 10.0
+    is_undesirable: false
+    workers_required: 2           # Two physicians needed for daytime hospital coverage
+
+  - id: "night"
+    name: "Hospital Night"
+    category: "night"
+    start_time: "17:00"
+    end_time: "07:00"
+    duration_hours: 14.0
+    is_undesirable: true          # Counted for fairness balancing
+    workers_required: 1
+
+  - id: "weekend"
+    name: "Hospital Weekend"
+    category: "weekend"
+    start_time: "07:00"
+    end_time: "19:00"
+    duration_hours: 12.0
+    is_undesirable: true          # Counted for fairness balancing
+    workers_required: 1
+
+  - id: "site_a"
+    name: "Site A"
+    category: "ambulatory"
+    start_time: "08:00"
+    end_time: "17:00"
+    duration_hours: 9.0
+    is_undesirable: false
+    workers_required: 1
+
+  - id: "site_b"
+    name: "Site B"
+    category: "ambulatory"
+    start_time: "08:00"
+    end_time: "17:00"
+    duration_hours: 9.0
+    is_undesirable: false
+    workers_required: 1
+
+  - id: "site_c"
+    name: "Site C"
+    category: "ambulatory"
+    start_time: "08:00"
+    end_time: "17:00"
+    duration_hours: 9.0
+    is_undesirable: false
+    workers_required: 1
+
+# Database settings
+database:
+  path: "physician_multisite.db"
+  backup_on_solve: true
+
+# Logging
+logging:
+  level: "INFO"
