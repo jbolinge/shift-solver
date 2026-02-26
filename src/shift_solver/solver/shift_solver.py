@@ -135,12 +135,21 @@ class ShiftSolver:
         # Ensure constraints are registered
         register_builtin_constraints()
 
-    def solve(self, time_limit_seconds: int = 300) -> SolverResult:
+    def solve(
+        self,
+        time_limit_seconds: int = 300,
+        num_workers: int | None = None,
+        relative_gap_limit: float | None = None,
+        log_search_progress: bool | None = None,
+    ) -> SolverResult:
         """
         Solve the shift scheduling problem.
 
         Args:
             time_limit_seconds: Maximum time for solving in seconds
+            num_workers: Number of parallel search workers for CP-SAT
+            relative_gap_limit: Optimality gap tolerance (0.0 = optimal)
+            log_search_progress: Whether to log solver search progress
 
         Returns:
             SolverResult with success status, schedule, and statistics
@@ -175,6 +184,12 @@ class ShiftSolver:
         # Create and configure solver
         self._solver = cp_model.CpSolver()
         self._solver.parameters.max_time_in_seconds = time_limit_seconds
+        if num_workers is not None:
+            self._solver.parameters.num_workers = num_workers
+        if relative_gap_limit is not None:
+            self._solver.parameters.relative_gap_limit = relative_gap_limit
+        if log_search_progress is not None:
+            self._solver.parameters.log_search_progress = log_search_progress
 
         # Solve
         status = self._solver.Solve(self._model)

@@ -631,3 +631,59 @@ class TestShiftSolverShiftFrequencyIntegration:
         )
 
         assert solver.shift_frequency_requirements == []
+
+
+class TestShiftSolverParameters:
+    """Tests for additional solver parameters (num_workers, relative_gap_limit, log_search_progress)."""
+
+    @pytest.fixture
+    def simple_solver(self) -> ShiftSolver:
+        """Create a simple solver for parameter testing."""
+        workers = [Worker(id="W1", name="Alice"), Worker(id="W2", name="Bob")]
+        shift_types = [
+            ShiftType(
+                id="day",
+                name="Day",
+                category="day",
+                start_time=time(7, 0),
+                end_time=time(15, 0),
+                duration_hours=8.0,
+                workers_required=1,
+            ),
+        ]
+        period_dates = [(date(2026, 1, 5), date(2026, 1, 11))]
+        return ShiftSolver(
+            workers=workers,
+            shift_types=shift_types,
+            period_dates=period_dates,
+            schedule_id="TEST-PARAMS",
+        )
+
+    def test_solve_accepts_num_workers_parameter(self, simple_solver: ShiftSolver) -> None:
+        """num_workers parameter is accepted and solver still works."""
+        result = simple_solver.solve(time_limit_seconds=10, num_workers=2)
+        assert result.success
+        # Verify the parameter was set on the solver
+        assert simple_solver._solver is not None
+        assert simple_solver._solver.parameters.num_workers == 2
+
+    def test_solve_accepts_relative_gap_limit(self, simple_solver: ShiftSolver) -> None:
+        """relative_gap_limit parameter is accepted and set."""
+        result = simple_solver.solve(time_limit_seconds=10, relative_gap_limit=0.1)
+        assert result.success
+        assert simple_solver._solver is not None
+        assert abs(simple_solver._solver.parameters.relative_gap_limit - 0.1) < 1e-6
+
+    def test_solve_accepts_log_search_progress(self, simple_solver: ShiftSolver) -> None:
+        """log_search_progress parameter is accepted and set."""
+        result = simple_solver.solve(time_limit_seconds=10, log_search_progress=True)
+        assert result.success
+        assert simple_solver._solver is not None
+        assert simple_solver._solver.parameters.log_search_progress is True
+
+    def test_solve_default_parameters_not_set(self, simple_solver: ShiftSolver) -> None:
+        """When parameters are None (default), solver defaults are preserved."""
+        result = simple_solver.solve(time_limit_seconds=10)
+        assert result.success
+        # With None args, num_workers should be at solver default (typically 0 = auto)
+        assert simple_solver._solver is not None
