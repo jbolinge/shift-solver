@@ -4,7 +4,6 @@ import datetime
 
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import render
-from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from core.models import Availability, Worker
@@ -68,7 +67,6 @@ def availability_events(request: HttpRequest) -> HttpResponse:
     return JsonResponse(events, safe=False)
 
 
-@csrf_exempt
 @require_POST
 def availability_update(request: HttpRequest) -> HttpResponse:
     """Create or toggle an availability entry for a worker on a date.
