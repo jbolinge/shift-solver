@@ -368,6 +368,8 @@ class ScheduleRequestForm(forms.ModelForm):
             "start_date",
             "end_date",
             "period_length_days",
+            "workers",
+            "shift_types",
         ]
         widgets = {
             "name": forms.TextInput(
@@ -394,7 +396,37 @@ class ScheduleRequestForm(forms.ModelForm):
                     "min": "1",
                 }
             ),
+            "workers": forms.CheckboxSelectMultiple(
+                attrs={
+                    "class": "h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500",
+                }
+            ),
+            "shift_types": forms.CheckboxSelectMultiple(
+                attrs={
+                    "class": "h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500",
+                }
+            ),
         }
+        labels = {
+            "period_length_days": "Period length (days)",
+        }
+        help_texts = {
+            "period_length_days": (
+                "Number of days per scheduling period (e.g., 7 for weekly, "
+                "14 for biweekly, 28\u201331 for monthly). The schedule spans "
+                "from Start Date to End Date; this controls how that range "
+                "is divided into optimization periods."
+            ),
+            "workers": "Leave empty to include all active workers.",
+            "shift_types": "Leave empty to include all active shift types.",
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["workers"].queryset = Worker.objects.filter(is_active=True)
+        self.fields["shift_types"].queryset = ShiftType.objects.filter(is_active=True)
+        self.fields["workers"].required = False
+        self.fields["shift_types"].required = False
 
     def clean(self) -> dict:
         """Validate that end_date >= start_date."""
