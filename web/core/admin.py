@@ -1,7 +1,7 @@
 """Admin configuration for core models with django-unfold."""
 
 from django.contrib import admin
-from unfold.admin import ModelAdmin
+from unfold.admin import ModelAdmin, TabularInline
 
 from core.models import (
     Assignment,
@@ -45,11 +45,17 @@ class ConstraintConfigAdmin(ModelAdmin):  # type: ignore[type-arg]
     list_filter = ["enabled", "is_hard"]
 
 
+class WorkerRequestInline(TabularInline):  # type: ignore[type-arg]
+    model = WorkerRequest
+    extra = 0
+
+
 @admin.register(ScheduleRequest)
 class ScheduleRequestAdmin(ModelAdmin):  # type: ignore[type-arg]
     list_display = ["name", "start_date", "end_date", "status", "created_at"]
     list_filter = ["status"]
     search_fields = ["name"]
+    inlines = [WorkerRequestInline]
 
 
 @admin.register(SolverRun)

@@ -464,10 +464,10 @@ IS_HARD_CHOICES = [
 class WorkerRequestForm(forms.ModelForm):
     """ModelForm for creating and editing WorkerRequest instances."""
 
-    is_hard = forms.NullBooleanField(
+    is_hard = forms.ChoiceField(
+        choices=IS_HARD_CHOICES,
         required=False,
         widget=forms.Select(
-            choices=IS_HARD_CHOICES,
             attrs={
                 "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
             },
@@ -523,11 +523,28 @@ class WorkerRequestForm(forms.ModelForm):
 
     def __init__(self, *args, schedule_request=None, **kwargs):
         super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            value = self.instance.is_hard
+            if value is True:
+                self.initial["is_hard"] = "true"
+            elif value is False:
+                self.initial["is_hard"] = "false"
+            else:
+                self.initial["is_hard"] = ""
         if schedule_request is not None:
             if schedule_request.workers.exists():
                 self.fields["worker"].queryset = schedule_request.workers.all()
             if schedule_request.shift_types.exists():
                 self.fields["shift_type"].queryset = schedule_request.shift_types.all()
+
+    def clean_is_hard(self) -> bool | None:
+        """Convert form string values to model values."""
+        value = self.cleaned_data.get("is_hard", "")
+        if value == "true":
+            return True
+        elif value == "false":
+            return False
+        return None
 
     def clean(self) -> dict:
         """Validate that end_date >= start_date."""
