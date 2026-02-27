@@ -53,6 +53,7 @@ from core.views.solver_views import (
     solve_progress,
     solve_progress_bar,
     solve_results,
+    solve_validation,
 )
 from core.views.worker_request_views import (
     worker_request_create,
@@ -124,6 +125,11 @@ urlpatterns = [
     ),
     path(
         "solver-runs/<int:pk>/results/", solve_results, name="solve-results"
+    ),
+    path(
+        "solver-runs/<int:pk>/validation/",
+        solve_validation,
+        name="solve-validation",
     ),
     path(
         "solver-runs/<int:pk>/schedule/",

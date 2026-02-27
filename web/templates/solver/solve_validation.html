@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}Validation - {{ req.name }} - Shift Solver{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <div class="flex items-center justify-between">
+        <h1 class="text-2xl font-bold text-gray-900">Schedule Validation</h1>
+        <div class="flex space-x-3">
+            <a href="{% url 'solve-results' run.pk %}"
+               class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                Back to Results
+            </a>
+        </div>
+    </div>
+    <p class="mt-1 text-sm text-gray-600">{{ req.name }} ({{ req.start_date|date:"N j, Y" }} - {{ req.end_date|date:"N j, Y" }})</p>
+</div>
+
+<!-- Validation Status -->
+<div class="mb-6 rounded-md p-4 {% if result.is_valid %}bg-green-50{% else %}bg-red-50{% endif %}">
+    <div class="flex items-center">
+        <div class="ml-3">
+            {% if result.is_valid %}
+            <span class="inline-flex px-3 py-1 text-sm font-semibold rounded-full bg-green-100 text-green-800">Valid</span>
+            <span class="ml-2 text-sm text-green-700">All hard constraints satisfied.</span>
+            {% else %}
+            <span class="inline-flex px-3 py-1 text-sm font-semibold rounded-full bg-red-100 text-red-800">Invalid</span>
+            <span class="ml-2 text-sm text-red-700">{{ result.violations|length }} violation{{ result.violations|length|pluralize }} found.</span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Violations -->
+{% if result.violations %}
+<div class="bg-white shadow rounded-lg overflow-hidden mb-6">
+    <div class="px-6 py-5 border-b border-gray-200">
+        <h2 class="text-lg font-medium text-gray-900">Violations</h2>
+    </div>
+    <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Severity</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Message</th>
+            </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+            {% for v in result.violations %}
+            <tr>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ v.type }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                    <span class="inline-flex px-2 text-xs leading-5 font-semibold rounded-full
+                        {% if v.severity == 'error' %}bg-red-100 text-red-800{% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                        {{ v.severity }}
+                    </span>
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-500">{{ v.message }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- Warnings -->
+{% if result.warnings %}
+<div class="bg-white shadow rounded-lg overflow-hidden mb-6">
+    <div class="px-6 py-5 border-b border-gray-200">
+        <h2 class="text-lg font-medium text-gray-900">Warnings</h2>
+    </div>
+    <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Message</th>
+            </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+            {% for w in result.warnings %}
+            <tr>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ w.type }}</td>
+                <td class="px-6 py-4 text-sm text-gray-500">{{ w.message }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- Statistics -->
+{% if result.statistics %}
+<div class="bg-white shadow rounded-lg overflow-hidden mb-6">
+    <div class="px-6 py-5 border-b border-gray-200">
+        <h2 class="text-lg font-medium text-gray-900">Statistics</h2>
+    </div>
+    <dl class="divide-y divide-gray-200">
+        {% if result.statistics.total_assignments is not None %}
+        <div class="px-6 py-4 grid grid-cols-3 gap-4">
+            <dt class="text-sm font-medium text-gray-500">Total Assignments</dt>
+            <dd class="text-sm text-gray-900 col-span-2">{{ result.statistics.total_assignments }}</dd>
+        </div>
+        {% endif %}
+        {% if result.statistics.fairness %}
+        <div class="px-6 py-4 grid grid-cols-3 gap-4">
+            <dt class="text-sm font-medium text-gray-500">Average Assignments/Worker</dt>
+            <dd class="text-sm text-gray-900 col-span-2">{{ result.statistics.fairness.average_assignments|floatformat:1 }}</dd>
+        </div>
+        <div class="px-6 py-4 grid grid-cols-3 gap-4">
+            <dt class="text-sm font-medium text-gray-500">Std Deviation</dt>
+            <dd class="text-sm text-gray-900 col-span-2">{{ result.statistics.fairness.std_deviation|floatformat:2 }}</dd>
+        </div>
+        <div class="px-6 py-4 grid grid-cols-3 gap-4">
+            <dt class="text-sm font-medium text-gray-500">Min / Max Assignments</dt>
+            <dd class="text-sm text-gray-900 col-span-2">{{ result.statistics.fairness.min_assignments }} / {{ result.statistics.fairness.max_assignments }}</dd>
+        </div>
+        <div class="px-6 py-4 grid grid-cols-3 gap-4">
+            <dt class="text-sm font-medium text-gray-500">Avg Undesirable Shifts/Worker</dt>
+            <dd class="text-sm text-gray-900 col-span-2">{{ result.statistics.fairness.average_undesirable|floatformat:1 }}</dd>
+        </div>
+        {% endif %}
+        {% if result.statistics.request_fulfillment %}
+        <div class="px-6 py-4 grid grid-cols-3 gap-4">
+            <dt class="text-sm font-medium text-gray-500">Request Fulfillment</dt>
+            <dd class="text-sm text-gray-900 col-span-2">
+                {{ result.statistics.request_fulfillment.fulfilled }} / {{ result.statistics.request_fulfillment.total_requests }}
+                {% if result.statistics.request_fulfillment.total_requests > 0 %}
+                ({{ result.statistics.request_fulfillment.rate|floatformat:0 }}%)
+                {% endif %}
+            </dd>
+        </div>
+        {% endif %}
+    </dl>
+</div>
+{% endif %}
+
+<div class="mt-6">
+    <a href="{% url 'solve-results' run.pk %}"
+       class="text-sm text-indigo-600 hover:text-indigo-900">
+        &larr; Back to Results
+    </a>
+</div>
+{% endblock %}

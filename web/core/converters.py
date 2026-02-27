@@ -8,7 +8,8 @@ from core import models as orm
 from shift_solver.constraints.base import ConstraintConfig as DomainConstraintConfig
 from shift_solver.models import ShiftType as DomainShiftType
 from shift_solver.models import Worker as DomainWorker
-from shift_solver.models.data_models import Availability as DomainAvailability, SchedulingRequest
+from shift_solver.models.data_models import Availability as DomainAvailability
+from shift_solver.models.data_models import SchedulingRequest
 from shift_solver.models.schedule import PeriodAssignment, Schedule
 from shift_solver.models.shift import ShiftInstance
 
@@ -123,6 +124,8 @@ def orm_availability_to_domain(
     """
     if not orm_avail.is_available:
         availability_type = "unavailable"
+    elif orm_avail.preference >= 2:
+        availability_type = "required"
     elif orm_avail.preference > 0:
         availability_type = "preferred"
     elif orm_avail.preference < 0:

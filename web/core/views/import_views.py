@@ -1,5 +1,6 @@
 """Data import views for CSV/Excel file upload."""
 
+import datetime
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -7,7 +8,7 @@ from typing import Any
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 
-from core.models import Worker
+from core.models import Availability, ScheduleRequest, ShiftType, Worker, WorkerRequest
 
 
 def _is_htmx(request: HttpRequest) -> bool:
@@ -97,6 +98,10 @@ def import_confirm(request: HttpRequest) -> HttpResponse:
 
     if data_type == "workers":
         created_count, skipped_count = _import_workers(parsed_rows)
+    elif data_type == "availability":
+        created_count, skipped_count = _import_availability(parsed_rows)
+    elif data_type == "requests":
+        created_count, skipped_count = _import_requests(parsed_rows)
 
     # Clear session data
     request.session.pop("import_data", None)
@@ -122,29 +127,70 @@ def _parse_file(
         if ext == ".csv":
             from shift_solver.io import CSVLoader
 
-            loader = CSVLoader()
-            workers = loader.load_workers(file_path)
-            return [
-                {
-                    "id": w.id,
-                    "name": w.name,
-                    "worker_type": w.worker_type or "",
-                }
-                for w in workers
-            ]
+            workers = CSVLoader().load_workers(file_path)
         elif ext == ".xlsx":
             from shift_solver.io import ExcelLoader
 
-            loader = ExcelLoader()
-            workers = loader.load_workers(file_path)
-            return [
-                {
-                    "id": w.id,
-                    "name": w.name,
-                    "worker_type": w.worker_type or "",
-                }
-                for w in workers
-            ]
+            workers = ExcelLoader().load_workers(file_path)
+        else:
+            return []
+        return [
+            {
+                "id": w.id,
+                "name": w.name,
+                "worker_type": w.worker_type or "",
+                "restricted_shifts": sorted(w.restricted_shifts) if w.restricted_shifts else [],
+                "preferred_shifts": sorted(w.preferred_shifts) if w.preferred_shifts else [],
+                "attributes": dict(w.attributes) if getattr(w, "attributes", None) else {},
+            }
+            for w in workers
+        ]
+
+    if data_type == "availability":
+        if ext == ".csv":
+            from shift_solver.io import CSVLoader
+
+            avails = CSVLoader().load_availability(file_path)
+        elif ext == ".xlsx":
+            from shift_solver.io import ExcelLoader
+
+            avails = ExcelLoader().load_availability(file_path)
+        else:
+            return []
+        return [
+            {
+                "worker_id": a.worker_id,
+                "start_date": a.start_date.isoformat(),
+                "end_date": a.end_date.isoformat(),
+                "availability_type": a.availability_type,
+                "shift_type_id": a.shift_type_id or "",
+            }
+            for a in avails
+        ]
+
+    if data_type == "requests":
+        if ext == ".csv":
+            from shift_solver.io import CSVLoader
+
+            reqs = CSVLoader().load_requests(file_path)
+        elif ext == ".xlsx":
+            from shift_solver.io import ExcelLoader
+
+            reqs = ExcelLoader().load_requests(file_path)
+        else:
+            return []
+        return [
+            {
+                "worker_id": r.worker_id,
+                "start_date": r.start_date.isoformat(),
+                "end_date": r.end_date.isoformat(),
+                "request_type": r.request_type,
+                "shift_type_id": r.shift_type_id,
+                "priority": r.priority,
+            }
+            for r in reqs
+        ]
+
     return []
 
 
@@ -166,8 +212,98 @@ def _import_workers(rows: list[dict[str, Any]]) -> tuple[int, int]:
             worker_id=worker_id,
             name=row.get("name", ""),
             worker_type=row.get("worker_type", ""),
+            restricted_shifts=row.get("restricted_shifts", []),
+            preferred_shifts=row.get("preferred_shifts", []),
+            attributes=row.get("attributes", {}),
         )
         existing_ids.add(worker_id)
+        created += 1
+
+    return created, skipped
+
+
+_AVAILABILITY_STATUS_MAP = {
+    "unavailable": {"is_available": False, "preference": 0},
+    "preferred": {"is_available": True, "preference": 1},
+    "required": {"is_available": True, "preference": 2},
+}
+
+
+def _import_availability(rows: list[dict[str, Any]]) -> tuple[int, int]:
+    """Import availability rows. Returns (created, skipped)."""
+    created = 0
+    skipped = 0
+
+    worker_map = {str(w.worker_id): w for w in Worker.objects.all()}
+    shift_type_map = {str(s.shift_type_id): s for s in ShiftType.objects.all()}
+
+    for row in rows:
+        worker = worker_map.get(row.get("worker_id", ""))
+        if not worker:
+            skipped += 1
+            continue
+
+        start_date = datetime.date.fromisoformat(row["start_date"])
+        end_date = datetime.date.fromisoformat(row["end_date"])
+        availability_type = row.get("availability_type", "unavailable")
+        status_fields = _AVAILABILITY_STATUS_MAP.get(
+            availability_type, {"is_available": False, "preference": 0}
+        )
+
+        shift_type_id_str = row.get("shift_type_id", "")
+        shift_type = shift_type_map.get(shift_type_id_str) if shift_type_id_str else None
+
+        current = start_date
+        while current <= end_date:
+            _, was_created = Availability.objects.update_or_create(
+                worker=worker,
+                date=current,
+                shift_type=shift_type,
+                defaults=status_fields,
+            )
+            if was_created:
+                created += 1
+            else:
+                skipped += 1
+            current += datetime.timedelta(days=1)
+
+    return created, skipped
+
+
+def _import_requests(rows: list[dict[str, Any]]) -> tuple[int, int]:
+    """Import scheduling request rows. Returns (created, skipped)."""
+    created = 0
+    skipped = 0
+
+    worker_map = {str(w.worker_id): w for w in Worker.objects.all()}
+    shift_type_map = {str(s.shift_type_id): s for s in ShiftType.objects.all()}
+
+    # Use the most recent schedule request, or skip if none exists
+    schedule_request = ScheduleRequest.objects.order_by("-created_at").first()
+    if not schedule_request:
+        return 0, len(rows)
+
+    for row in rows:
+        worker = worker_map.get(row.get("worker_id", ""))
+        shift_type = shift_type_map.get(row.get("shift_type_id", ""))
+        if not worker or not shift_type:
+            skipped += 1
+            continue
+
+        start_date = datetime.date.fromisoformat(row["start_date"])
+        end_date = datetime.date.fromisoformat(row["end_date"])
+        request_type = row.get("request_type", "negative")
+        priority = int(row.get("priority", 1))
+
+        WorkerRequest.objects.create(
+            schedule_request=schedule_request,
+            worker=worker,
+            shift_type=shift_type,
+            start_date=start_date,
+            end_date=end_date,
+            request_type=request_type,
+            priority=priority,
+        )
         created += 1
 
     return created, skipped

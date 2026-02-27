@@ -3,8 +3,10 @@
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
+from core.converters import build_schedule_input, solver_run_to_schedule
 from core.models import ScheduleRequest, SolverRun, SolverSettings, Worker
 from core.solver_runner import SolverRunner
+from shift_solver.validation.schedule_validator.validator import ScheduleValidator
 
 
 def _is_htmx(request: HttpRequest) -> bool:
@@ -122,5 +124,33 @@ def solve_results(request: HttpRequest, pk: int) -> HttpResponse:
             "objective_value": objective_value,
             "status_name": status_name,
             "shift_counts": shift_counts,
+        },
+    )
+
+
+def solve_validation(request: HttpRequest, pk: int) -> HttpResponse:
+    """Show post-solve validation results for a solver run."""
+    solver_run = get_object_or_404(SolverRun, pk=pk)
+
+    if solver_run.status != "completed":
+        return redirect("solve-results", pk=solver_run.pk)
+
+    schedule = solver_run_to_schedule(solver_run)
+    schedule_input = build_schedule_input(solver_run.schedule_request)
+
+    validator = ScheduleValidator(
+        schedule=schedule,
+        availabilities=schedule_input.get("availabilities"),
+        requests=schedule_input.get("requests"),
+    )
+    result = validator.validate()
+
+    return render(
+        request,
+        "solver/solve_validation.html",
+        {
+            "run": solver_run,
+            "req": solver_run.schedule_request,
+            "result": result,
         },
     )

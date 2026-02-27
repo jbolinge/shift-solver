@@ -51,6 +51,7 @@
                     <option value="workers">Workers</option>
                     <option value="shift_types">Shift Types</option>
                     <option value="availability">Availability</option>
+                    <option value="requests">Requests</option>
                 </select>
             </div>
             <div>
@@ -72,10 +73,24 @@
 </div>
 
 <div class="mt-6 bg-white shadow rounded-lg overflow-hidden p-6">
-    <h2 class="text-lg font-medium text-gray-900 mb-3">CSV Format</h2>
-    <p class="text-sm text-gray-600 mb-2">Workers CSV should have columns: <code class="bg-gray-100 px-1 rounded">id</code>, <code class="bg-gray-100 px-1 rounded">name</code>, <code class="bg-gray-100 px-1 rounded">worker_type</code> (optional)</p>
-    <pre class="bg-gray-50 text-sm p-3 rounded overflow-x-auto">id,name,worker_type
-W1,Alice,full_time
-W2,Bob,part_time</pre>
+    <h2 class="text-lg font-medium text-gray-900 mb-3">CSV Format Examples</h2>
+
+    <h3 class="text-sm font-semibold text-gray-700 mt-4 mb-1">Workers</h3>
+    <p class="text-sm text-gray-600 mb-2">Columns: <code class="bg-gray-100 px-1 rounded">id</code>, <code class="bg-gray-100 px-1 rounded">name</code>, <code class="bg-gray-100 px-1 rounded">worker_type</code> (optional), <code class="bg-gray-100 px-1 rounded">restricted_shifts</code> (optional), <code class="bg-gray-100 px-1 rounded">preferred_shifts</code> (optional)</p>
+    <pre class="bg-gray-50 text-sm p-3 rounded overflow-x-auto">id,name,worker_type,restricted_shifts,preferred_shifts
+W1,Alice,full_time,,day_shift
+W2,Bob,part_time,night_shift,</pre>
+
+    <h3 class="text-sm font-semibold text-gray-700 mt-4 mb-1">Availability</h3>
+    <p class="text-sm text-gray-600 mb-2">Columns: <code class="bg-gray-100 px-1 rounded">worker_id</code>, <code class="bg-gray-100 px-1 rounded">start_date</code>, <code class="bg-gray-100 px-1 rounded">end_date</code>, <code class="bg-gray-100 px-1 rounded">availability_type</code> (unavailable/preferred/required), <code class="bg-gray-100 px-1 rounded">shift_type_id</code> (optional)</p>
+    <pre class="bg-gray-50 text-sm p-3 rounded overflow-x-auto">worker_id,start_date,end_date,availability_type,shift_type_id
+W1,2026-03-01,2026-03-05,unavailable,
+W2,2026-03-10,2026-03-10,preferred,day_shift</pre>
+
+    <h3 class="text-sm font-semibold text-gray-700 mt-4 mb-1">Requests</h3>
+    <p class="text-sm text-gray-600 mb-2">Columns: <code class="bg-gray-100 px-1 rounded">worker_id</code>, <code class="bg-gray-100 px-1 rounded">start_date</code>, <code class="bg-gray-100 px-1 rounded">end_date</code>, <code class="bg-gray-100 px-1 rounded">request_type</code> (positive/negative), <code class="bg-gray-100 px-1 rounded">shift_type_id</code>, <code class="bg-gray-100 px-1 rounded">priority</code> (optional, default 1)</p>
+    <pre class="bg-gray-50 text-sm p-3 rounded overflow-x-auto">worker_id,start_date,end_date,request_type,shift_type_id,priority
+W1,2026-03-01,2026-03-07,negative,night_shift,2
+W2,2026-03-15,2026-03-15,positive,day_shift,1</pre>
 </div>
 {% endblock %}

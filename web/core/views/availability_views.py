@@ -42,12 +42,22 @@ def availability_events(request: HttpRequest) -> HttpResponse:
 
     events = []
     for entry in entries:
-        if entry.is_available:
-            title = "Available"
-            color = "#22c55e"
-        else:
+        if not entry.is_available:
             title = "Unavailable"
             color = "#ef4444"
+            status = "unavailable"
+        elif entry.preference >= 2:
+            title = "Required"
+            color = "#f59e0b"
+            status = "required"
+        elif entry.preference > 0:
+            title = "Preferred"
+            color = "#3b82f6"
+            status = "preferred"
+        else:
+            title = "Available"
+            color = "#22c55e"
+            status = "available"
 
         events.append(
             {
@@ -60,6 +70,7 @@ def availability_events(request: HttpRequest) -> HttpResponse:
                     "is_available": entry.is_available,
                     "preference": entry.preference,
                     "shift_type_id": entry.shift_type_id,
+                    "status": status,
                 },
             }
         )
@@ -96,6 +107,7 @@ def availability_update(request: HttpRequest) -> HttpResponse:
         )
 
     shift_type_id = request.POST.get("shift_type_id") or None
+    status = request.POST.get("status")
 
     lookup = {
         "worker_id": worker_id,
@@ -103,6 +115,35 @@ def availability_update(request: HttpRequest) -> HttpResponse:
         "shift_type_id": shift_type_id,
     }
 
+    STATUS_MAP = {
+        "unavailable": {"is_available": False, "preference": 0},
+        "available": {"is_available": True, "preference": 0},
+        "preferred": {"is_available": True, "preference": 1},
+        "required": {"is_available": True, "preference": 2},
+    }
+
+    if status == "clear":
+        Availability.objects.filter(**lookup).delete()
+        return JsonResponse(
+            {"id": None, "status": "clear", "date": date.isoformat()}
+        )
+
+    if status and status in STATUS_MAP:
+        fields = STATUS_MAP[status]
+        entry, _created = Availability.objects.update_or_create(
+            **lookup, defaults=fields
+        )
+        return JsonResponse(
+            {
+                "id": entry.pk,
+                "status": status,
+                "is_available": entry.is_available,
+                "preference": entry.preference,
+                "date": entry.date.isoformat(),
+            }
+        )
+
+    # Legacy toggle behavior (no status param)
     try:
         entry = Availability.objects.get(**lookup)
         entry.is_available = not entry.is_available

@@ -3,7 +3,8 @@
  *
  * Initializes a FullCalendar month view that:
  *  - Fetches availability events from /availability/events/?worker_id=...
- *  - Allows clicking a date to toggle availability via POST /availability/update/
+ *  - Allows clicking a date to cycle through states:
+ *    (none) -> Unavailable -> Preferred -> Required -> (clear)
  *  - Shows toast notifications for success/error feedback
  *  - Displays a loading pulse on the clicked date cell while the request is in-flight
  */
@@ -15,6 +16,21 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!calendarEl || !workerSelect) {
         return;
     }
+
+    // State cycle: no entry -> unavailable -> preferred -> required -> clear
+    var STATE_CYCLE = {
+        "": "unavailable",
+        "unavailable": "preferred",
+        "preferred": "required",
+        "required": "clear",
+    };
+
+    var STATE_LABELS = {
+        "unavailable": "Unavailable",
+        "preferred": "Preferred",
+        "required": "Required",
+        "clear": "Clear",
+    };
 
     /**
      * Show a toast notification.
@@ -68,6 +84,22 @@ document.addEventListener("DOMContentLoaded", function () {
         return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
     }
 
+    /**
+     * Get the current status of a date from calendar events.
+     * @param {string} dateStr - ISO date string (YYYY-MM-DD)
+     * @returns {string} Current status or "" if no entry
+     */
+    function getCurrentStatus(dateStr) {
+        var events = calendar.getEvents();
+        for (var i = 0; i < events.length; i++) {
+            var eventDate = events[i].startStr;
+            if (eventDate === dateStr && events[i].extendedProps.status) {
+                return events[i].extendedProps.status;
+            }
+        }
+        return "";
+    }
+
     var calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: "dayGridMonth",
         selectable: true,
@@ -108,6 +140,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
+            // Determine next status in cycle
+            var currentStatus = getCurrentStatus(info.dateStr);
+            var nextStatus = STATE_CYCLE[currentStatus] || "unavailable";
+
             // Visual loading feedback: pulse the clicked date cell
             var cellEl = info.dayEl;
             cellEl.style.opacity = "0.5";
@@ -116,6 +152,7 @@ document.addEventListener("DOMContentLoaded", function () {
             var formData = new FormData();
             formData.append("worker_id", workerId);
             formData.append("date", info.dateStr);
+            formData.append("status", nextStatus);
 
             var csrfToken = getCSRFToken();
             var headers = {};
@@ -139,10 +176,11 @@ document.addEventListener("DOMContentLoaded", function () {
                     calendar.refetchEvents();
 
                     var label = formatDateLabel(info.dateStr);
-                    if (data.is_available) {
-                        showToast(label + " marked as Available", "success");
+                    var statusLabel = STATE_LABELS[nextStatus] || nextStatus;
+                    if (nextStatus === "clear") {
+                        showToast(label + " cleared", "success");
                     } else {
-                        showToast(label + " marked as Unavailable", "success");
+                        showToast(label + " marked as " + statusLabel, "success");
                     }
                 })
                 .catch(function (err) {
