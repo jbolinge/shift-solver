@@ -54,6 +54,13 @@ def _make_shift_type(**kwargs: Any) -> ShiftType:
 class TestSolveLaunchView:
     """Tests for the solve launch view."""
 
+    @pytest.fixture(autouse=True)
+    def _mock_solver_run(self, monkeypatch):
+        """Prevent background thread from spawning during view tests."""
+        monkeypatch.setattr(
+            "core.solver_runner.SolverRunner.run", lambda self: None
+        )
+
     def test_launch_creates_solver_run(self, client: Client) -> None:
         """Launching a solve creates a SolverRun record."""
         req = _make_request()
