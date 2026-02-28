@@ -1,6 +1,6 @@
 """Solver execution views: launch, progress tracking, and results."""
 
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 
 from core.converters import build_schedule_input, solver_run_to_schedule
@@ -64,6 +64,36 @@ def solve_launch(request: HttpRequest, pk: int) -> HttpResponse:
     )
 
 
+def solve_launch_modal(request: HttpRequest, pk: int) -> HttpResponse:
+    """Return a modal partial for launching a solver run."""
+    schedule_request = get_object_or_404(ScheduleRequest, pk=pk)
+
+    has_workers = schedule_request.workers.exists() or Worker.objects.filter(
+        is_active=True
+    ).exists()
+    has_shifts = schedule_request.shift_types.exists()
+
+    errors = []
+    if not has_workers:
+        errors.append("No workers available. Add workers before solving.")
+    if not has_shifts:
+        errors.append("No shift types assigned. Add shift types before solving.")
+
+    worker_count = schedule_request.workers.count()
+    shift_count = schedule_request.shift_types.count()
+
+    return render(
+        request,
+        "solver/solve_modal.html",
+        {
+            "req": schedule_request,
+            "errors": errors,
+            "worker_count": worker_count,
+            "shift_count": shift_count,
+        },
+    )
+
+
 def solve_progress(request: HttpRequest, pk: int) -> HttpResponse:
     """Show solver progress tracking page."""
     solver_run = get_object_or_404(SolverRun, pk=pk)
@@ -78,7 +108,7 @@ def solve_progress_bar(request: HttpRequest, pk: int) -> HttpResponse:
     """Return progress bar partial for HTMX polling."""
     solver_run = get_object_or_404(SolverRun, pk=pk)
 
-    if solver_run.status in ("completed", "failed"):
+    if solver_run.status in ("completed", "failed", "cancelled"):
         response = render(
             request,
             "solver/solve_progress_bar.html",
@@ -94,6 +124,26 @@ def solve_progress_bar(request: HttpRequest, pk: int) -> HttpResponse:
     )
 
 
+def solve_cancel(request: HttpRequest, pk: int) -> HttpResponse:
+    """Cancel a running solver run."""
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    solver_run = get_object_or_404(SolverRun, pk=pk)
+
+    if solver_run.status != "running":
+        return redirect("solve-results", pk=solver_run.pk)
+
+    found = SolverRunner.cancel(solver_run.id)
+    if not found:
+        # Server restart edge case — run not in registry
+        solver_run.status = "failed"
+        solver_run.error_message = "Solve process not found (server may have restarted)"
+        solver_run.save()
+
+    return redirect("solve-progress", pk=solver_run.pk)
+
+
 def solve_results(request: HttpRequest, pk: int) -> HttpResponse:
     """Show solver run results summary."""
     solver_run = get_object_or_404(SolverRun, pk=pk)
@@ -105,12 +155,16 @@ def solve_results(request: HttpRequest, pk: int) -> HttpResponse:
     solve_time = result_json.get("solve_time_seconds")
     objective_value = result_json.get("objective_value")
     status_name = result_json.get("status", solver_run.status)
+    solutions_found = result_json.get("solutions_found")
 
     # Count assignments by shift type
     shift_counts: dict[str, int] = {}
     for assignment in assignments:
         name = assignment.shift_type.name
         shift_counts[name] = shift_counts.get(name, 0) + 1
+
+    # Determine if cancelled run has viewable results
+    has_solution = status_name == "CANCELLED_WITH_SOLUTION"
 
     return render(
         request,
@@ -124,6 +178,8 @@ def solve_results(request: HttpRequest, pk: int) -> HttpResponse:
             "objective_value": objective_value,
             "status_name": status_name,
             "shift_counts": shift_counts,
+            "solutions_found": solutions_found,
+            "has_solution": has_solution,
         },
     )
 
@@ -132,8 +188,14 @@ def solve_validation(request: HttpRequest, pk: int) -> HttpResponse:
     """Show post-solve validation results for a solver run."""
     solver_run = get_object_or_404(SolverRun, pk=pk)
 
-    if solver_run.status != "completed":
+    if solver_run.status not in ("completed", "cancelled"):
         return redirect("solve-results", pk=solver_run.pk)
+
+    # For cancelled runs, only allow validation if there's a solution
+    if solver_run.status == "cancelled":
+        result_json = solver_run.result_json or {}
+        if result_json.get("status") != "CANCELLED_WITH_SOLUTION":
+            return redirect("solve-results", pk=solver_run.pk)
 
     schedule = solver_run_to_schedule(solver_run)
     schedule_input = build_schedule_input(solver_run.schedule_request)

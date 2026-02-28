@@ -49,7 +49,9 @@ from core.views.shift_views import (
     shift_update,
 )
 from core.views.solver_views import (
+    solve_cancel,
     solve_launch,
+    solve_launch_modal,
     solve_progress,
     solve_progress_bar,
     solve_results,
@@ -116,6 +118,11 @@ urlpatterns = [
     ),
     path("requests/<int:pk>/solve/", solve_launch, name="solve-launch"),
     path(
+        "requests/<int:pk>/solve/modal/",
+        solve_launch_modal,
+        name="solve-launch-modal",
+    ),
+    path(
         "solver-runs/<int:pk>/progress/", solve_progress, name="solve-progress"
     ),
     path(
@@ -125,6 +132,11 @@ urlpatterns = [
     ),
     path(
         "solver-runs/<int:pk>/results/", solve_results, name="solve-results"
+    ),
+    path(
+        "solver-runs/<int:pk>/cancel/",
+        solve_cancel,
+        name="solve-cancel",
     ),
     path(
         "solver-runs/<int:pk>/validation/",

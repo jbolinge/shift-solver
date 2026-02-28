@@ -687,3 +687,14 @@ class TestShiftSolverParameters:
         assert result.success
         # With None args, num_workers should be at solver default (typically 0 = auto)
         assert simple_solver._solver is not None
+
+    def test_solve_with_solution_callback(self, simple_solver: ShiftSolver) -> None:
+        """solve() accepts and uses a solution_callback."""
+        from shift_solver.solver.progress_callback import SolverProgressCallback
+
+        callback = SolverProgressCallback()
+        result = simple_solver.solve(
+            time_limit_seconds=10, solution_callback=callback
+        )
+        assert result.success
+        assert callback.solutions_found >= 1

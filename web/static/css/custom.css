@@ -1,1 +1,19 @@
 /* Custom styles for shift-solver web UI */
+
+/* Indeterminate progress bar animation */
+.indeterminate-bar {
+    width: 30%;
+    animation: indeterminate 1.5s ease-in-out infinite;
+}
+
+@keyframes indeterminate {
+    0% {
+        transform: translateX(-100%);
+    }
+    50% {
+        transform: translateX(233%);
+    }
+    100% {
+        transform: translateX(-100%);
+    }
+}

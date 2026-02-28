@@ -1,5 +1,6 @@
 """Background solver runner for executing CP-SAT solver in a separate thread."""
 
+import contextlib
 import logging
 import threading
 
@@ -21,15 +22,42 @@ class SolverRunner:
     For testing, call _execute() directly (synchronous).
     """
 
+    _active_runs: dict[int, threading.Event] = {}
+    _lock = threading.Lock()
+
     def __init__(self, solver_run_id: int) -> None:
         self.solver_run_id = solver_run_id
 
     def run(self) -> None:
         """Start solver in background thread."""
-        thread = threading.Thread(target=self._execute, daemon=True)
+        cancel_event = threading.Event()
+        with self._lock:
+            self._active_runs[self.solver_run_id] = cancel_event
+        thread = threading.Thread(
+            target=self._execute, args=(cancel_event,), daemon=True
+        )
         thread.start()
 
-    def _execute(self) -> None:
+    @classmethod
+    def cancel(cls, solver_run_id: int) -> bool:
+        """Request cancellation of a running solve.
+
+        Returns True if the run was found and signalled, False otherwise.
+        """
+        with cls._lock:
+            event = cls._active_runs.get(solver_run_id)
+        if event is not None:
+            event.set()
+            return True
+        return False
+
+    @classmethod
+    def _unregister(cls, solver_run_id: int) -> None:
+        """Remove a run from the active registry."""
+        with cls._lock:
+            cls._active_runs.pop(solver_run_id, None)
+
+    def _execute(self, cancel_event: threading.Event | None = None) -> None:
         """Main solver execution - can be called directly for testing."""
         from django.db import connection
 
@@ -40,6 +68,7 @@ class SolverRunner:
         try:
             solver_run.status = "running"
             solver_run.started_at = timezone.now()
+            solver_run.progress_json = {"phase": "preparing"}
             solver_run.save()
 
             # Get solver settings
@@ -76,14 +105,63 @@ class SolverRunner:
                 optimality_tolerance = None
                 log_search = None
 
+            # Create progress callback
+            from shift_solver.solver.progress_callback import SolverProgressCallback
+
+            run_id = self.solver_run_id
+
+            def _on_progress(data: dict) -> None:
+                with contextlib.suppress(Exception):
+                    SolverRun.objects.filter(id=run_id).update(progress_json=data)
+
+            callback = SolverProgressCallback(
+                cancel_event=cancel_event,
+                on_progress=_on_progress,
+            )
+
+            # Update phase to solving
+            SolverRun.objects.filter(id=self.solver_run_id).update(
+                progress_json={"phase": "solving"}
+            )
+
             result = solver.solve(
                 time_limit_seconds=time_limit,
                 num_workers=num_workers,
                 relative_gap_limit=optimality_tolerance,
                 log_search_progress=log_search,
+                solution_callback=callback,
             )
 
-            if result.success and result.schedule:
+            # Check if cancelled
+            if cancel_event is not None and cancel_event.is_set():
+                if result.success and result.schedule:
+                    # Save partial results
+                    SolverRun.objects.filter(id=self.solver_run_id).update(
+                        progress_json={"phase": "extracting"}
+                    )
+                    assignments = solver_result_to_assignments(
+                        solver_run, result.schedule
+                    )
+                    Assignment.objects.bulk_create(assignments)
+                    solver_run.status = "cancelled"
+                    solver_run.result_json = {
+                        "status": "CANCELLED_WITH_SOLUTION",
+                        "objective_value": result.objective_value,
+                        "solve_time_seconds": result.solve_time_seconds,
+                        "assignment_count": len(assignments),
+                        "solutions_found": callback.solutions_found,
+                    }
+                else:
+                    solver_run.status = "cancelled"
+                    solver_run.result_json = {
+                        "status": "CANCELLED",
+                        "solve_time_seconds": result.solve_time_seconds,
+                        "solutions_found": callback.solutions_found,
+                    }
+            elif result.success and result.schedule:
+                SolverRun.objects.filter(id=self.solver_run_id).update(
+                    progress_json={"phase": "extracting"}
+                )
                 assignments = solver_result_to_assignments(
                     solver_run, result.schedule
                 )
@@ -101,6 +179,7 @@ class SolverRunner:
 
             solver_run.progress_percent = 100
             solver_run.completed_at = timezone.now()
+            solver_run.progress_json = {"phase": "done"}
             solver_run.save()
 
         except Exception as e:
@@ -109,3 +188,5 @@ class SolverRunner:
             solver_run.error_message = str(e)
             solver_run.completed_at = timezone.now()
             solver_run.save()
+        finally:
+            self._unregister(self.solver_run_id)

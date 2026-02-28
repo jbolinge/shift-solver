@@ -176,6 +176,7 @@ class SolverRun(models.Model):
         ("running", "Running"),
         ("completed", "Completed"),
         ("failed", "Failed"),
+        ("cancelled", "Cancelled"),
     ]
 
     schedule_request = models.ForeignKey(
@@ -187,6 +188,7 @@ class SolverRun(models.Model):
     result_json = models.JSONField(null=True, blank=True)
     error_message = models.TextField(blank=True, default="")
     progress_percent = models.IntegerField(default=0)
+    progress_json = models.JSONField(default=dict, blank=True)
 
     class Meta:
         ordering = ["-started_at"]

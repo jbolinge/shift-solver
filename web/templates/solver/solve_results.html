@@ -7,7 +7,7 @@
     <div class="flex items-center justify-between">
         <h1 class="text-2xl font-bold text-gray-900">Solver Results</h1>
         <div class="flex space-x-3">
-            {% if run.status == "completed" %}
+            {% if run.status == "completed" or has_solution %}
             <a href="{% url 'schedule-view' run.pk %}"
                class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">
                 View Schedule
@@ -16,11 +16,11 @@
                class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-amber-600 hover:bg-amber-700">
                 Validate
             </a>
+            {% endif %}
             <a href="{% url 'request-detail' req.pk %}"
                class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
                 Back to Request
             </a>
-            {% endif %}
         </div>
     </div>
     <p class="mt-1 text-sm text-gray-600">{{ req.name }} ({{ req.start_date|date:"N j, Y" }} - {{ req.end_date|date:"N j, Y" }})</p>
@@ -39,6 +39,23 @@
 </div>
 {% endif %}
 
+{% if run.status == "cancelled" %}
+<div class="mb-6 rounded-md bg-yellow-50 p-4">
+    <div class="flex">
+        <div class="ml-3">
+            <h3 class="text-sm font-medium text-yellow-800">Solver Cancelled</h3>
+            <div class="mt-2 text-sm text-yellow-700">
+                {% if has_solution %}
+                    {{ solutions_found }} solution{{ solutions_found|pluralize }} found before cancellation. Partial results are available below.
+                {% else %}
+                    No feasible solution was found before cancellation.
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <div class="bg-white shadow rounded-lg overflow-hidden">
     <div class="px-6 py-5 border-b border-gray-200">
         <h2 class="text-lg font-medium text-gray-900">Summary</h2>
@@ -51,6 +68,8 @@
                     <span class="inline-flex px-2 text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">{{ status_name }}</span>
                 {% elif run.status == "failed" %}
                     <span class="inline-flex px-2 text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Failed</span>
+                {% elif run.status == "cancelled" %}
+                    <span class="inline-flex px-2 text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Cancelled</span>
                 {% else %}
                     <span class="inline-flex px-2 text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">{{ status_name }}</span>
                 {% endif %}

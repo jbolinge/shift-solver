@@ -4,8 +4,21 @@
 
 {% block content %}
 <div class="mb-6">
-    <h1 class="text-2xl font-bold text-gray-900">Solving: {{ req.name }}</h1>
-    <p class="mt-1 text-sm text-gray-600">{{ req.start_date|date:"N j, Y" }} - {{ req.end_date|date:"N j, Y" }}</p>
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Solving: {{ req.name }}</h1>
+            <p class="mt-1 text-sm text-gray-600">{{ req.start_date|date:"N j, Y" }} - {{ req.end_date|date:"N j, Y" }}</p>
+        </div>
+        {% if run.status == "running" or run.status == "pending" %}
+        <form method="post" action="{% url 'solve-cancel' run.pk %}" onsubmit="return confirm('Cancel this solve? Any partial results found so far will be saved.')">
+            {% csrf_token %}
+            <button type="submit"
+                    class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                Cancel Solve
+            </button>
+        </form>
+        {% endif %}
+    </div>
 </div>
 
 <div class="bg-white shadow rounded-lg overflow-hidden p-6">

@@ -1,6 +1,8 @@
 """Tests for background solver runner (scheduler-119)."""
 
+import threading
 from datetime import date, time
+from unittest.mock import patch
 
 import pytest
 
@@ -154,8 +156,6 @@ class TestSolverRunner:
 
     def test_solver_runner_starts_background_thread(self, setup_solver_data):
         """SolverRunner.run() starts execution in a background thread."""
-        from unittest.mock import patch
-
         from core.solver_runner import SolverRunner
 
         run = setup_solver_data
@@ -165,15 +165,16 @@ class TestSolverRunner:
             mock_thread = mock_thread_cls.return_value
             runner.run()
 
-            mock_thread_cls.assert_called_once_with(
-                target=runner._execute, daemon=True
-            )
+            call_kwargs = mock_thread_cls.call_args.kwargs
+            assert call_kwargs["target"] == runner._execute
+            assert call_kwargs["daemon"] is True
+            # args should contain the cancel event
+            assert len(call_kwargs["args"]) == 1
+            assert isinstance(call_kwargs["args"][0], threading.Event)
             mock_thread.start.assert_called_once()
 
     def test_solver_run_passes_availability(self, setup_solver_data):
         """Availability records are passed to the solver."""
-        from unittest.mock import patch
-
         from core.solver_runner import SolverRunner
 
         run = setup_solver_data
@@ -205,8 +206,6 @@ class TestSolverRunner:
 
     def test_solver_runner_passes_all_settings(self, setup_solver_data):
         """All SolverSettings fields are forwarded to solver.solve()."""
-        from unittest.mock import patch
-
         from core.solver_runner import SolverRunner
 
         run = setup_solver_data
@@ -235,3 +234,95 @@ class TestSolverRunner:
             assert call_kwargs.kwargs.get("num_workers") == 4
             assert call_kwargs.kwargs.get("relative_gap_limit") == 0.05
             assert call_kwargs.kwargs.get("log_search_progress") is False
+
+
+class TestSolverRunnerCancel:
+    """Tests for SolverRunner cancel registry."""
+
+    def test_cancel_returns_false_for_unknown_id(self):
+        """cancel() returns False when run ID is not in registry."""
+        from core.solver_runner import SolverRunner
+
+        assert SolverRunner.cancel(99999) is False
+
+    def test_cancel_sets_event(self):
+        """cancel() sets the threading event for registered runs."""
+        from core.solver_runner import SolverRunner
+
+        event = threading.Event()
+        with SolverRunner._lock:
+            SolverRunner._active_runs[12345] = event
+
+        try:
+            result = SolverRunner.cancel(12345)
+            assert result is True
+            assert event.is_set()
+        finally:
+            SolverRunner._unregister(12345)
+
+    def test_unregister_removes_from_registry(self):
+        """_unregister removes the run from _active_runs."""
+        from core.solver_runner import SolverRunner
+
+        event = threading.Event()
+        with SolverRunner._lock:
+            SolverRunner._active_runs[12345] = event
+
+        SolverRunner._unregister(12345)
+        assert 12345 not in SolverRunner._active_runs
+
+    def test_run_registers_cancel_event(self):
+        """run() registers a cancel event before starting thread."""
+        from core.solver_runner import SolverRunner
+
+        runner = SolverRunner(solver_run_id=77777)
+        with patch("threading.Thread") as mock_thread_cls:
+            mock_thread_cls.return_value.start = lambda: None
+            runner.run()
+            assert 77777 in SolverRunner._active_runs
+            assert isinstance(SolverRunner._active_runs[77777], threading.Event)
+
+        # Clean up
+        SolverRunner._unregister(77777)
+
+    def test_progress_json_set_during_execution(self, setup_solver_data_fixture):
+        """progress_json is updated during solver execution."""
+        from core.solver_runner import SolverRunner
+
+        run = setup_solver_data_fixture
+        runner = SolverRunner(solver_run_id=run.id)
+        runner._execute()
+
+        run.refresh_from_db()
+        assert run.progress_json == {"phase": "done"}
+
+    @pytest.fixture
+    def setup_solver_data_fixture(self):
+        """Create minimal solvable data."""
+        w1 = Worker.objects.create(worker_id="W001", name="Alice")
+        w2 = Worker.objects.create(worker_id="W002", name="Bob")
+        st = ShiftType.objects.create(
+            shift_type_id="day",
+            name="Day",
+            category="day",
+            start_time=time(7, 0),
+            duration_hours=8.0,
+            workers_required=1,
+        )
+        ConstraintConfig.objects.create(
+            constraint_type="coverage",
+            enabled=True,
+            is_hard=True,
+            weight=100,
+        )
+        request = ScheduleRequest.objects.create(
+            name="Test Cancel",
+            start_date=date(2026, 3, 2),
+            end_date=date(2026, 3, 8),
+        )
+        request.workers.add(w1, w2)
+        request.shift_types.add(st)
+        SolverSettings.objects.create(
+            schedule_request=request, time_limit_seconds=30
+        )
+        return SolverRun.objects.create(schedule_request=request)

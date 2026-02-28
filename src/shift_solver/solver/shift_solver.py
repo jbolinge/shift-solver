@@ -141,6 +141,7 @@ class ShiftSolver:
         num_workers: int | None = None,
         relative_gap_limit: float | None = None,
         log_search_progress: bool | None = None,
+        solution_callback: "cp_model.CpSolverSolutionCallback | None" = None,
     ) -> SolverResult:
         """
         Solve the shift scheduling problem.
@@ -150,6 +151,7 @@ class ShiftSolver:
             num_workers: Number of parallel search workers for CP-SAT
             relative_gap_limit: Optimality gap tolerance (0.0 = optimal)
             log_search_progress: Whether to log solver search progress
+            solution_callback: Optional CP-SAT solution callback for progress/cancel
 
         Returns:
             SolverResult with success status, schedule, and statistics
@@ -192,7 +194,10 @@ class ShiftSolver:
             self._solver.parameters.log_search_progress = log_search_progress
 
         # Solve
-        status = self._solver.Solve(self._model)
+        if solution_callback is not None:
+            status = self._solver.Solve(self._model, solution_callback)
+        else:
+            status = self._solver.Solve(self._model)
         solve_time = time_module.time() - start_time
 
         # Check result
