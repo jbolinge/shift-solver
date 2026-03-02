@@ -13,6 +13,22 @@ from core.models import (
     WorkerRequest,
 )
 
+# Module-level CSS constants for Tailwind widget classes (DRY)
+CSS_INPUT = (
+    "mt-1 block w-full rounded-md border-gray-300 shadow-sm "
+    "focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+)
+
+CSS_CHECKBOX = (
+    "h-4 w-4 rounded border-gray-300 text-indigo-600 "
+    "focus:ring-indigo-500"
+)
+
+CSS_TEXTAREA_MONO = (
+    "mt-1 block w-full rounded-md border-gray-300 shadow-sm "
+    "focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono"
+)
+
 
 class ConstraintConfigForm(forms.ModelForm):
     """ModelForm for editing ConstraintConfig instances."""
@@ -20,7 +36,7 @@ class ConstraintConfigForm(forms.ModelForm):
     parameters = forms.CharField(
         widget=forms.Textarea(
             attrs={
-                "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono",
+                "class": CSS_TEXTAREA_MONO,
                 "rows": 3,
                 "placeholder": "{}",
             }
@@ -34,17 +50,17 @@ class ConstraintConfigForm(forms.ModelForm):
         widgets = {
             "enabled": forms.CheckboxInput(
                 attrs={
-                    "class": "h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500",
+                    "class": CSS_CHECKBOX,
                 }
             ),
             "is_hard": forms.CheckboxInput(
                 attrs={
-                    "class": "h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500",
+                    "class": CSS_CHECKBOX,
                 }
             ),
             "weight": forms.NumberInput(
                 attrs={
-                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "class": CSS_INPUT,
                     "min": "0",
                 }
             ),
@@ -70,7 +86,7 @@ class WorkerForm(forms.ModelForm):
     restricted_shifts = forms.CharField(
         widget=forms.Textarea(
             attrs={
-                "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono",
+                "class": CSS_TEXTAREA_MONO,
                 "rows": 2,
                 "placeholder": '["night", "weekend"]',
             }
@@ -82,7 +98,7 @@ class WorkerForm(forms.ModelForm):
     preferred_shifts = forms.CharField(
         widget=forms.Textarea(
             attrs={
-                "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono",
+                "class": CSS_TEXTAREA_MONO,
                 "rows": 2,
                 "placeholder": '["day", "morning"]',
             }
@@ -94,7 +110,7 @@ class WorkerForm(forms.ModelForm):
     attributes = forms.CharField(
         widget=forms.Textarea(
             attrs={
-                "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono",
+                "class": CSS_TEXTAREA_MONO,
                 "rows": 2,
                 "placeholder": '{"specialty": "cardiology"}',
             }
@@ -120,37 +136,37 @@ class WorkerForm(forms.ModelForm):
         widgets = {
             "worker_id": forms.TextInput(
                 attrs={
-                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "class": CSS_INPUT,
                     "placeholder": "e.g. W001",
                 }
             ),
             "name": forms.TextInput(
                 attrs={
-                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "class": CSS_INPUT,
                     "placeholder": "Full name",
                 }
             ),
             "email": forms.EmailInput(
                 attrs={
-                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "class": CSS_INPUT,
                     "placeholder": "email@example.com",
                 }
             ),
             "group": forms.TextInput(
                 attrs={
-                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "class": CSS_INPUT,
                     "placeholder": "e.g. Team A",
                 }
             ),
             "worker_type": forms.TextInput(
                 attrs={
-                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "class": CSS_INPUT,
                     "placeholder": "e.g. full_time",
                 }
             ),
             "fte": forms.NumberInput(
                 attrs={
-                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "class": CSS_INPUT,
                     "step": "0.1",
                     "min": "0",
                     "max": "1",
@@ -158,7 +174,7 @@ class WorkerForm(forms.ModelForm):
             ),
             "is_active": forms.CheckboxInput(
                 attrs={
-                    "class": "h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500",
+                    "class": CSS_CHECKBOX,
                 }
             ),
         }
@@ -231,7 +247,7 @@ class ShiftTypeForm(forms.ModelForm):
         choices=DAY_CHOICES,
         widget=forms.CheckboxSelectMultiple(
             attrs={
-                "class": "h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500",
+                "class": CSS_CHECKBOX,
             }
         ),
         required=False,
@@ -241,7 +257,7 @@ class ShiftTypeForm(forms.ModelForm):
     required_attributes = forms.CharField(
         widget=forms.Textarea(
             attrs={
-                "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono",
+                "class": CSS_TEXTAREA_MONO,
                 "rows": 2,
                 "placeholder": '{"specialty": "cardiology"}',
             }
@@ -269,61 +285,61 @@ class ShiftTypeForm(forms.ModelForm):
         widgets = {
             "shift_type_id": forms.TextInput(
                 attrs={
-                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "class": CSS_INPUT,
                     "placeholder": "e.g. DAY",
                 }
             ),
             "name": forms.TextInput(
                 attrs={
-                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "class": CSS_INPUT,
                     "placeholder": "e.g. Day Shift",
                 }
             ),
             "category": forms.TextInput(
                 attrs={
-                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "class": CSS_INPUT,
                     "placeholder": "e.g. Regular",
                 }
             ),
             "start_time": forms.TimeInput(
                 attrs={
-                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "class": CSS_INPUT,
                     "type": "time",
                 }
             ),
             "duration_hours": forms.NumberInput(
                 attrs={
-                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "class": CSS_INPUT,
                     "step": "0.5",
                     "min": "0",
                 }
             ),
             "min_workers": forms.NumberInput(
                 attrs={
-                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "class": CSS_INPUT,
                     "min": "0",
                 }
             ),
             "max_workers": forms.NumberInput(
                 attrs={
-                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "class": CSS_INPUT,
                     "min": "0",
                 }
             ),
             "workers_required": forms.NumberInput(
                 attrs={
-                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "class": CSS_INPUT,
                     "min": "0",
                 }
             ),
             "is_undesirable": forms.CheckboxInput(
                 attrs={
-                    "class": "h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500",
+                    "class": CSS_CHECKBOX,
                 }
             ),
             "is_active": forms.CheckboxInput(
                 attrs={
-                    "class": "h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500",
+                    "class": CSS_CHECKBOX,
                 }
             ),
         }
@@ -374,36 +390,36 @@ class ScheduleRequestForm(forms.ModelForm):
         widgets = {
             "name": forms.TextInput(
                 attrs={
-                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "class": CSS_INPUT,
                     "placeholder": "e.g. March 2026 Schedule",
                 }
             ),
             "start_date": forms.DateInput(
                 attrs={
-                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "class": CSS_INPUT,
                     "type": "date",
                 }
             ),
             "end_date": forms.DateInput(
                 attrs={
-                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "class": CSS_INPUT,
                     "type": "date",
                 }
             ),
             "period_length_days": forms.NumberInput(
                 attrs={
-                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "class": CSS_INPUT,
                     "min": "1",
                 }
             ),
             "workers": forms.CheckboxSelectMultiple(
                 attrs={
-                    "class": "h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500",
+                    "class": CSS_CHECKBOX,
                 }
             ),
             "shift_types": forms.CheckboxSelectMultiple(
                 attrs={
-                    "class": "h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500",
+                    "class": CSS_CHECKBOX,
                 }
             ),
         }
@@ -454,26 +470,26 @@ class SolverSettingsForm(forms.ModelForm):
         widgets = {
             "time_limit_seconds": forms.NumberInput(
                 attrs={
-                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "class": CSS_INPUT,
                     "min": "1",
                 }
             ),
             "num_search_workers": forms.NumberInput(
                 attrs={
-                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "class": CSS_INPUT,
                     "min": "1",
                 }
             ),
             "optimality_tolerance": forms.NumberInput(
                 attrs={
-                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "class": CSS_INPUT,
                     "step": "0.01",
                     "min": "0",
                 }
             ),
             "log_search_progress": forms.CheckboxInput(
                 attrs={
-                    "class": "h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500",
+                    "class": CSS_CHECKBOX,
                 }
             ),
         }
@@ -501,7 +517,7 @@ class WorkerRequestForm(forms.ModelForm):
         required=False,
         widget=forms.Select(
             attrs={
-                "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                "class": CSS_INPUT,
             },
         ),
     )
@@ -520,34 +536,34 @@ class WorkerRequestForm(forms.ModelForm):
         widgets = {
             "worker": forms.Select(
                 attrs={
-                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "class": CSS_INPUT,
                 }
             ),
             "shift_type": forms.Select(
                 attrs={
-                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "class": CSS_INPUT,
                 }
             ),
             "start_date": forms.DateInput(
                 attrs={
-                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "class": CSS_INPUT,
                     "type": "date",
                 }
             ),
             "end_date": forms.DateInput(
                 attrs={
-                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "class": CSS_INPUT,
                     "type": "date",
                 }
             ),
             "request_type": forms.Select(
                 attrs={
-                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "class": CSS_INPUT,
                 }
             ),
             "priority": forms.NumberInput(
                 attrs={
-                    "class": "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+                    "class": CSS_INPUT,
                     "min": "1",
                 }
             ),
