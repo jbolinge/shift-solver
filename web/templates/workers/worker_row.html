@@ -1,3 +1,4 @@
+{% load ui_tags %}
 <tr id="worker-row-{{ worker.pk }}">
     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ worker.worker_id }}</td>
     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ worker.name }}</td>
@@ -6,9 +7,9 @@
     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ worker.fte }}</td>
     <td class="px-6 py-4 whitespace-nowrap">
         {% if worker.is_active %}
-            <span class="inline-flex px-2 text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Active</span>
+            {% status_badge "Active" "green" %}
         {% else %}
-            <span class="inline-flex px-2 text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">Inactive</span>
+            {% status_badge "Inactive" "gray" %}
         {% endif %}
     </td>
     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

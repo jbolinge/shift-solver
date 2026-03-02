@@ -9,24 +9,10 @@
       hx-swap="beforeend">
     {% csrf_token %}
 
+    {% load ui_tags %}
     <div class="space-y-4">
         {% for field in form %}
-        <div>
-            <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700">
-                {{ field.label }}
-            </label>
-            {{ field }}
-            {% if field.help_text %}
-            <p class="mt-1 text-sm text-gray-500">{{ field.help_text }}</p>
-            {% endif %}
-            {% if field.errors %}
-            <ul class="mt-1 text-sm text-red-600">
-                {% for error in field.errors %}
-                <li>{{ error }}</li>
-                {% endfor %}
-            </ul>
-            {% endif %}
-        </div>
+            {% render_field field %}
         {% endfor %}
 
         {% if form.non_field_errors %}

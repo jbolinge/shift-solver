@@ -1,3 +1,4 @@
+{% load ui_tags %}
 <tr id="worker-request-row-{{ wr.pk }}">
     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ wr.worker.name }}</td>
     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ wr.shift_type.name }}</td>
@@ -5,19 +6,19 @@
     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ wr.end_date|date:"N j, Y" }}</td>
     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
         {% if wr.request_type == "positive" %}
-            <span class="inline-flex px-2 text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Positive</span>
+            {% status_badge "Positive" "green" %}
         {% else %}
-            <span class="inline-flex px-2 text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800">Negative</span>
+            {% status_badge "Negative" "orange" %}
         {% endif %}
     </td>
     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ wr.priority }}</td>
     <td class="px-6 py-4 whitespace-nowrap text-sm">
         {% if wr.is_hard is True %}
-            <span class="inline-flex px-2 text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Hard</span>
+            {% status_badge "Hard" "red" %}
         {% elif wr.is_hard is False %}
-            <span class="inline-flex px-2 text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Soft</span>
+            {% status_badge "Soft" "yellow" %}
         {% else %}
-            <span class="inline-flex px-2 text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">Global</span>
+            {% status_badge "Global" "gray" %}
         {% endif %}
     </td>
     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

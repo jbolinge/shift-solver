@@ -13,6 +13,8 @@ BADGE_COLORS = {
     "gray": "bg-gray-100 text-gray-800",
     "indigo": "bg-indigo-100 text-indigo-800",
     "purple": "bg-purple-100 text-purple-800",
+    "orange": "bg-orange-100 text-orange-800",
+    "amber": "bg-amber-100 text-amber-800",
 }
 
 
