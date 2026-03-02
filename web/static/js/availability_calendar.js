@@ -136,7 +136,7 @@ document.addEventListener("DOMContentLoaded", function () {
         dateClick: function (info) {
             var workerId = workerSelect.value;
             if (!workerId) {
-                alert("Please select a worker first.");
+                showToast("Please select a worker first.", "error");
                 return;
             }
 
