@@ -1,5 +1,18 @@
+{% load ui_tags %}
 <nav class="bg-indigo-700 text-white px-6 py-3 flex items-center justify-between shadow">
-    <a href="/" class="text-xl font-bold tracking-tight">Shift Solver</a>
+    <div class="flex items-center gap-3">
+        <button id="sidebar-toggle"
+                type="button"
+                class="md:hidden inline-flex items-center justify-center p-2 rounded-md text-indigo-200 hover:text-white hover:bg-indigo-600"
+                aria-expanded="false"
+                aria-controls="sidebar"
+                aria-label="Toggle navigation">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+            </svg>
+        </button>
+        <a href="{% url 'home' %}" class="text-xl font-bold tracking-tight">Shift Solver</a>
+    </div>
     <div class="flex items-center gap-4 text-sm">
         <a href="/admin/" class="hover:text-indigo-200">Admin</a>
     </div>
