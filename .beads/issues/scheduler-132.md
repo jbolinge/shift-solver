@@ -2,10 +2,10 @@
 id: scheduler-132
 title: "Messages Auto-Dismiss & Global Toast System"
 type: task
-status: open
+status: closed
 priority: 2
 created: 2026-02-27
-updated: 2026-02-27
+updated: 2026-03-02
 parent: scheduler-127
 depends-on: scheduler-131
 labels: [web, templates, tailwind]

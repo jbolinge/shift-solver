@@ -2,10 +2,10 @@
 id: scheduler-131
 title: "Accessibility Improvements"
 type: task
-status: open
+status: closed
 priority: 1
 created: 2026-02-27
-updated: 2026-02-27
+updated: 2026-03-02
 parent: scheduler-127
 depends-on: scheduler-129
 labels: [web, templates]

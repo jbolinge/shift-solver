@@ -2,10 +2,10 @@
 id: scheduler-135
 title: "Dashboard Enhancement & HTMX Loading Indicator"
 type: task
-status: open
+status: closed
 priority: 2
 created: 2026-02-27
-updated: 2026-02-27
+updated: 2026-03-02
 parent: scheduler-127
 labels: [web, django, htmx]
 ---

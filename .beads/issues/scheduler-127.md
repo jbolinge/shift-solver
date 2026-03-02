@@ -2,10 +2,10 @@
 id: scheduler-127
 title: "UI/UX Modernization"
 type: epic
-status: open
+status: closed
 priority: 1
 created: 2026-02-27
-updated: 2026-02-27
+updated: 2026-03-02
 labels: [web, templates, tailwind, quality]
 ---
 

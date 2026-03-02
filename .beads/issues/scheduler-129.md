@@ -2,10 +2,10 @@
 id: scheduler-129
 title: "Custom Template Tag Library"
 type: task
-status: open
+status: closed
 priority: 1
 created: 2026-02-27
-updated: 2026-02-27
+updated: 2026-03-02
 parent: scheduler-127
 labels: [web, django, templates]
 ---
