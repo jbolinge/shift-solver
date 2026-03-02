@@ -1,6 +1,7 @@
 """Custom template tags for the shift-solver web UI."""
 
 from django import template
+from django.urls import reverse
 from django.utils.html import format_html
 
 register = template.Library()
@@ -40,3 +41,23 @@ def render_field(field):
     Usage: {% render_field form.name %}
     """
     return {"field": field}
+
+
+@register.inclusion_tag("partials/_sidebar_link.html", takes_context=True)
+def sidebar_link(context, url_name, label):
+    """Render a sidebar navigation link with active state.
+
+    Usage: {% sidebar_link "home" "Dashboard" %}
+    """
+    request = context.get("request")
+    url = reverse(url_name)
+    is_active = False
+    if request:
+        is_active = request.path == url or (
+            url != "/" and request.path.startswith(url)
+        )
+    return {
+        "url": url,
+        "label": label,
+        "is_active": is_active,
+    }

@@ -1,0 +1,5 @@
+<a href="{{ url }}"
+   class="block px-3 py-2 rounded text-sm font-medium {% if is_active %}bg-indigo-100 text-indigo-700{% else %}text-gray-700 hover:bg-indigo-50 hover:text-indigo-700{% endif %}"
+   {% if is_active %}aria-current="page"{% endif %}>
+    {{ label }}
+</a>

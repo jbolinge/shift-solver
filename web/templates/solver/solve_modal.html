@@ -1,13 +1,13 @@
 <!-- Solve launch modal (HTMX partial) -->
-<div id="solve-modal" class="fixed inset-0 z-50 overflow-y-auto">
+<div id="solve-modal" class="fixed inset-0 z-50 overflow-y-auto"
+     role="dialog" aria-modal="true" aria-labelledby="solve-modal-title">
     <!-- Backdrop -->
-    <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-         onclick="document.getElementById('solve-modal').remove()"></div>
+    <div id="solve-modal-backdrop" class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
 
     <!-- Modal panel -->
     <div class="flex min-h-full items-center justify-center p-4">
         <div class="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Launch Solver</h3>
+            <h3 id="solve-modal-title" class="text-lg font-semibold text-gray-900 mb-4">Launch Solver</h3>
 
             {% if errors %}
             <div class="mb-4 rounded-md bg-red-50 p-4">
@@ -40,8 +40,7 @@
             </dl>
 
             <div class="flex space-x-3 justify-end">
-                <button type="button"
-                        onclick="document.getElementById('solve-modal').remove()"
+                <button type="button" id="solve-modal-cancel"
                         class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
                     Cancel
                 </button>
@@ -58,3 +57,48 @@
         </div>
     </div>
 </div>
+
+<script>
+(function() {
+    var modal = document.getElementById('solve-modal');
+    var backdrop = document.getElementById('solve-modal-backdrop');
+    var cancelBtn = document.getElementById('solve-modal-cancel');
+
+    function closeModal() {
+        if (modal) modal.remove();
+    }
+
+    if (backdrop) backdrop.addEventListener('click', closeModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+    document.addEventListener('keydown', function handler(e) {
+        if (e.key === 'Escape') {
+            closeModal();
+            document.removeEventListener('keydown', handler);
+        }
+    });
+
+    // Focus trap: keep Tab cycling within the modal
+    if (modal) {
+        var focusable = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        var first = focusable[0];
+        var last = focusable[focusable.length - 1];
+        if (first) first.focus();
+
+        modal.addEventListener('keydown', function(e) {
+            if (e.key !== 'Tab') return;
+            if (e.shiftKey) {
+                if (document.activeElement === first) {
+                    e.preventDefault();
+                    last.focus();
+                }
+            } else {
+                if (document.activeElement === last) {
+                    e.preventDefault();
+                    first.focus();
+                }
+            }
+        });
+    }
+})();
+</script>
