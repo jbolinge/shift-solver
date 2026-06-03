@@ -22,7 +22,7 @@ constraints:
     enabled: true
     is_hard: true
 
-  worker_restriction:
+  restriction:
     enabled: true
     is_hard: true
 
@@ -42,7 +42,7 @@ constraints:
     is_hard: false
     weight: 500
     parameters:
-      default_max_periods_between: 4
+      max_periods_between: 4
 
   request:
     enabled: true
@@ -51,7 +51,7 @@ constraints:
     parameters:
       max_requests_per_worker: 8
 
-  sequence_no_consecutive:
+  sequence:
     enabled: true
     is_hard: false
     weight: 100

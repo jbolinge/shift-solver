@@ -99,9 +99,10 @@ class ShiftFrequencyConstraint(BaseConstraint):
         if not valid_shift_types:
             return
 
-        # Window size equals max_periods_between
-        # e.g., max_periods_between=4 means must work at least once every 4 periods
-        window_size = req.max_periods_between
+        # Window size is max_periods_between + 1
+        # e.g., max_periods_between=4 means must work at least once every 4 periods,
+        # which is a sliding window of 5 periods (matches FrequencyConstraint).
+        window_size = req.max_periods_between + 1
 
         if window_size > num_periods:
             # Window larger than schedule, only one window covering all periods
@@ -145,8 +146,10 @@ class ShiftFrequencyConstraint(BaseConstraint):
             # No valid assignments possible in this window
             # This is either infeasible (hard) or always violated (soft)
             if self.is_hard:
-                # Add infeasible constraint
-                self.model.add_bool_or([])  # Always false
+                # No valid assignment can satisfy this hard requirement: assert
+                # an explicit always-false constraint (empty add_bool_or([]) is
+                # invalid in OR-Tools).
+                self.model.add(self.model.new_constant(0) == 1)
             else:
                 # Create always-violated variable
                 violation_name = f"sf_viol_{worker_id}_w{window_start}"

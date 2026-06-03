@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 import click
 
 from shift_solver.config import ShiftSolverConfig
+from shift_solver.constraints.base import ConstraintConfig
 from shift_solver.models import ShiftType, Worker
 from shift_solver.solver import ShiftSolver
 
@@ -71,6 +72,7 @@ def generate(
 
     # Load configuration
     shift_types = _load_shift_types(config_path, verbose)
+    constraint_configs = _load_constraint_configs(config_path, verbose)
 
     # Get workers - demo mode creates sample workers
     if demo:
@@ -91,12 +93,16 @@ def generate(
     solve_time = _determine_time_limit(time_limit, quick_solve)
     click.echo(f"Solving with {solve_time}s time limit...")
 
-    # Create and run solver
+    # Create and run solver.
+    # NOTE: availabilities and requests have no config/data source yet (the
+    # database is not implemented), so they are left empty for --demo runs.
+    # constraint_configs from config.yaml ARE honored here.
     solver = ShiftSolver(
         workers=workers,
         shift_types=shift_types,
         period_dates=period_dates,
         schedule_id=f"SCH-{start.strftime('%Y%m%d')}",
+        constraint_configs=constraint_configs,
     )
 
     result = solver.solve(time_limit_seconds=solve_time)
@@ -173,6 +179,43 @@ def _load_shift_types(config_path: Path | None, verbose: int) -> list[ShiftType]
                 is_undesirable=True,
             ),
         ]
+
+
+def _load_constraint_configs(
+    config_path: Path | None, verbose: int
+) -> dict[str, ConstraintConfig]:
+    """Load constraint configurations from config, converting to solver configs.
+
+    The config file uses ``shift_solver.config.schema.ConstraintConfig`` (a
+    Pydantic model), but the solver/constraint classes expect
+    ``shift_solver.constraints.base.ConstraintConfig`` (a dataclass with
+    ``get_param``). This adapter bridges the two.
+
+    Returns an empty dict when no config file is present, so the solver falls
+    back to the registry's default constraint configuration.
+    """
+    if not (config_path and config_path.exists()):
+        return {}
+
+    try:
+        cfg = ShiftSolverConfig.load_from_yaml(config_path)
+    except Exception as e:
+        raise click.ClickException(f"Error loading config: {e}") from e
+
+    constraint_configs = {
+        constraint_id: ConstraintConfig(
+            enabled=c.enabled,
+            is_hard=c.is_hard,
+            weight=c.weight,
+            parameters=dict(c.parameters),
+        )
+        for constraint_id, c in cfg.constraints.items()
+    }
+    if verbose:
+        click.echo(
+            f"Loaded {len(constraint_configs)} constraint configs from config"
+        )
+    return constraint_configs
 
 
 def _to_date(dt: datetime) -> date:

@@ -124,9 +124,10 @@ class TestShiftFrequencyConstraintApply:
             shift_frequency_requirements=requirements,
         )
 
-        # Should have violation variables for sliding windows
-        # 8 periods with window=4 means 5 windows (0-3, 1-4, 2-5, 3-6, 4-7)
-        assert len(constraint.violation_variables) == 5
+        # Should have violation variables for sliding windows.
+        # max_periods_between=4 -> window=5; 8 periods => 4 windows
+        # (0-4, 1-5, 2-6, 3-7)
+        assert len(constraint.violation_variables) == 4
 
     def test_apply_disabled_does_nothing(
         self,
@@ -211,10 +212,10 @@ class TestShiftFrequencyConstraintMultipleWorkers:
             shift_frequency_requirements=requirements,
         )
 
-        # W001: 8 periods, window=4, 5 windows
-        # W002: 8 periods, window=2, 7 windows
-        # Total: 12 violation variables
-        assert len(constraint.violation_variables) == 12
+        # W001: max_periods_between=4 -> window=5, 8 periods => 4 windows
+        # W002: max_periods_between=2 -> window=3, 8 periods => 6 windows
+        # Total: 10 violation variables
+        assert len(constraint.violation_variables) == 10
 
 
 class TestShiftFrequencyConstraintSolve:
@@ -311,10 +312,10 @@ class TestShiftFrequencyConstraintSolve:
         assert status in (cp_model.OPTIMAL, cp_model.FEASIBLE)
 
         # Verify W001 has at least one assignment to mvsc_day or mvsc_night
-        # in each window
-        for window_start in range(5):  # 5 windows of size 4
+        # in each window (max_periods_between=4 -> window=5, 4 windows)
+        for window_start in range(4):  # 4 windows of size 5
             window_assignments = 0
-            for period in range(window_start, window_start + 4):
+            for period in range(window_start, window_start + 5):
                 for shift_id in ["mvsc_day", "mvsc_night"]:
                     var = variables.get_assignment_var("W001", period, shift_id)
                     if solver.value(var) == 1:
@@ -440,8 +441,8 @@ class TestShiftFrequencyEdgeCases:
             shift_frequency_requirements=requirements,
         )
 
-        # 8 periods with window=1 means 8 windows (one per period)
-        assert len(constraint.violation_variables) == 8
+        # max_periods_between=1 -> window=2; 8 periods => 7 windows
+        assert len(constraint.violation_variables) == 7
 
     def test_max_periods_between_equals_num_periods(
         self,
@@ -508,8 +509,9 @@ class TestShiftFrequencyEdgeCases:
             shift_frequency_requirements=requirements,
         )
 
-        # Should still create constraints (worker can work mvsc_night)
-        assert len(constraint.violation_variables) == 3  # 4 periods, window=2, 3 windows
+        # Should still create constraints (worker can work mvsc_night).
+        # max_periods_between=2 -> window=3; 4 periods => 2 windows
+        assert len(constraint.violation_variables) == 2
 
 
 class TestShiftFrequencyIntegration:
@@ -704,5 +706,124 @@ constraints:
         violation_count = sum(
             solver.value(v) for v in constraint.violation_variables.values()
         )
-        # All windows should be violated since W001 never works mvsc_day
-        assert violation_count == 7  # 8 periods, window=2, 7 windows
+        # All windows should be violated since W001 never works mvsc_day.
+        # max_periods_between=2 -> window=3; 8 periods => 6 windows
+        assert violation_count == 6
+
+
+class TestShiftFrequencyWindowParity:
+    """ShiftFrequencyConstraint must use the same window sizing as
+    FrequencyConstraint (window = max_periods_between + 1)."""
+
+    @pytest.mark.parametrize(
+        ("max_periods_between", "num_periods", "expected_windows"),
+        [
+            (4, 8, 4),  # window=5 -> 8-5+1
+            (2, 8, 6),  # window=3 -> 8-3+1
+            (1, 8, 7),  # window=2 -> 8-2+1
+        ],
+    )
+    def test_window_count_matches_frequency_constraint(
+        self,
+        workers: list[Worker],
+        shift_types: list[ShiftType],
+        max_periods_between: int,
+        num_periods: int,
+        expected_windows: int,
+    ) -> None:
+        """Number of soft-violation windows matches the +1 convention."""
+        from shift_solver.constraints.frequency import FrequencyConstraint
+
+        # ShiftFrequencyConstraint (per-worker, single shift type)
+        model = cp_model.CpModel()
+        variables = VariableBuilder(
+            model, workers, shift_types, num_periods=num_periods
+        ).build()
+        sf = ShiftFrequencyConstraint(
+            model, variables, ConstraintConfig(enabled=True, is_hard=False, weight=1)
+        )
+        sf.apply(
+            workers=workers,
+            shift_types=shift_types,
+            num_periods=num_periods,
+            shift_frequency_requirements=[
+                ShiftFrequencyRequirement(
+                    worker_id="W001",
+                    shift_types=frozenset(["mvsc_day"]),
+                    max_periods_between=max_periods_between,
+                )
+            ],
+        )
+        sf_windows = len(
+            [k for k in sf.violation_variables if k.startswith("sf_viol_")]
+        )
+        assert sf_windows == expected_windows
+
+        # FrequencyConstraint (the reference) for one worker, one shift type
+        fmodel = cp_model.CpModel()
+        fvars = VariableBuilder(
+            fmodel, workers[:1], shift_types, num_periods=num_periods
+        ).build()
+        freq = FrequencyConstraint(
+            fmodel,
+            fvars,
+            ConstraintConfig(
+                enabled=True,
+                is_hard=False,
+                weight=1,
+                parameters={
+                    "max_periods_between": max_periods_between,
+                    "shift_types": ["mvsc_day"],
+                },
+            ),
+        )
+        freq.apply(
+            workers=workers[:1], shift_types=shift_types, num_periods=num_periods
+        )
+        freq_windows = len(
+            [k for k in freq.violation_variables if k.startswith("freq_viol_")]
+        )
+        assert sf_windows == freq_windows
+
+
+class _RaisingVariables:
+    """Minimal SolverVariables stand-in whose assignment lookups always fail.
+
+    Simulates the defensive branch where no valid assignment variable exists
+    for a window (e.g. a fully restricted worker).
+    """
+
+    def get_assignment_var(self, *_args: object, **_kwargs: object) -> object:
+        raise KeyError("no assignment var")
+
+
+class TestShiftFrequencyHardInfeasibility:
+    """A hard requirement with no satisfiable assignment must yield INFEASIBLE,
+    not crash on an invalid empty add_bool_or([])."""
+
+    def test_hard_no_valid_assignments_is_infeasible(
+        self, shift_types: list[ShiftType], workers: list[Worker]
+    ) -> None:
+        model = cp_model.CpModel()
+        constraint = ShiftFrequencyConstraint(
+            model,
+            _RaisingVariables(),  # type: ignore[arg-type]
+            ConstraintConfig(enabled=True, is_hard=True),
+        )
+
+        # Should not raise (previously called add_bool_or([]) which is invalid).
+        constraint.apply(
+            workers=workers,
+            shift_types=shift_types,
+            num_periods=3,
+            shift_frequency_requirements=[
+                ShiftFrequencyRequirement(
+                    worker_id="W001",
+                    shift_types=frozenset(["mvsc_day"]),
+                    max_periods_between=1,
+                )
+            ],
+        )
+
+        status = cp_model.CpSolver().solve(model)
+        assert status == cp_model.INFEASIBLE
