@@ -46,6 +46,9 @@
                             Parameters (JSON)
                         </label>
                         {{ form.parameters }}
+                        {% if parameters_help %}
+                        <p class="mt-1 text-xs text-gray-500">{{ parameters_help }}</p>
+                        {% endif %}
                         {% if form.parameters.errors %}
                         <ul class="mt-1 text-sm text-red-600">
                             {% for error in form.parameters.errors %}

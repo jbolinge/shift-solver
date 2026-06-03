@@ -73,6 +73,44 @@ DEFAULT_CONSTRAINTS: list[dict] = [
 ]
 
 
+# Per-constraint help text describing the accepted `parameters` JSON schema.
+# These mirror the parsers in src/shift_solver/config/schema.py and the
+# constraint implementations exactly.
+PARAMETER_HELP: dict[str, str] = {
+    "fairness": (
+        'Optional: {"categories": ["weekend", "night"]} to limit fairness to '
+        "specific shift categories. Default: all undesirable shifts."
+    ),
+    "frequency": (
+        'Optional: {"max_periods_between": 4, "shift_types": ["day"]}. '
+        "max_periods_between sets the window size; shift_types limits scope "
+        "(default: all)."
+    ),
+    "sequence": (
+        'Optional: {"categories": ["ambulatory"]} to limit which categories are '
+        "checked for consecutive assignments. Default: all."
+    ),
+    "max_absence": (
+        'Optional: {"max_periods_absent": 8, "shift_types": ["day"]}. '
+        "max_periods_absent sets the window size; shift_types limits scope "
+        "(default: all)."
+    ),
+    "shift_frequency": (
+        'Required: {"requirements": [{"worker_id": "W001", '
+        '"shift_types": ["day", "evening"], "max_periods_between": 4}]}. '
+        "Each worker must work one of shift_types at least every "
+        "max_periods_between periods."
+    ),
+    "shift_order_preference": (
+        'Required: {"rules": [{"rule_id": "r1", "trigger_type": '
+        '"shift_type|category|unavailability", "trigger_value": "weekend", '
+        '"direction": "after|before", "preferred_type": "shift_type|category", '
+        '"preferred_value": "night", "priority": 1, "worker_ids": ["W001"]}]}. '
+        "worker_ids is optional (default: all workers)."
+    ),
+}
+
+
 def _is_htmx(request: HttpRequest) -> bool:
     """Check if the request was made via HTMX."""
     return request.headers.get("HX-Request") == "true"
@@ -114,7 +152,11 @@ def constraint_update(request: HttpRequest, pk: int) -> HttpResponse:
         form = ConstraintConfigForm(instance=constraint, initial=initial)
 
     template = "constraints/constraint_form.html"
-    context = {"form": form, "constraint": constraint}
+    context = {
+        "form": form,
+        "constraint": constraint,
+        "parameters_help": PARAMETER_HELP.get(constraint.constraint_type, ""),
+    }
     if _is_htmx(request):
         return render(request, template, context)
     return render(request, template, context)

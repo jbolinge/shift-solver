@@ -140,8 +140,6 @@ def _parse_file(
                 "name": w.name,
                 "worker_type": w.worker_type or "",
                 "restricted_shifts": sorted(w.restricted_shifts) if w.restricted_shifts else [],
-                "preferred_shifts": sorted(w.preferred_shifts) if w.preferred_shifts else [],
-                "attributes": dict(w.attributes) if getattr(w, "attributes", None) else {},
             }
             for w in workers
         ]
@@ -213,8 +211,6 @@ def _import_workers(rows: list[dict[str, Any]]) -> tuple[int, int]:
             name=row.get("name", ""),
             worker_type=row.get("worker_type", ""),
             restricted_shifts=row.get("restricted_shifts", []),
-            preferred_shifts=row.get("preferred_shifts", []),
-            attributes=row.get("attributes", {}),
         )
         existing_ids.add(worker_id)
         created += 1
@@ -222,15 +218,12 @@ def _import_workers(rows: list[dict[str, Any]]) -> tuple[int, int]:
     return created, skipped
 
 
-_AVAILABILITY_STATUS_MAP = {
-    "unavailable": {"is_available": False, "preference": 0},
-    "preferred": {"is_available": True, "preference": 1},
-    "required": {"is_available": True, "preference": 2},
-}
-
-
 def _import_availability(rows: list[dict[str, Any]]) -> tuple[int, int]:
-    """Import availability rows. Returns (created, skipped)."""
+    """Import availability rows. Returns (created, skipped).
+
+    Only "unavailable" entries are imported; the solver does not honor any other
+    availability type, so other rows are skipped.
+    """
     created = 0
     skipped = 0
 
@@ -243,12 +236,14 @@ def _import_availability(rows: list[dict[str, Any]]) -> tuple[int, int]:
             skipped += 1
             continue
 
+        # Only "unavailable" affects the solver; skip preferred/required/etc.
+        if row.get("availability_type", "unavailable") != "unavailable":
+            skipped += 1
+            continue
+
         start_date = datetime.date.fromisoformat(row["start_date"])
         end_date = datetime.date.fromisoformat(row["end_date"])
-        availability_type = row.get("availability_type", "unavailable")
-        status_fields = _AVAILABILITY_STATUS_MAP.get(
-            availability_type, {"is_available": False, "preference": 0}
-        )
+        status_fields = {"is_available": False}
 
         shift_type_id_str = row.get("shift_type_id", "")
         shift_type = shift_type_map.get(shift_type_id_str) if shift_type_id_str else None

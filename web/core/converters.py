@@ -21,8 +21,6 @@ def orm_worker_to_domain(orm_worker: orm.Worker) -> DomainWorker:
         name=str(orm_worker.name),
         worker_type=str(orm_worker.worker_type) if orm_worker.worker_type else None,
         restricted_shifts=frozenset(orm_worker.restricted_shifts or []),
-        preferred_shifts=frozenset(orm_worker.preferred_shifts or []),
-        attributes=dict(orm_worker.attributes or {}),
     )
 
 
@@ -33,8 +31,6 @@ def domain_worker_to_orm(domain_worker: DomainWorker) -> orm.Worker:
         name=domain_worker.name,
         worker_type=domain_worker.worker_type or "",
         restricted_shifts=sorted(domain_worker.restricted_shifts),
-        preferred_shifts=sorted(domain_worker.preferred_shifts),
-        attributes=domain_worker.attributes,
     )
 
 
@@ -63,7 +59,6 @@ def orm_shift_type_to_domain(orm_shift: orm.ShiftType) -> DomainShiftType:
         duration_hours=float(str(orm_shift.duration_hours)),
         is_undesirable=bool(orm_shift.is_undesirable),
         workers_required=int(str(orm_shift.workers_required)),
-        required_attributes=dict(orm_shift.required_attributes or {}),
         applicable_days=applicable_days,
     )
 
@@ -82,7 +77,6 @@ def domain_shift_type_to_orm(domain_shift: DomainShiftType) -> orm.ShiftType:
         duration_hours=domain_shift.duration_hours,
         is_undesirable=domain_shift.is_undesirable,
         workers_required=domain_shift.workers_required,
-        required_attributes=domain_shift.required_attributes,
         applicable_days=applicable_days,
     )
 
@@ -119,20 +113,13 @@ def orm_availability_to_domain(
 ) -> DomainAvailability | None:
     """Convert Django Availability ORM instance to domain Availability dataclass.
 
-    Returns None for neutral entries (is_available=True, preference=0) since
-    those don't need a constraint.
+    Only "unavailable" entries map to a constraint; available entries return None
+    since the engine only enforces unavailability.
     """
-    if not orm_avail.is_available:
-        availability_type = "unavailable"
-    elif orm_avail.preference >= 2:
-        availability_type = "required"
-    elif orm_avail.preference > 0:
-        availability_type = "preferred"
-    elif orm_avail.preference < 0:
-        availability_type = "unavailable"
-    else:
-        # Neutral: is_available=True, preference=0 — skip
+    if orm_avail.is_available:
+        # Available entries need no constraint.
         return None
+    availability_type = "unavailable"
 
     shift_type_id = (
         str(orm_avail.shift_type.shift_type_id) if orm_avail.shift_type_id else None

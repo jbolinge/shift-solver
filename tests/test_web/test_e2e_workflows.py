@@ -33,7 +33,6 @@ def _create_workers(client: Client) -> list[Worker]:
             "email": f"worker{i+1}@test.com",
             "group": "Team A" if i < 3 else "Team B",
             "worker_type": "full_time",
-            "fte": "1.0",
             "is_active": "on",
         }
         client.post("/workers/create/", data)
@@ -51,8 +50,6 @@ def _create_shifts(client: Client) -> list[ShiftType]:
             "category": "day",
             "start_time": "07:00",
             "duration_hours": "12.0",
-            "min_workers": "1",
-            "max_workers": "3",
             "workers_required": "2",
             "is_active": "on",
         },
@@ -62,8 +59,6 @@ def _create_shifts(client: Client) -> list[ShiftType]:
             "category": "night",
             "start_time": "19:00",
             "duration_hours": "12.0",
-            "min_workers": "1",
-            "max_workers": "2",
             "workers_required": "1",
             "is_active": "on",
             "is_undesirable": "on",
@@ -74,8 +69,6 @@ def _create_shifts(client: Client) -> list[ShiftType]:
             "category": "evening",
             "start_time": "15:00",
             "duration_hours": "8.0",
-            "min_workers": "1",
-            "max_workers": "2",
             "workers_required": "1",
             "is_active": "on",
         },
@@ -115,12 +108,13 @@ class TestCompleteSchedulingWorkflow:
         workers = _create_workers(client)
         _create_shifts(client)
 
-        # Set availability for first worker on a date
+        # Mark the first worker unavailable on a date
         response = client.post(
             "/availability/update/",
             {
                 "worker_id": str(workers[0].pk),
                 "date": "2026-03-01",
+                "status": "unavailable",
             },
         )
         assert response.status_code == 200
@@ -330,7 +324,6 @@ class TestHTMXInteractions:
             "email": "",
             "group": "",
             "worker_type": "",
-            "fte": "1.0",
             "is_active": "on",
         }
         response = client.post(

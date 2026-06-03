@@ -48,7 +48,7 @@ class TestAvailabilityEventsEndpoint:
         """GET /availability/events/?worker_id=X returns a JSON array."""
         worker = Worker.objects.create(worker_id="W1", name="Alice Smith")
         Availability.objects.create(
-            worker=worker, date="2026-03-01", is_available=True
+            worker=worker, date="2026-03-01", is_available=False
         )
 
         response = client.get(
@@ -62,12 +62,12 @@ class TestAvailabilityEventsEndpoint:
         assert len(data) == 1
 
     def test_events_filtered_by_worker(self, client: Client) -> None:
-        """Only returns events for the requested worker."""
+        """Only returns unavailable events for the requested worker."""
         alice = Worker.objects.create(worker_id="W1", name="Alice Smith")
         bob = Worker.objects.create(worker_id="W2", name="Bob Jones")
 
         Availability.objects.create(
-            worker=alice, date="2026-03-01", is_available=True
+            worker=alice, date="2026-03-01", is_available=False
         )
         Availability.objects.create(
             worker=bob, date="2026-03-02", is_available=False
@@ -81,8 +81,8 @@ class TestAvailabilityEventsEndpoint:
         assert len(data) == 1
         assert data[0]["start"] == "2026-03-01"
 
-    def test_events_include_correct_colors(self, client: Client) -> None:
-        """Green (#22c55e) for available, red (#ef4444) for unavailable."""
+    def test_events_only_include_unavailable(self, client: Client) -> None:
+        """Available entries are omitted; unavailable entries are red (#ef4444)."""
         worker = Worker.objects.create(worker_id="W1", name="Alice Smith")
         Availability.objects.create(
             worker=worker, date="2026-03-01", is_available=True
@@ -97,7 +97,7 @@ class TestAvailabilityEventsEndpoint:
         data = json.loads(response.content)
 
         events_by_date = {e["start"]: e for e in data}
-        assert events_by_date["2026-03-01"]["color"] == "#22c55e"
+        assert "2026-03-01" not in events_by_date
         assert events_by_date["2026-03-02"]["color"] == "#ef4444"
 
 

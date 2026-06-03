@@ -17,7 +17,7 @@ from core.models import (
 
 @admin.register(Worker)
 class WorkerAdmin(ModelAdmin):  # type: ignore[type-arg]
-    list_display = ["worker_id", "name", "group", "fte", "is_active"]
+    list_display = ["worker_id", "name", "group", "is_active"]
     list_filter = ["is_active", "group"]
     search_fields = ["name", "worker_id"]
 
@@ -34,7 +34,7 @@ class ShiftTypeAdmin(ModelAdmin):  # type: ignore[type-arg]
 
 @admin.register(Availability)
 class AvailabilityAdmin(ModelAdmin):  # type: ignore[type-arg]
-    list_display = ["worker", "date", "shift_type", "is_available", "preference"]
+    list_display = ["worker", "date", "shift_type", "is_available"]
     list_filter = ["is_available", "date"]
     search_fields = ["worker__name"]
 

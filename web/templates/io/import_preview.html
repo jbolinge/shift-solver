@@ -18,7 +18,6 @@
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Worker Type</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Restricted</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Preferred</th>
                 {% elif data_type == "availability" %}
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Worker ID</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Date</th>
@@ -44,7 +43,6 @@
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ row.name }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ row.worker_type }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ row.restricted_shifts|join:", " }}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ row.preferred_shifts|join:", " }}</td>
                 {% elif data_type == "availability" %}
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ row.worker_id }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ row.start_date }}</td>

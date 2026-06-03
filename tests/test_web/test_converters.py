@@ -6,10 +6,20 @@ import pytest
 
 from core.models import (
     Availability as ORMAvailability,
+)
+from core.models import (
     ConstraintConfig as ORMConstraintConfig,
+)
+from core.models import (
     ScheduleRequest as ORMScheduleRequest,
+)
+from core.models import (
     ShiftType as ORMShiftType,
+)
+from core.models import (
     SolverRun as ORMSolverRun,
+)
+from core.models import (
     Worker as ORMWorker,
 )
 
@@ -28,16 +38,12 @@ class TestWorkerConversion:
             name="Alice Smith",
             worker_type="full_time",
             restricted_shifts=["night"],
-            preferred_shifts=["day"],
-            attributes={"specialty": "cardiology"},
         )
         domain_worker = orm_worker_to_domain(orm_worker)
         assert domain_worker.id == "W001"
         assert domain_worker.name == "Alice Smith"
         assert domain_worker.worker_type == "full_time"
         assert domain_worker.restricted_shifts == frozenset(["night"])
-        assert domain_worker.preferred_shifts == frozenset(["day"])
-        assert domain_worker.attributes == {"specialty": "cardiology"}
 
     def test_domain_worker_to_orm_fields(self) -> None:
         """All worker fields are correctly mapped to ORM model."""
@@ -49,14 +55,12 @@ class TestWorkerConversion:
             name="Alice Smith",
             worker_type="full_time",
             restricted_shifts=frozenset(["night"]),
-            preferred_shifts=frozenset(["day"]),
         )
         orm_worker = domain_worker_to_orm(domain_worker)
         assert orm_worker.worker_id == "W001"
         assert orm_worker.name == "Alice Smith"
         assert orm_worker.worker_type == "full_time"
         assert set(orm_worker.restricted_shifts) == {"night"}
-        assert set(orm_worker.preferred_shifts) == {"day"}
 
     def test_worker_round_trip(self) -> None:
         """ORM -> domain -> ORM preserves all fields."""
@@ -67,7 +71,6 @@ class TestWorkerConversion:
             name="Alice",
             worker_type="full_time",
             restricted_shifts=["night"],
-            preferred_shifts=["day"],
         )
         domain = orm_worker_to_domain(orm_worker)
         back = domain_worker_to_orm(domain)
@@ -315,7 +318,7 @@ class TestAvailabilityConversion:
 
         worker = ORMWorker.objects.create(worker_id="W001", name="Alice")
         avail = ORMAvailability.objects.create(
-            worker=worker, date=date(2026, 3, 2), is_available=False, preference=0,
+            worker=worker, date=date(2026, 3, 2), is_available=False,
         )
         result = orm_availability_to_domain(avail)
         assert result is not None
@@ -324,37 +327,13 @@ class TestAvailabilityConversion:
         assert result.start_date == date(2026, 3, 2)
         assert result.end_date == date(2026, 3, 2)
 
-    def test_positive_preference_maps_to_preferred(self) -> None:
-        """is_available=True, preference=1 maps to 'preferred'."""
+    def test_available_skipped(self) -> None:
+        """is_available=True returns None (only unavailability is honored)."""
         from core.converters import orm_availability_to_domain
 
         worker = ORMWorker.objects.create(worker_id="W001", name="Alice")
         avail = ORMAvailability.objects.create(
-            worker=worker, date=date(2026, 3, 2), is_available=True, preference=1,
-        )
-        result = orm_availability_to_domain(avail)
-        assert result is not None
-        assert result.availability_type == "preferred"
-
-    def test_negative_preference_maps_to_unavailable(self) -> None:
-        """is_available=True, preference=-1 maps to 'unavailable'."""
-        from core.converters import orm_availability_to_domain
-
-        worker = ORMWorker.objects.create(worker_id="W001", name="Alice")
-        avail = ORMAvailability.objects.create(
-            worker=worker, date=date(2026, 3, 2), is_available=True, preference=-1,
-        )
-        result = orm_availability_to_domain(avail)
-        assert result is not None
-        assert result.availability_type == "unavailable"
-
-    def test_neutral_available_skipped(self) -> None:
-        """is_available=True, preference=0 returns None (skip)."""
-        from core.converters import orm_availability_to_domain
-
-        worker = ORMWorker.objects.create(worker_id="W001", name="Alice")
-        avail = ORMAvailability.objects.create(
-            worker=worker, date=date(2026, 3, 2), is_available=True, preference=0,
+            worker=worker, date=date(2026, 3, 2), is_available=True,
         )
         result = orm_availability_to_domain(avail)
         assert result is None
@@ -370,7 +349,7 @@ class TestAvailabilityConversion:
         )
         avail = ORMAvailability.objects.create(
             worker=worker, date=date(2026, 3, 2), shift_type=shift,
-            is_available=False, preference=0,
+            is_available=False,
         )
         result = orm_availability_to_domain(avail)
         assert result is not None

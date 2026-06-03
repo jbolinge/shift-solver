@@ -11,11 +11,8 @@ class Worker(models.Model):
     email = models.EmailField(blank=True, default="")
     group = models.CharField(max_length=100, blank=True, default="")
     worker_type = models.CharField(max_length=100, blank=True, default="")
-    fte = models.FloatField(default=1.0)
     is_active = models.BooleanField(default=True)
     restricted_shifts = models.JSONField(default=list, blank=True)
-    preferred_shifts = models.JSONField(default=list, blank=True)
-    attributes = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -35,12 +32,9 @@ class ShiftType(models.Model):
     start_time = models.TimeField()
     duration_hours = models.FloatField()
     is_undesirable = models.BooleanField(default=False)
-    min_workers = models.IntegerField(default=1)
-    max_workers = models.IntegerField(null=True, blank=True)
     workers_required = models.IntegerField(default=1)
     is_active = models.BooleanField(default=True)
     applicable_days = models.JSONField(null=True, blank=True)
-    required_attributes = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -62,7 +56,6 @@ class Availability(models.Model):
         ShiftType, on_delete=models.CASCADE, null=True, blank=True
     )
     is_available = models.BooleanField(default=True)
-    preference = models.IntegerField(default=0)  # -1=avoid, 0=neutral, 1=prefer
 
     class Meta:
         ordering = ["date"]

@@ -31,7 +31,7 @@ class TestBadgeRendering:
         """Worker list renders status badges."""
         from core.models import Worker
 
-        Worker.objects.create(worker_id="W1", name="Test", fte=1.0)
+        Worker.objects.create(worker_id="W1", name="Test")
         response = client.get("/workers/")
         html = response.content.decode()
         assert "rounded-full" in html

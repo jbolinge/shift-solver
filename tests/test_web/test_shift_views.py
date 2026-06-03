@@ -1,6 +1,5 @@
 """Tests for ShiftType CRUD views with HTMX support."""
 
-import json
 
 import pytest
 from django.test import Client
@@ -72,8 +71,6 @@ class TestShiftCreateView:
             "category": "Regular",
             "start_time": "07:00",
             "duration_hours": "8.0",
-            "min_workers": "1",
-            "max_workers": "5",
             "workers_required": "2",
             "is_active": "on",
         }
@@ -110,7 +107,6 @@ class TestShiftCreateView:
             "name": "Day Shift",
             "start_time": "07:00",
             "duration_hours": "8.0",
-            "min_workers": "1",
             "workers_required": "1",
             "is_active": "on",
         }
@@ -154,7 +150,6 @@ class TestShiftUpdateView:
             name="Day Shift",
             start_time="07:00",
             duration_hours=8.0,
-            min_workers=1,
             workers_required=1,
             is_active=True,
         )
@@ -163,7 +158,6 @@ class TestShiftUpdateView:
             "name": "Morning Shift",
             "start_time": "06:00",
             "duration_hours": "10.0",
-            "min_workers": "2",
             "workers_required": "3",
             "is_active": "on",
         }
@@ -210,8 +204,8 @@ class TestShiftDeleteView:
         assert response.content == b""
 
 
-class TestShiftTypeFormNewFields:
-    """Tests for applicable_days and required_attributes fields."""
+class TestShiftTypeFormApplicableDays:
+    """Tests for the applicable_days field."""
 
     def test_create_shift_with_applicable_days(self, client: Client) -> None:
         """Mon-Fri checkboxes save as [0,1,2,3,4]."""
@@ -220,33 +214,14 @@ class TestShiftTypeFormNewFields:
             "name": "Day Shift",
             "start_time": "07:00",
             "duration_hours": "8.0",
-            "min_workers": "1",
             "workers_required": "1",
             "is_active": "on",
             "applicable_days": ["0", "1", "2", "3", "4"],
-            "required_attributes": "{}",
         }
         response = client.post("/shifts/create/", data)
         assert response.status_code == 302
         shift = ShiftType.objects.get(shift_type_id="DAY")
         assert shift.applicable_days == [0, 1, 2, 3, 4]
-
-    def test_create_shift_with_required_attributes(self, client: Client) -> None:
-        """JSON dict of required_attributes saves correctly."""
-        data = {
-            "shift_type_id": "SPEC",
-            "name": "Specialist Shift",
-            "start_time": "07:00",
-            "duration_hours": "8.0",
-            "min_workers": "1",
-            "workers_required": "1",
-            "is_active": "on",
-            "required_attributes": '{"specialty": "cardiology"}',
-        }
-        response = client.post("/shifts/create/", data)
-        assert response.status_code == 302
-        shift = ShiftType.objects.get(shift_type_id="SPEC")
-        assert shift.required_attributes == {"specialty": "cardiology"}
 
     def test_applicable_days_empty_saves_null(self, client: Client) -> None:
         """No day selection saves as None (all days)."""
@@ -255,31 +230,13 @@ class TestShiftTypeFormNewFields:
             "name": "Day Shift",
             "start_time": "07:00",
             "duration_hours": "8.0",
-            "min_workers": "1",
             "workers_required": "1",
             "is_active": "on",
-            "required_attributes": "{}",
         }
         response = client.post("/shifts/create/", data)
         assert response.status_code == 302
         shift = ShiftType.objects.get(shift_type_id="DAY")
         assert shift.applicable_days is None
-
-    def test_required_attributes_rejects_non_dict(self, client: Client) -> None:
-        """Form error when required_attributes is a list instead of dict."""
-        data = {
-            "shift_type_id": "DAY",
-            "name": "Day Shift",
-            "start_time": "07:00",
-            "duration_hours": "8.0",
-            "min_workers": "1",
-            "workers_required": "1",
-            "is_active": "on",
-            "required_attributes": '["not", "a dict"]',
-        }
-        response = client.post("/shifts/create/", data)
-        assert response.status_code == 200  # re-rendered form with errors
-        assert ShiftType.objects.count() == 0
 
     def test_update_preserves_applicable_days(self, client: Client) -> None:
         """Checkboxes are pre-checked on edit for existing applicable_days."""
@@ -288,15 +245,11 @@ class TestShiftTypeFormNewFields:
             name="Day Shift",
             start_time="07:00",
             duration_hours=8.0,
-            min_workers=1,
             workers_required=1,
             is_active=True,
             applicable_days=[0, 1, 2, 3, 4],
-            required_attributes={"specialty": "ER"},
         )
         response = client.get(f"/shifts/{shift.pk}/edit/")
         content = response.content.decode()
         # Verify checkboxes are pre-checked (checked attribute present)
         assert "checked" in content
-        # Verify required_attributes JSON is present
-        assert "specialty" in content

@@ -42,35 +42,21 @@ def availability_events(request: HttpRequest) -> HttpResponse:
 
     events = []
     for entry in entries:
-        if not entry.is_available:
-            title = "Unavailable"
-            color = "#ef4444"
-            status = "unavailable"
-        elif entry.preference >= 2:
-            title = "Required"
-            color = "#f59e0b"
-            status = "required"
-        elif entry.preference > 0:
-            title = "Preferred"
-            color = "#3b82f6"
-            status = "preferred"
-        else:
-            title = "Available"
-            color = "#22c55e"
-            status = "available"
+        # Only unavailable entries are meaningful to the solver; skip the rest.
+        if entry.is_available:
+            continue
 
         events.append(
             {
-                "title": title,
+                "title": "Unavailable",
                 "start": entry.date.isoformat(),
-                "color": color,
+                "color": "#ef4444",
                 "extendedProps": {
                     "availability_id": entry.pk,
                     "worker_id": entry.worker_id,
                     "is_available": entry.is_available,
-                    "preference": entry.preference,
                     "shift_type_id": entry.shift_type_id,
-                    "status": status,
+                    "status": "unavailable",
                 },
             }
         )
@@ -115,11 +101,9 @@ def availability_update(request: HttpRequest) -> HttpResponse:
         "shift_type_id": shift_type_id,
     }
 
+    # Only "unavailable" is meaningful to the solver; "clear" removes the entry.
     STATUS_MAP = {
-        "unavailable": {"is_available": False, "preference": 0},
-        "available": {"is_available": True, "preference": 0},
-        "preferred": {"is_available": True, "preference": 1},
-        "required": {"is_available": True, "preference": 2},
+        "unavailable": {"is_available": False},
     }
 
     if status == "clear":
@@ -138,7 +122,6 @@ def availability_update(request: HttpRequest) -> HttpResponse:
                 "id": entry.pk,
                 "status": status,
                 "is_available": entry.is_available,
-                "preference": entry.preference,
                 "date": entry.date.isoformat(),
             }
         )

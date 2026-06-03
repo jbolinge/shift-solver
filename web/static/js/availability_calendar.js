@@ -3,8 +3,8 @@
  *
  * Initializes a FullCalendar month view that:
  *  - Fetches availability events from /availability/events/?worker_id=...
- *  - Allows clicking a date to cycle through states:
- *    (none) -> Unavailable -> Preferred -> Required -> (clear)
+ *  - Allows clicking a date to toggle availability:
+ *    (none) -> Unavailable -> (clear)
  *  - Shows toast notifications for success/error feedback
  *  - Displays a loading pulse on the clicked date cell while the request is in-flight
  */
@@ -17,18 +17,14 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
     }
 
-    // State cycle: no entry -> unavailable -> preferred -> required -> clear
+    // State cycle: no entry -> unavailable -> clear
     var STATE_CYCLE = {
         "": "unavailable",
-        "unavailable": "preferred",
-        "preferred": "required",
-        "required": "clear",
+        "unavailable": "clear",
     };
 
     var STATE_LABELS = {
         "unavailable": "Unavailable",
-        "preferred": "Preferred",
-        "required": "Required",
         "clear": "Clear",
     };
 

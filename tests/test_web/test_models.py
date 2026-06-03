@@ -46,7 +46,6 @@ class TestWorkerModel:
     def test_worker_defaults(self) -> None:
         """Worker has correct default values."""
         worker = Worker.objects.create(worker_id="W001", name="Alice")
-        assert worker.fte == 1.0
         assert worker.is_active is True
         assert worker.email == ""
         assert worker.group == ""
@@ -76,16 +75,17 @@ class TestShiftTypeModel:
         )
         assert str(shift) == "Day Shift"
 
-    def test_shift_type_optional_max_workers(self) -> None:
-        """max_workers can be null."""
+    def test_shift_type_defaults(self) -> None:
+        """ShiftType has correct default values."""
         shift = ShiftType.objects.create(
             shift_type_id="day",
             name="Day Shift",
             start_time=time(7, 0),
             duration_hours=8.0,
-            max_workers=None,
         )
-        assert shift.max_workers is None
+        assert shift.workers_required == 1
+        assert shift.is_active is True
+        assert shift.is_undesirable is False
 
 
 class TestAvailabilityModel:
