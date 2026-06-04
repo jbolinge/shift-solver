@@ -31,6 +31,37 @@ class TestScheduleCalendarNoAlert:
         assert "Escape" in content
 
 
+class TestScheduleCalendarPopoverEscaping:
+    def test_popover_uses_textcontent(self):
+        """Popover content is set via textContent (escaped), not innerHTML."""
+        js_path = Path("web/static/js/schedule_calendar.js")
+        content = js_path.read_text()
+        assert "textContent" in content
+
+    def test_popover_does_not_use_innerhtml(self):
+        """No innerHTML usage, so user-derived names cannot inject markup."""
+        js_path = Path("web/static/js/schedule_calendar.js")
+        content = js_path.read_text()
+        assert "innerHTML" not in content
+
+
+class TestScheduleCalendarShiftFilter:
+    def test_all_unchecked_shows_no_events(self):
+        """Unchecking every shift type filters to an empty set, not all events.
+
+        The old logic only filtered when 0 < checked < total, so unchecking all
+        boxes showed everything. The fix treats 'all checked' as the no-filter
+        case (null) and any other selection - including empty - as a filter.
+        """
+        js_path = Path("web/static/js/schedule_calendar.js")
+        content = js_path.read_text()
+        # No-filter sentinel only when every box is checked.
+        assert "=== shiftTypeCheckboxes.length" in content
+        assert "return null" in content
+        # The buggy guard that exempted the empty selection must be gone.
+        assert "checkedTypes.length > 0 &&" not in content
+
+
 class TestAvailabilityCalendarNoAlert:
     def test_no_alert_in_availability_calendar(self):
         """availability_calendar.js does not contain alert() calls."""

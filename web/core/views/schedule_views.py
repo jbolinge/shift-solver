@@ -51,6 +51,7 @@ def schedule_view(request: HttpRequest, pk: int) -> HttpResponse:
             "req": solver_run.schedule_request,
             "workers": workers,
             "shift_types": shift_types,
+            "has_assignments": assignments.exists(),
         },
     )
 

@@ -31,7 +31,7 @@
         <div class="ml-3">
             <h3 class="text-sm font-medium text-green-800">Import Complete</h3>
             <div class="mt-2 text-sm text-green-700">
-                <p>Created {{ created_count }} {{ data_type }}.
+                <p>Created {{ created_count }} {{ data_type }}{% if target_name %} in "{{ target_name }}"{% endif %}.
                 {% if skipped_count %} Skipped {{ skipped_count }} (already exist).{% endif %}
                 </p>
             </div>

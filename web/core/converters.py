@@ -1,7 +1,7 @@
 """Conversion layer between Django ORM models and domain dataclasses."""
 
 from collections import defaultdict
-from datetime import timedelta
+from datetime import date, timedelta
 from typing import Any
 
 from core import models as orm
@@ -134,6 +134,25 @@ def orm_availability_to_domain(
     )
 
 
+def build_period_dates(
+    start_date: date, end_date: date, period_length_days: int
+) -> list[tuple[date, date]]:
+    """Tile a date range into (start, end) periods of ``period_length_days``.
+
+    ``end_date`` is INCLUSIVE, matching the engine convention (see the CLI's
+    ``_calculate_period_dates`` and ``solution_extractor`` which counts
+    ``(end - start).days + 1``). The final period is truncated to ``end_date``.
+    """
+    length = max(1, int(period_length_days))
+    period_dates: list[tuple[date, date]] = []
+    current = start_date
+    while current <= end_date:
+        period_end = min(current + timedelta(days=length - 1), end_date)
+        period_dates.append((current, period_end))
+        current = period_end + timedelta(days=1)
+    return period_dates
+
+
 def build_schedule_input(
     schedule_request: orm.ScheduleRequest,
 ) -> dict[str, Any]:
@@ -158,17 +177,12 @@ def build_schedule_input(
     workers = [orm_worker_to_domain(w) for w in orm_workers]
     shift_types = [orm_shift_type_to_domain(s) for s in orm_shifts]
 
-    # Build period dates from request date range
-    period_length = int(str(schedule_request.period_length_days))
-    period_dates = []
-    current = schedule_request.start_date
-    while current < schedule_request.end_date:
-        period_end = min(
-            current + timedelta(days=period_length - 1),
-            schedule_request.end_date,
-        )
-        period_dates.append((current, period_end))
-        current = period_end + timedelta(days=1)
+    # Build period dates from request date range (end_date inclusive)
+    period_dates = build_period_dates(
+        schedule_request.start_date,
+        schedule_request.end_date,
+        int(str(schedule_request.period_length_days)),
+    )
 
     # Get enabled constraint configs
     constraint_configs = {}
@@ -267,17 +281,11 @@ def solver_run_to_schedule(solver_run: orm.SolverRun) -> Schedule:
         if sid not in shift_map:
             shift_map[sid] = orm_shift_type_to_domain(a.shift_type)
 
-    # Build period dates
+    # Build period dates (end_date inclusive); identical tiling to build_schedule_input
     period_length = int(str(request.period_length_days))
-    period_dates: list[tuple[Any, Any]] = []
-    current = request.start_date
-    while current < request.end_date:
-        period_end = min(
-            current + timedelta(days=period_length - 1),
-            request.end_date,
-        )
-        period_dates.append((current, period_end))
-        current = period_end + timedelta(days=1)
+    period_dates = build_period_dates(
+        request.start_date, request.end_date, period_length
+    )
 
     # Group assignments into periods
     periods: list[PeriodAssignment] = []

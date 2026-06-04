@@ -63,14 +63,38 @@
     </table>
 </div>
 
+{% if data_type == "requests" %}
+<div class="mt-6 bg-white shadow rounded-lg p-6">
+    <label for="target_request_id" class="block text-sm font-medium text-gray-700">Import into schedule request</label>
+    <p class="text-sm text-gray-500 mb-2">Worker requests will be attached to the selected schedule.</p>
+    {% if schedule_requests %}
+    <select name="target_request_id" id="target_request_id" form="import-confirm-form"
+            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+        {% for sr in schedule_requests %}
+        <option value="{{ sr.pk }}">{{ sr.name }} ({{ sr.start_date|date:"N j, Y" }} - {{ sr.end_date|date:"N j, Y" }})</option>
+        {% endfor %}
+    </select>
+    {% else %}
+    <p class="text-sm text-red-700">No schedule requests exist yet. Create one before importing requests.</p>
+    {% endif %}
+</div>
+{% endif %}
+
 <div class="mt-6 flex space-x-3">
-    <form method="post" action="{% url 'import-confirm' %}">
+    <form method="post" action="{% url 'import-confirm' %}" id="import-confirm-form">
         {% csrf_token %}
         <input type="hidden" name="data_type" value="{{ data_type }}">
+        {% if data_type == "requests" and not schedule_requests %}
+        <button type="submit" disabled
+                class="opacity-50 cursor-not-allowed inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600">
+            Confirm Import ({{ count }} records)
+        </button>
+        {% else %}
         <button type="submit"
                 class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">
             Confirm Import ({{ count }} records)
         </button>
+        {% endif %}
     </form>
     <a href="{% url 'import-page' %}"
        class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">

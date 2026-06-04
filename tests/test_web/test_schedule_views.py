@@ -113,6 +113,30 @@ class TestScheduleView:
         assert "Day Shift" in content
         assert "Night Shift" in content
 
+    def test_empty_run_shows_no_assignments_message(
+        self, client: Client
+    ) -> None:
+        """A run with no assignments shows an empty-state notice, not a calendar."""
+        req = _make_request()
+        run = SolverRun.objects.create(schedule_request=req, status="completed")
+        response = client.get(f"/solver-runs/{run.pk}/schedule/")
+        content = response.content.decode()
+        assert "No assignments to display" in content
+        assert "schedule-calendar" not in content
+
+    def test_failed_run_shows_failure_message(self, client: Client) -> None:
+        """A failed run points the user to the results page."""
+        req = _make_request()
+        run = SolverRun.objects.create(
+            schedule_request=req,
+            status="failed",
+            error_message="INFEASIBLE",
+        )
+        response = client.get(f"/solver-runs/{run.pk}/schedule/")
+        content = response.content.decode()
+        assert "No schedule to display" in content
+        assert f"/solver-runs/{run.pk}/results/" in content
+
 
 class TestScheduleEventsEndpoint:
     """Tests for the schedule events JSON endpoint."""

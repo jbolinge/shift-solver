@@ -215,6 +215,76 @@ class TestBuildScheduleInput:
         assert "disabled_one" not in result["constraint_configs"]
 
 
+class TestPeriodDates:
+    """Tests for period-date tiling (end_date is inclusive, matching the engine)."""
+
+    def test_daily_periods_include_end_date(self) -> None:
+        """With daily periods, every day from start to end (inclusive) gets a period."""
+        from core.converters import build_schedule_input
+
+        w = ORMWorker.objects.create(worker_id="W001", name="Alice")
+        ORMShiftType.objects.create(
+            shift_type_id="day", name="Day", start_time=time(7, 0),
+            duration_hours=8.0, workers_required=1,
+        )
+        request = ORMScheduleRequest.objects.create(
+            name="Test", start_date=date(2026, 6, 1), end_date=date(2026, 6, 7),
+            period_length_days=1,
+        )
+        request.workers.add(w)
+
+        result = build_schedule_input(request)
+        period_dates = result["period_dates"]
+        # 7 inclusive days -> 7 daily periods; the final day must be present.
+        assert len(period_dates) == 7
+        assert period_dates[0] == (date(2026, 6, 1), date(2026, 6, 1))
+        assert period_dates[-1] == (date(2026, 6, 7), date(2026, 6, 7))
+
+    def test_weekly_periods_include_boundary_end_date(self) -> None:
+        """A final day that lands exactly on a new period boundary is not dropped."""
+        from core.converters import build_schedule_input
+
+        w = ORMWorker.objects.create(worker_id="W001", name="Alice")
+        ORMShiftType.objects.create(
+            shift_type_id="day", name="Day", start_time=time(7, 0),
+            duration_hours=8.0, workers_required=1,
+        )
+        # Jun 1-8 with weekly periods: a full week (1-7) plus a 1-day tail (8-8).
+        request = ORMScheduleRequest.objects.create(
+            name="Test", start_date=date(2026, 6, 1), end_date=date(2026, 6, 8),
+            period_length_days=7,
+        )
+        request.workers.add(w)
+
+        result = build_schedule_input(request)
+        period_dates = result["period_dates"]
+        assert period_dates == [
+            (date(2026, 6, 1), date(2026, 6, 7)),
+            (date(2026, 6, 8), date(2026, 6, 8)),
+        ]
+
+    def test_build_and_reconstruct_use_identical_tiling(self) -> None:
+        """build_schedule_input and solver_run_to_schedule tile dates identically."""
+        from core.converters import build_schedule_input, solver_run_to_schedule
+
+        w = ORMWorker.objects.create(worker_id="W001", name="Alice")
+        ORMShiftType.objects.create(
+            shift_type_id="day", name="Day", start_time=time(7, 0),
+            duration_hours=8.0, workers_required=1,
+        )
+        request = ORMScheduleRequest.objects.create(
+            name="Test", start_date=date(2026, 6, 1), end_date=date(2026, 6, 10),
+            period_length_days=3,
+        )
+        request.workers.add(w)
+        run = ORMSolverRun.objects.create(schedule_request=request, status="completed")
+
+        input_periods = build_schedule_input(request)["period_dates"]
+        schedule = solver_run_to_schedule(run)
+        reconstructed = [(p.period_start, p.period_end) for p in schedule.periods]
+        assert input_periods == reconstructed
+
+
 class TestSolverResultConversion:
     """Tests for converting solver results back to ORM."""
 

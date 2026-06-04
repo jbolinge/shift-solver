@@ -67,15 +67,18 @@ def import_upload(request: HttpRequest) -> HttpResponse:
     request.session["import_data"] = parsed_rows
     request.session["import_data_type"] = data_type
 
-    template = "io/import_preview.html"
-    context = {
+    context: dict[str, Any] = {
         "rows": parsed_rows,
         "data_type": data_type,
         "count": len(parsed_rows),
     }
-    if _is_htmx(request):
-        return render(request, template, context)
-    return render(request, template, context)
+    # Worker requests must attach to a specific ScheduleRequest; offer a target
+    # selector instead of silently importing into the most recent one.
+    if data_type == "requests":
+        context["schedule_requests"] = ScheduleRequest.objects.order_by(
+            "-created_at"
+        )
+    return render(request, "io/import_preview.html", context)
 
 
 def import_confirm(request: HttpRequest) -> HttpResponse:
@@ -95,13 +98,23 @@ def import_confirm(request: HttpRequest) -> HttpResponse:
 
     created_count = 0
     skipped_count = 0
+    target_name = None
 
     if data_type == "workers":
         created_count, skipped_count = _import_workers(parsed_rows)
     elif data_type == "availability":
         created_count, skipped_count = _import_availability(parsed_rows)
     elif data_type == "requests":
-        created_count, skipped_count = _import_requests(parsed_rows)
+        target_id = request.POST.get("target_request_id") or None
+        target = _resolve_target_request(target_id)
+        if target is None:
+            return render(
+                request,
+                "io/import_page.html",
+                {"errors": ["No schedule request available to import into."]},
+            )
+        created_count, skipped_count = _import_requests(parsed_rows, target)
+        target_name = target.name
 
     # Clear session data
     request.session.pop("import_data", None)
@@ -115,6 +128,7 @@ def import_confirm(request: HttpRequest) -> HttpResponse:
             "created_count": created_count,
             "skipped_count": skipped_count,
             "data_type": data_type,
+            "target_name": target_name,
         },
     )
 
@@ -265,18 +279,34 @@ def _import_availability(rows: list[dict[str, Any]]) -> tuple[int, int]:
     return created, skipped
 
 
-def _import_requests(rows: list[dict[str, Any]]) -> tuple[int, int]:
-    """Import scheduling request rows. Returns (created, skipped)."""
+def _resolve_target_request(
+    target_id: str | None,
+) -> ScheduleRequest | None:
+    """Resolve the ScheduleRequest to import worker requests into.
+
+    Uses the explicitly selected request when valid, otherwise falls back to
+    the most recent one. Returns None when no schedule request exists.
+    """
+    if target_id:
+        target = ScheduleRequest.objects.filter(pk=target_id).first()
+        if target is not None:
+            return target
+    return ScheduleRequest.objects.order_by("-created_at").first()
+
+
+def _import_requests(
+    rows: list[dict[str, Any]],
+    schedule_request: ScheduleRequest,
+) -> tuple[int, int]:
+    """Import scheduling request rows into ``schedule_request``.
+
+    Returns (created, skipped).
+    """
     created = 0
     skipped = 0
 
     worker_map = {str(w.worker_id): w for w in Worker.objects.all()}
     shift_type_map = {str(s.shift_type_id): s for s in ShiftType.objects.all()}
-
-    # Use the most recent schedule request, or skip if none exists
-    schedule_request = ScheduleRequest.objects.order_by("-created_at").first()
-    if not schedule_request:
-        return 0, len(rows)
 
     for row in rows:
         worker = worker_map.get(row.get("worker_id", ""))

@@ -16,37 +16,29 @@ document.addEventListener("DOMContentLoaded", function () {
     var workerFilter = document.getElementById("worker-filter");
     var shiftTypeCheckboxes = document.querySelectorAll(".shift-type-filter");
 
+    // The worker filter is applied server-side; shift-type filtering is done
+    // entirely client-side so the behavior is consistent for any selection.
     function buildEventsUrl() {
-        var url = eventsUrl + "?";
-        var params = [];
-
         if (workerFilter && workerFilter.value) {
-            params.push("worker_id=" + encodeURIComponent(workerFilter.value));
+            return eventsUrl + "?worker_id=" + encodeURIComponent(workerFilter.value);
         }
+        return eventsUrl;
+    }
 
-        // Collect unchecked shift types for exclusion (we filter by checked ones)
-        var checkedTypes = [];
+    // Returns the list of checked shift-type ids, or null when every box is
+    // checked (null means "no filter" -> show all). An empty list means the
+    // user unchecked everything -> show nothing.
+    function checkedShiftTypeIds() {
+        var checked = [];
         shiftTypeCheckboxes.forEach(function (cb) {
             if (cb.checked) {
-                checkedTypes.push(cb.value);
+                checked.push(parseInt(cb.value, 10));
             }
         });
-
-        // If not all checked, filter by the single selected type
-        // For simplicity, if only one is checked, filter by it
-        if (
-            checkedTypes.length > 0 &&
-            checkedTypes.length < shiftTypeCheckboxes.length
-        ) {
-            // Use shift_type_id filter for single selection
-            if (checkedTypes.length === 1) {
-                params.push(
-                    "shift_type_id=" + encodeURIComponent(checkedTypes[0])
-                );
-            }
+        if (checked.length === shiftTypeCheckboxes.length) {
+            return null;
         }
-
-        return url + params.join("&");
+        return checked;
     }
 
     var calendar = new FullCalendar.Calendar(calendarEl, {
@@ -63,27 +55,16 @@ document.addEventListener("DOMContentLoaded", function () {
                     return response.json();
                 })
                 .then(function (data) {
-                    // Client-side filtering for multiple shift types
-                    var checkedTypes = [];
-                    shiftTypeCheckboxes.forEach(function (cb) {
-                        if (cb.checked) {
-                            checkedTypes.push(parseInt(cb.value));
-                        }
-                    });
-
-                    if (
-                        checkedTypes.length > 0 &&
-                        checkedTypes.length < shiftTypeCheckboxes.length
-                    ) {
+                    var allowed = checkedShiftTypeIds();
+                    if (allowed !== null) {
                         data = data.filter(function (event) {
                             return (
-                                checkedTypes.indexOf(
+                                allowed.indexOf(
                                     event.extendedProps.shift_type_id
                                 ) !== -1
                             );
                         });
                     }
-
                     successCallback(data);
                 })
                 .catch(function (err) {
@@ -92,61 +73,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 });
         },
         eventClick: function (info) {
-            // Remove any existing popover
-            var existing = document.getElementById('event-popover');
-            if (existing) existing.remove();
-
-            var event = info.event;
-            var props = event.extendedProps;
-
-            // Create popover element
-            var popover = document.createElement('div');
-            popover.id = 'event-popover';
-            popover.setAttribute('role', 'tooltip');
-            popover.className = 'absolute z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-xs';
-
-            var startTime = event.start ? event.start.toLocaleTimeString() : 'N/A';
-            var endTime = event.end ? event.end.toLocaleTimeString() : 'N/A';
-
-            popover.innerHTML =
-                '<div class="flex justify-between items-start mb-2">' +
-                    '<h3 class="font-semibold text-gray-900">' + (event.title || '') + '</h3>' +
-                    '<button id="popover-close" class="text-gray-400 hover:text-gray-600 text-lg leading-none ml-2"' +
-                    ' aria-label="Close">&times;</button>' +
-                '</div>' +
-                '<dl class="text-sm text-gray-600 space-y-1">' +
-                    '<div><dt class="inline font-medium">Worker:</dt> <dd class="inline">' + (props.worker_name || 'N/A') + '</dd></div>' +
-                    '<div><dt class="inline font-medium">Shift:</dt> <dd class="inline">' + (props.shift_type || event.title) + '</dd></div>' +
-                    '<div><dt class="inline font-medium">Category:</dt> <dd class="inline">' + (props.shift_category || 'N/A') + '</dd></div>' +
-                    '<div><dt class="inline font-medium">Time:</dt> <dd class="inline">' + startTime + ' - ' + endTime + '</dd></div>' +
-                '</dl>';
-
-            // Position near the clicked element
-            var rect = info.el.getBoundingClientRect();
-            popover.style.top = (rect.bottom + window.scrollY + 4) + 'px';
-            popover.style.left = (rect.left + window.scrollX) + 'px';
-            document.body.appendChild(popover);
-
-            // Close handlers
-            document.getElementById('popover-close').addEventListener('click', function() { popover.remove(); });
-
-            // Outside click
-            setTimeout(function() {
-                document.addEventListener('click', function handler(e) {
-                    if (!popover.contains(e.target) && e.target !== info.el) {
-                        popover.remove();
-                        document.removeEventListener('click', handler);
-                    }
-                });
-            }, 0);
-
-            // Escape key
-            document.addEventListener('keydown', function handler(e) {
-                if (e.key === 'Escape') {
-                    popover.remove();
-                    document.removeEventListener('keydown', handler);
-                }
-            });
+            showEventPopover(info);
         },
     });
 
@@ -163,4 +90,98 @@ document.addEventListener("DOMContentLoaded", function () {
             calendar.refetchEvents();
         });
     });
+
+    // Build the event detail popover from DOM nodes using textContent so that
+    // worker/shift names containing HTML characters cannot break the markup or
+    // inject script (user-derived strings are never assigned as raw markup).
+    function showEventPopover(info) {
+        var existing = document.getElementById("event-popover");
+        if (existing) {
+            existing.remove();
+        }
+
+        var event = info.event;
+        var props = event.extendedProps || {};
+
+        var popover = document.createElement("div");
+        popover.id = "event-popover";
+        popover.setAttribute("role", "tooltip");
+        popover.className =
+            "absolute z-50 bg-white border border-gray-200 rounded-lg " +
+            "shadow-lg p-4 max-w-xs";
+
+        var header = document.createElement("div");
+        header.className = "flex justify-between items-start mb-2";
+
+        var title = document.createElement("h3");
+        title.className = "font-semibold text-gray-900";
+        title.textContent = event.title || "";
+
+        var closeBtn = document.createElement("button");
+        closeBtn.id = "popover-close";
+        closeBtn.className =
+            "text-gray-400 hover:text-gray-600 text-lg leading-none ml-2";
+        closeBtn.setAttribute("aria-label", "Close");
+        closeBtn.textContent = "×";
+
+        header.appendChild(title);
+        header.appendChild(closeBtn);
+
+        var startTime = event.start ? event.start.toLocaleTimeString() : "N/A";
+        var endTime = event.end ? event.end.toLocaleTimeString() : "N/A";
+
+        var dl = document.createElement("dl");
+        dl.className = "text-sm text-gray-600 space-y-1";
+
+        function addRow(label, value) {
+            var row = document.createElement("div");
+            var dt = document.createElement("dt");
+            dt.className = "inline font-medium";
+            dt.textContent = label + ":";
+            var dd = document.createElement("dd");
+            dd.className = "inline";
+            dd.textContent = value;
+            row.appendChild(dt);
+            row.appendChild(document.createTextNode(" "));
+            row.appendChild(dd);
+            dl.appendChild(row);
+        }
+
+        addRow("Worker", props.worker_name || "N/A");
+        addRow("Shift", props.shift_type || event.title || "N/A");
+        addRow("Category", props.shift_category || "N/A");
+        addRow("Time", startTime + " - " + endTime);
+
+        popover.appendChild(header);
+        popover.appendChild(dl);
+
+        // Position near the clicked element
+        var rect = info.el.getBoundingClientRect();
+        popover.style.top = rect.bottom + window.scrollY + 4 + "px";
+        popover.style.left = rect.left + window.scrollX + "px";
+        document.body.appendChild(popover);
+
+        // Close handlers
+        closeBtn.addEventListener("click", function () {
+            popover.remove();
+        });
+
+        // Outside click
+        setTimeout(function () {
+            document.addEventListener("click", function handler(e) {
+                if (!popover.contains(e.target) && e.target !== info.el) {
+                    popover.remove();
+                    document.removeEventListener("click", handler);
+                }
+            });
+        }, 0);
+
+        // Escape key
+        document.addEventListener("keydown", function handler(e) {
+            if (e.key === "Escape") {
+                popover.remove();
+                document.removeEventListener("keydown", handler);
+            }
+        });
+    }
 });

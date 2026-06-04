@@ -22,18 +22,43 @@
         </div>
     </div>
 
+    {% if not has_assignments %}
+    <div class="rounded-md {% if run.status == 'failed' %}bg-red-50{% else %}bg-yellow-50{% endif %} p-4">
+        <div class="flex">
+            <div class="ml-3">
+                {% if run.status == "failed" %}
+                <h3 class="text-sm font-medium text-red-800">No schedule to display</h3>
+                <div class="mt-2 text-sm text-red-700">
+                    This solver run failed, so there are no assignments to show.
+                    See the <a href="{% url 'solve-results' run.pk %}" class="font-medium underline">results page</a> for details.
+                </div>
+                {% else %}
+                <h3 class="text-sm font-medium text-yellow-800">No assignments to display</h3>
+                <div class="mt-2 text-sm text-yellow-700">
+                    This run produced no assignments. The schedule may be infeasible
+                    or no workers/shifts were assigned. Check the
+                    <a href="{% url 'solve-validation' run.pk %}" class="font-medium underline">validation report</a>.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% else %}
     {% include "schedule/schedule_filters.html" %}
 
     <div id="schedule-calendar" class="bg-white rounded-lg shadow p-4"
          data-events-url="{% url 'schedule-events' run.pk %}"
          data-initial-date="{{ req.start_date|date:'Y-m-d' }}">
     </div>
+    {% endif %}
 </div>
 {% endblock %}
 
 {% block extra_js %}
+{% if has_assignments %}
 <!-- FullCalendar JS -->
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
 {% load static %}
 <script src="{% static 'js/schedule_calendar.js' %}"></script>
+{% endif %}
 {% endblock %}
