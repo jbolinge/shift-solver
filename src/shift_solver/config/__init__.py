@@ -2,7 +2,6 @@
 
 from shift_solver.config.schema import (
     ConstraintConfig,
-    DatabaseConfig,
     LoggingConfig,
     ScheduleConfig,
     ShiftSolverConfig,
@@ -16,6 +15,5 @@ __all__ = [
     "ScheduleConfig",
     "ConstraintConfig",
     "ShiftTypeConfig",
-    "DatabaseConfig",
     "LoggingConfig",
 ]

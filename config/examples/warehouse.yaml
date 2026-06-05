@@ -93,8 +93,5 @@ constraints:
   max_absence:
     enabled: false
 
-database:
-  path: "warehouse_scheduler.db"
-
 logging:
   level: "INFO"

@@ -78,8 +78,5 @@ constraints:
     parameters:
       max_periods_absent: 2
 
-database:
-  path: "retail_scheduler.db"
-
 logging:
   level: "INFO"

@@ -53,19 +53,6 @@ class TestCLIBasics:
         assert result.exit_code == 0
 
 
-class TestInitDbCommand:
-    """Tests for init-db command."""
-
-    def test_init_db_creates_database(self, runner: CliRunner, tmp_path: Path) -> None:
-        """init-db creates a SQLite database file."""
-        db_path = tmp_path / "test.db"
-        result = runner.invoke(cli, ["init-db", "--db", str(db_path)])
-
-        assert result.exit_code == 0
-        assert db_path.exists()
-        assert "initialized" in result.output.lower() or "created" in result.output.lower()
-
-
 class TestCheckConfigCommand:
     """Tests for check-config command."""
 
@@ -97,12 +84,7 @@ class TestCheckConfigCommand:
 
 
 class TestListCommands:
-    """Tests for list commands (placeholders for now)."""
-
-    def test_list_workers(self, runner: CliRunner) -> None:
-        """list-workers command exists."""
-        result = runner.invoke(cli, ["list-workers", "--help"])
-        assert result.exit_code == 0
+    """Tests for list commands."""
 
     def test_list_shifts(self, runner: CliRunner) -> None:
         """list-shifts command exists."""

@@ -122,11 +122,6 @@ shift_types:
     is_undesirable: true
     workers_required: 1
 
-# Database settings
-database:
-  path: "shift_solver.db"
-  backup_on_solve: true
-
 # Logging
 logging:
   level: "INFO"

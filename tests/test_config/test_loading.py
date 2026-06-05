@@ -36,7 +36,6 @@ shift_types:
         assert cfg.solver.max_time_seconds == 3600
         assert cfg.solver.num_workers == 8
         assert cfg.schedule.period_type == "week"
-        assert cfg.database.path == "shift_solver.db"
         assert len(cfg.shift_types) == 1
 
     def test_single_shift_type_config(self, tmp_path: Path) -> None:
@@ -120,9 +119,6 @@ shift_types:
     workers_required: 1
     is_undesirable: true
 
-database:
-  path: custom/path/scheduler.db
-
 logging:
   level: DEBUG
 """
@@ -136,7 +132,6 @@ logging:
         assert cfg.schedule.period_type == "biweek"
         assert cfg.schedule.num_periods == 8
         assert len(cfg.shift_types) == 3
-        assert cfg.database.path == "custom/path/scheduler.db"
         assert cfg.logging.level == "DEBUG"
 
         # Check constraints
@@ -343,8 +338,8 @@ shift_types:
     end_time: "17:00"
     duration_hours: 8.0
 
-database:
-  path: null  # Should use default
+logging:
+  file: null  # Should use default
 """
         config_file = tmp_path / "null_values.yaml"
         config_file.write_text(config_content)
@@ -352,8 +347,8 @@ database:
         # Should either use default or fail gracefully
         try:
             cfg = ShiftSolverConfig.load_from_yaml(config_file)
-            # If it loads, check path is either null or default
-            assert cfg.database.path is None or cfg.database.path == "shift_solver.db"
+            # If it loads, check file is either null or default
+            assert cfg.logging.file is None
         except ValidationError:
             pass  # Also acceptable
 

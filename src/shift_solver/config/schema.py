@@ -220,13 +220,6 @@ class ShiftTypeConfig(BaseModel):
         raise ValueError(f"Cannot parse time from {type(v).__name__}")
 
 
-class DatabaseConfig(BaseModel):
-    """Configuration for database settings."""
-
-    path: str = Field(default="shift_solver.db")
-    backup_on_solve: bool = Field(default=True)
-
-
 class LoggingConfig(BaseModel):
     """Configuration for logging."""
 
@@ -241,7 +234,6 @@ class ShiftSolverConfig(BaseModel):
     schedule: ScheduleConfig = Field(default_factory=ScheduleConfig)
     constraints: dict[str, ConstraintConfig] = Field(default_factory=dict)
     shift_types: list[ShiftTypeConfig] = Field(min_length=1)
-    database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
 
     @model_validator(mode="after")

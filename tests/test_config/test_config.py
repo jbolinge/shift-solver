@@ -237,7 +237,6 @@ class TestShiftSolverConfig:
         assert config.solver.max_time_seconds == 3600
         assert config.schedule.period_type == "week"
         assert len(config.shift_types) == 1
-        assert config.database.path == "shift_solver.db"
 
     def test_create_full_config(self) -> None:
         """Create config with all fields."""
@@ -333,9 +332,6 @@ shift_types:
     end_time: "07:00"
     duration_hours: 8.0
     is_undesirable: true
-
-database:
-  path: custom.db
 """
 
         with NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
@@ -350,7 +346,6 @@ database:
         assert config.shift_types[0].id == "day_shift"
         assert config.shift_types[1].is_undesirable is True
         assert config.constraints["fairness"].weight == 500
-        assert config.database.path == "custom.db"
 
     def test_load_with_defaults(self) -> None:
         """Load minimal config and verify defaults are applied."""
@@ -373,7 +368,6 @@ shift_types:
         # Defaults should be applied
         assert config.solver.max_time_seconds == 3600
         assert config.schedule.period_type == "week"
-        assert config.database.path == "shift_solver.db"
 
 
 class TestShiftFrequencyConfig:

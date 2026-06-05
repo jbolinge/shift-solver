@@ -338,13 +338,3 @@ class TestCLISmoke:
         )
         assert result.exit_code == 0
         assert "Shift Types" in result.output
-
-    def test_init_db(self, e2e_runner: CliRunner, tmp_path: Path) -> None:
-        """Test init-db command."""
-        db_path = tmp_path / "test.db"
-        result = e2e_runner.invoke(
-            cli,
-            ["init-db", "--db", str(db_path)],
-        )
-        assert result.exit_code == 0
-        assert db_path.exists()

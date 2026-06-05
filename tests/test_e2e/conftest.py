@@ -289,9 +289,6 @@ shift_types:
     workers_required: 1
     is_undesirable: true
 
-database:
-  path: shift_solver.db
-
 logging:
   level: WARNING
 """

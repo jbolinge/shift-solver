@@ -11,7 +11,7 @@ This is a configurable shift scheduling application that uses Google OR-Tools CP
 - **Python 3.12+** with modern type hints
 - **uv** for package management
 - **OR-Tools** for constraint programming
-- **SQLite + SQLAlchemy 2.0** for persistence
+- **Django + SQLite** for web app persistence (the core solver is stateless: YAML/JSON/CSV in, schedules out)
 - **Pydantic v2** for configuration validation
 - **Click** for CLI
 - **pytest + hypothesis** for TDD
@@ -30,7 +30,6 @@ src/shift_solver/
 ├── models/          # Core domain models (Worker, ShiftType, Schedule)
 ├── constraints/     # Constraint library (coverage, fairness, etc.)
 ├── solver/          # OR-Tools integration
-├── db/              # SQLite persistence
 ├── io/              # CSV/Excel import/export
 ├── validation/      # Pre/post-solve validation
 ├── cli/             # Click CLI commands

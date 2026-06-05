@@ -389,9 +389,6 @@ shift_types:
     workers_required: 1
     is_undesirable: true
 
-database:
-  path: test.db
-
 logging:
   level: WARNING
 """

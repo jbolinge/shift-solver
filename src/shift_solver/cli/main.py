@@ -24,23 +24,16 @@ from shift_solver.config import ShiftSolverConfig
     help="Configuration file path",
 )
 @click.option(
-    "--db",
-    type=click.Path(path_type=Path),
-    default=None,
-    help="Database path override",
-)
-@click.option(
     "-v",
     "--verbose",
     count=True,
     help="Increase verbosity (-v, -vv, -vvv)",
 )
 @click.pass_context
-def cli(ctx: click.Context, config: Path, db: Path | None, verbose: int) -> None:
+def cli(ctx: click.Context, config: Path, verbose: int) -> None:
     """shift-solver: General-purpose shift scheduling optimization."""
     ctx.ensure_object(dict)
     ctx.obj["config_path"] = config
-    ctx.obj["db_path"] = db
     ctx.obj["verbose"] = verbose
 
 
@@ -48,28 +41,6 @@ def cli(ctx: click.Context, config: Path, db: Path | None, verbose: int) -> None
 def version() -> None:
     """Show version information."""
     click.echo(f"shift-solver v{__version__}")
-
-
-@cli.command("init-db")
-@click.option(
-    "--db",
-    type=click.Path(path_type=Path),
-    default=None,
-    help="Database path (overrides config)",
-)
-@click.pass_context
-def init_db(ctx: click.Context, db: Path | None) -> None:
-    """Initialize the SQLite database."""
-    db_path = db or ctx.obj.get("db_path") or Path("shift_solver.db")
-
-    # Create parent directories if needed
-    db_path.parent.mkdir(parents=True, exist_ok=True)
-
-    # For now, just create an empty file as placeholder
-    # Will be replaced with proper SQLAlchemy initialization
-    db_path.touch()
-
-    click.echo(f"Database initialized at: {db_path}")
 
 
 @cli.command("check-config")
@@ -92,14 +63,6 @@ def check_config(config: Path) -> None:
         raise click.ClickException(f"Configuration file not found: {config}") from e
     except Exception as e:
         raise click.ClickException(f"Invalid configuration: {e}") from e
-
-
-@cli.command("list-workers")
-@click.pass_context
-def list_workers(_ctx: click.Context) -> None:
-    """List all workers in the database."""
-    # Placeholder - will be implemented with database integration
-    click.echo("No workers found. Import data first with 'import-data'.")
 
 
 @cli.command("list-shifts")

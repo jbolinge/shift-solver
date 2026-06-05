@@ -96,7 +96,6 @@ uv run shift-solver export \
 | `export` | Export schedule to Excel/JSON |
 | `check-config` | Validate a configuration file |
 | `list-shifts` | List shift types from config |
-| `init-db` | Initialize the database |
 
 Use `--help` with any command for detailed options:
 ```bash
@@ -210,7 +209,6 @@ src/shift_solver/
 ├── constraints/     # Constraint library (coverage, fairness, etc.)
 ├── solver/          # OR-Tools CP-SAT integration
 ├── validation/      # Pre/post-solve validation
-├── db/              # SQLite persistence
 ├── io/              # CSV/Excel import/export
 ├── cli/             # Click CLI commands
 └── utils/           # Logging, exceptions, utilities
