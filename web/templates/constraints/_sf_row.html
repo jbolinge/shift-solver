@@ -1,0 +1,21 @@
+<div class="sf-row flex flex-wrap items-end gap-2 border border-gray-200 rounded-md p-2 bg-white">
+    <div class="flex-1 min-w-[8rem]">
+        <label class="block text-xs font-medium text-gray-600">Worker ID</label>
+        <input type="text" name="req_worker_id" value="{{ row.worker_id|default:'' }}"
+               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+    </div>
+    <div class="flex-1 min-w-[10rem]">
+        <label class="block text-xs font-medium text-gray-600">Shift Types (comma-separated)</label>
+        <input type="text" name="req_shift_types" value="{{ row.shift_types|default:'' }}"
+               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+    </div>
+    <div class="w-28">
+        <label class="block text-xs font-medium text-gray-600">Max periods</label>
+        <input type="number" name="req_max_periods" min="1" value="{{ row.max_periods|default:'' }}"
+               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+    </div>
+    <button type="button" data-remove-row
+            class="px-2 py-1.5 text-sm font-medium text-red-600 hover:text-red-800">
+        Remove
+    </button>
+</div>

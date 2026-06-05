@@ -1,6 +1,6 @@
 """Tests for domain dataclass conversion layer (scheduler-112)."""
 
-from datetime import date, time
+from datetime import date, time, timedelta
 
 import pytest
 
@@ -283,6 +283,36 @@ class TestPeriodDates:
         schedule = solver_run_to_schedule(run)
         reconstructed = [(p.period_start, p.period_end) for p in schedule.periods]
         assert input_periods == reconstructed
+
+    @pytest.mark.parametrize(
+        ("period_length", "expected_type"),
+        [(1, "day"), (7, "week"), (14, "biweek"), (28, "month")],
+    )
+    def test_reconstructed_period_type_matches_engine(
+        self, period_length: int, expected_type: str
+    ) -> None:
+        """solver_run_to_schedule labels period_type using the engine deriver."""
+        from core.converters import solver_run_to_schedule
+
+        ORMWorker.objects.create(worker_id="W001", name="Alice")
+        ORMShiftType.objects.create(
+            shift_type_id="day", name="Day", start_time=time(7, 0),
+            duration_hours=8.0, workers_required=1,
+        )
+        # Span at least 2 days so Schedule's end_date > start_date holds; the
+        # period_type is derived from the period length regardless of span.
+        span_days = max(period_length, 2)
+        request = ORMScheduleRequest.objects.create(
+            name="Test", start_date=date(2026, 6, 1),
+            end_date=date(2026, 6, 1) + timedelta(days=span_days - 1),
+            period_length_days=period_length,
+        )
+        run = ORMSolverRun.objects.create(
+            schedule_request=request, status="completed"
+        )
+
+        schedule = solver_run_to_schedule(run)
+        assert schedule.period_type == expected_type
 
 
 class TestSolverResultConversion:

@@ -12,6 +12,7 @@ from shift_solver.models.data_models import Availability as DomainAvailability
 from shift_solver.models.data_models import SchedulingRequest
 from shift_solver.models.schedule import PeriodAssignment, Schedule
 from shift_solver.models.shift import ShiftInstance
+from shift_solver.solver.solution_extractor import _derive_period_type
 
 
 def orm_worker_to_domain(orm_worker: orm.Worker) -> DomainWorker:
@@ -315,7 +316,7 @@ def solver_run_to_schedule(solver_run: orm.SolverRun) -> Schedule:
         schedule_id=f"web-{solver_run.pk}",
         start_date=request.start_date,
         end_date=request.end_date,
-        period_type="week" if period_length == 7 else "day",
+        period_type=_derive_period_type(period_dates),
         periods=periods,
         workers=list(worker_map.values()),
         shift_types=list(shift_map.values()),

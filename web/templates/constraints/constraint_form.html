@@ -41,6 +41,7 @@
                         {% endif %}
                     </div>
 
+                    {% if not is_structured %}
                     <div>
                         <label for="{{ form.parameters.id_for_label }}" class="block text-sm font-medium text-gray-700">
                             Parameters (JSON)
@@ -57,7 +58,61 @@
                         </ul>
                         {% endif %}
                     </div>
+                    {% endif %}
                 </div>
+
+                {% if is_structured %}
+                <div class="mt-4">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-sm font-medium text-gray-700">
+                            {% if constraint.constraint_type == "shift_frequency" %}Requirements{% else %}Rules{% endif %}
+                        </span>
+                        {% if constraint.constraint_type == "shift_frequency" %}
+                        <button type="button"
+                                data-add-row
+                                data-rows-target="#sf-rows-{{ constraint.pk }}"
+                                data-row-template="#sf-row-template-{{ constraint.pk }}"
+                                class="px-2 py-1 text-sm font-medium text-indigo-600 hover:text-indigo-800">
+                            + Add requirement
+                        </button>
+                        {% else %}
+                        <button type="button"
+                                data-add-row
+                                data-rows-target="#sop-rows-{{ constraint.pk }}"
+                                data-row-template="#sop-row-template-{{ constraint.pk }}"
+                                class="px-2 py-1 text-sm font-medium text-indigo-600 hover:text-indigo-800">
+                            + Add rule
+                        </button>
+                        {% endif %}
+                    </div>
+                    {% if parameters_help %}
+                    <p class="mb-2 text-xs text-gray-500">{{ parameters_help }}</p>
+                    {% endif %}
+                    {% if structured_error %}
+                    <p class="mb-2 text-sm text-red-600">{{ structured_error }}</p>
+                    {% endif %}
+
+                    {% if constraint.constraint_type == "shift_frequency" %}
+                    <div id="sf-rows-{{ constraint.pk }}" class="space-y-2">
+                        {% for row in rows %}
+                            {% include "constraints/_sf_row.html" %}
+                        {% endfor %}
+                    </div>
+                    <template id="sf-row-template-{{ constraint.pk }}">
+                        {% include "constraints/_sf_row.html" with row=None %}
+                    </template>
+                    {% else %}
+                    <div id="sop-rows-{{ constraint.pk }}" class="space-y-2">
+                        {% for row in rows %}
+                            {% include "constraints/_sop_row.html" %}
+                        {% endfor %}
+                    </div>
+                    <template id="sop-row-template-{{ constraint.pk }}">
+                        {% include "constraints/_sop_row.html" with row=None %}
+                    </template>
+                    {% endif %}
+                </div>
+                {% endif %}
 
                 <div class="mt-4 flex items-center justify-end space-x-3">
                     <a href="{% url 'constraint-list' %}"

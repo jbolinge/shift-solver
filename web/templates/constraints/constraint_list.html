@@ -1,6 +1,11 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Constraints - Shift Solver{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/constraint_rows.js' %}"></script>
+{% endblock %}
 
 {% block content %}
 <div class="flex items-center justify-between mb-6">

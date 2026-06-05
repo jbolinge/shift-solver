@@ -154,6 +154,209 @@ class TestConstraintUpdateView:
         assert response.status_code in (200, 302)
 
 
+class TestStructuredConstraintEditor:
+    """Tests for the structured row editors (shift_frequency / shift_order_preference)."""
+
+    def test_shift_frequency_edit_page_renders_rows(self, client: Client) -> None:
+        """GET the edit form for shift_frequency renders structured row inputs."""
+        constraint = ConstraintConfig.objects.create(
+            constraint_type="shift_frequency",
+            enabled=True,
+            is_hard=False,
+            weight=500,
+            parameters={
+                "requirements": [
+                    {
+                        "worker_id": "W001",
+                        "shift_types": ["day", "evening"],
+                        "max_periods_between": 4,
+                    }
+                ]
+            },
+        )
+
+        response = client.get(f"/constraints/{constraint.pk}/edit/")
+        content = response.content.decode()
+
+        assert response.status_code == 200
+        assert 'name="req_worker_id"' in content
+        assert "W001" in content
+        assert "day, evening" in content
+        # The raw JSON textarea must NOT be rendered for structured types.
+        assert 'name="parameters"' not in content
+
+    def test_shift_frequency_post_assembles_requirements(self, client: Client) -> None:
+        """POST row fields assembles parameters.requirements and saves them."""
+        constraint = ConstraintConfig.objects.create(
+            constraint_type="shift_frequency",
+            enabled=True,
+            is_hard=False,
+            weight=500,
+            parameters={},
+        )
+
+        response = client.post(
+            f"/constraints/{constraint.pk}/edit/",
+            {
+                "enabled": "on",
+                "is_hard": "",
+                "weight": "500",
+                "req_worker_id": ["W001", "W002"],
+                "req_shift_types": ["day, evening", "night"],
+                "req_max_periods": ["4", "2"],
+            },
+        )
+
+        constraint.refresh_from_db()
+        assert response.status_code in (200, 302)
+        assert constraint.parameters == {
+            "requirements": [
+                {
+                    "worker_id": "W001",
+                    "shift_types": ["day", "evening"],
+                    "max_periods_between": 4,
+                },
+                {
+                    "worker_id": "W002",
+                    "shift_types": ["night"],
+                    "max_periods_between": 2,
+                },
+            ]
+        }
+
+    def test_shift_frequency_skips_blank_rows(self, client: Client) -> None:
+        """Fully-blank requirement rows are ignored."""
+        constraint = ConstraintConfig.objects.create(
+            constraint_type="shift_frequency",
+            enabled=True,
+            is_hard=False,
+            weight=500,
+            parameters={},
+        )
+
+        client.post(
+            f"/constraints/{constraint.pk}/edit/",
+            {
+                "enabled": "on",
+                "is_hard": "",
+                "weight": "500",
+                "req_worker_id": ["W001", ""],
+                "req_shift_types": ["day", ""],
+                "req_max_periods": ["4", ""],
+            },
+        )
+
+        constraint.refresh_from_db()
+        assert constraint.parameters == {
+            "requirements": [
+                {"worker_id": "W001", "shift_types": ["day"], "max_periods_between": 4}
+            ]
+        }
+
+    def test_shift_frequency_invalid_row_reports_error(self, client: Client) -> None:
+        """A partial row missing worker_id is rejected and not saved."""
+        constraint = ConstraintConfig.objects.create(
+            constraint_type="shift_frequency",
+            enabled=True,
+            is_hard=False,
+            weight=500,
+            parameters={},
+        )
+
+        response = client.post(
+            f"/constraints/{constraint.pk}/edit/",
+            {
+                "enabled": "on",
+                "is_hard": "",
+                "weight": "500",
+                "req_worker_id": [""],
+                "req_shift_types": ["day"],
+                "req_max_periods": ["4"],
+            },
+        )
+
+        constraint.refresh_from_db()
+        assert response.status_code == 200
+        assert constraint.parameters == {}
+
+    def test_shift_order_preference_post_assembles_rules(self, client: Client) -> None:
+        """POST rule fields assembles parameters.rules and saves them."""
+        constraint = ConstraintConfig.objects.create(
+            constraint_type="shift_order_preference",
+            enabled=True,
+            is_hard=False,
+            weight=200,
+            parameters={},
+        )
+
+        response = client.post(
+            f"/constraints/{constraint.pk}/edit/",
+            {
+                "enabled": "on",
+                "is_hard": "",
+                "weight": "200",
+                "rule_id": ["r1"],
+                "rule_trigger_type": ["shift_type"],
+                "rule_trigger_value": ["weekend"],
+                "rule_direction": ["after"],
+                "rule_preferred_type": ["category"],
+                "rule_preferred_value": ["rest"],
+                "rule_priority": ["2"],
+                "rule_worker_ids": ["W001, W002"],
+            },
+        )
+
+        constraint.refresh_from_db()
+        assert response.status_code in (200, 302)
+        assert constraint.parameters == {
+            "rules": [
+                {
+                    "rule_id": "r1",
+                    "trigger_type": "shift_type",
+                    "trigger_value": "weekend",
+                    "direction": "after",
+                    "preferred_type": "category",
+                    "preferred_value": "rest",
+                    "priority": 2,
+                    "worker_ids": ["W001", "W002"],
+                }
+            ]
+        }
+
+    def test_shift_order_preference_invalid_row_reports_error(
+        self, client: Client
+    ) -> None:
+        """A shift_type trigger without a trigger_value is rejected and not saved."""
+        constraint = ConstraintConfig.objects.create(
+            constraint_type="shift_order_preference",
+            enabled=True,
+            is_hard=False,
+            weight=200,
+            parameters={},
+        )
+
+        response = client.post(
+            f"/constraints/{constraint.pk}/edit/",
+            {
+                "enabled": "on",
+                "is_hard": "",
+                "weight": "200",
+                "rule_id": ["r1"],
+                "rule_trigger_type": ["shift_type"],
+                "rule_trigger_value": [""],
+                "rule_direction": ["after"],
+                "rule_preferred_type": ["category"],
+                "rule_preferred_value": ["rest"],
+                "rule_priority": ["1"],
+                "rule_worker_ids": [""],
+            },
+        )
+
+        constraint.refresh_from_db()
+        assert response.status_code == 200
+        assert constraint.parameters == {}
+
+
 class TestConstraintSeedView:
     """Tests for the constraint seed view."""
 
