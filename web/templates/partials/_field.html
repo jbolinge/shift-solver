@@ -2,7 +2,19 @@
     <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
         {{ field.label }}
     </label>
-    {{ field }}
+    {% if is_multi_checkbox %}
+        <div class="mt-1 flex flex-wrap gap-x-4 gap-y-2">
+            {% for option in field %}
+                <label for="{{ option.id_for_label }}"
+                       class="inline-flex items-center gap-2 text-sm text-gray-700 whitespace-nowrap">
+                    {{ option.tag }}
+                    <span>{{ option.choice_label }}</span>
+                </label>
+            {% endfor %}
+        </div>
+    {% else %}
+        {{ field }}
+    {% endif %}
     {% if field.help_text %}
         <p class="mt-1 text-sm text-gray-500">{{ field.help_text }}</p>
     {% endif %}

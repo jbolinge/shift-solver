@@ -102,7 +102,10 @@
 
 <div class="mt-8 bg-white shadow rounded-lg overflow-hidden">
     <div class="px-6 py-5 border-b border-gray-200 flex items-center justify-between">
-        <h2 class="text-lg font-medium text-gray-900">Worker Requests</h2>
+        <div>
+            <h2 class="text-lg font-medium text-gray-900">Worker Requests ({{ worker_requests|length }})</h2>
+            <p class="mt-1 text-sm text-gray-500">Ask the solver to assign (or avoid) a specific shift for a worker on specific day(s). Use the same start and end date for a single day.</p>
+        </div>
         <a href="{% url 'worker-request-create' req.pk %}"
            class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
             Add Request
@@ -158,6 +161,11 @@
     {% else %}
     <div class="px-6 py-8 text-center">
         <p class="text-gray-500">No worker requests yet.</p>
+        <p class="mt-1 text-sm text-gray-400">Add a request to have a worker assigned (or kept off) a specific shift on specific day(s).</p>
+        <a href="{% url 'worker-request-create' req.pk %}"
+           class="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
+            Add the first request
+        </a>
     </div>
     {% endif %}
 </div>

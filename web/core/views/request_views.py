@@ -1,5 +1,6 @@
 """ScheduleRequest CRUD views with HTMX support."""
 
+from django.db.models import Count
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
@@ -12,9 +13,18 @@ def _is_htmx(request: HttpRequest) -> bool:
     return request.headers.get("HX-Request") == "true"
 
 
+def _annotated(pk: int) -> ScheduleRequest:
+    """Fetch a schedule request with its worker-request count annotated."""
+    return ScheduleRequest.objects.annotate(
+        worker_request_count=Count("worker_requests")
+    ).get(pk=pk)
+
+
 def request_list(request: HttpRequest) -> HttpResponse:
     """List all schedule requests."""
-    requests = ScheduleRequest.objects.all()
+    requests = ScheduleRequest.objects.annotate(
+        worker_request_count=Count("worker_requests")
+    )
     return render(
         request, "requests/request_list.html", {"requests": requests}
     )
@@ -30,7 +40,7 @@ def request_create(request: HttpRequest) -> HttpResponse:
                 return render(
                     request,
                     "requests/request_row.html",
-                    {"req": schedule_request},
+                    {"req": _annotated(schedule_request.pk)},
                 )
             return redirect("request-list")
     else:
@@ -75,7 +85,7 @@ def request_update(request: HttpRequest, pk: int) -> HttpResponse:
                 return render(
                     request,
                     "requests/request_row.html",
-                    {"req": schedule_request},
+                    {"req": _annotated(schedule_request.pk)},
                 )
             return redirect("request-detail", pk=schedule_request.pk)
     else:

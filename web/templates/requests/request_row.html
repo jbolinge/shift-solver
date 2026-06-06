@@ -17,6 +17,11 @@
             {% status_badge "Failed" "red" %}
         {% endif %}
     </td>
+    <td class="px-6 py-4 whitespace-nowrap text-sm">
+        <a href="{% url 'request-detail' req.pk %}" class="text-indigo-600 hover:text-indigo-900">
+            {{ req.worker_request_count|default:0 }}
+        </a>
+    </td>
     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
         <a href="{% url 'request-detail' req.pk %}"
            class="text-indigo-600 hover:text-indigo-900 mr-3">View</a>

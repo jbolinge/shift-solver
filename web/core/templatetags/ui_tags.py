@@ -1,6 +1,6 @@
 """Custom template tags for the shift-solver web UI."""
 
-from django import template
+from django import forms, template
 from django.urls import reverse
 from django.utils.html import format_html
 
@@ -40,7 +40,11 @@ def render_field(field):
 
     Usage: {% render_field form.name %}
     """
-    return {"field": field}
+    widget = field.field.widget
+    return {
+        "field": field,
+        "is_multi_checkbox": isinstance(widget, forms.CheckboxSelectMultiple),
+    }
 
 
 @register.inclusion_tag("partials/_sidebar_link.html", takes_context=True)
