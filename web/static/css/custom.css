@@ -36,3 +36,9 @@
         transform: translateX(-100%);
     }
 }
+
+/* Availability calendar: soften the red fill on unavailable (background) days
+   so the date number stays legible while still clearly matching the legend. */
+.fc-bg-event {
+    opacity: 0.35;
+}

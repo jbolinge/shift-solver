@@ -50,6 +50,8 @@ def availability_events(request: HttpRequest) -> HttpResponse:
             {
                 "title": "Unavailable",
                 "start": entry.date.isoformat(),
+                "allDay": True,
+                "display": "background",
                 "color": "#ef4444",
                 "extendedProps": {
                     "availability_id": entry.pk,
