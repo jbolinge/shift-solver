@@ -100,6 +100,56 @@ class TestAvailabilityEventsEndpoint:
         assert "2026-03-01" not in events_by_date
         assert events_by_date["2026-03-02"]["color"] == "#ef4444"
 
+    def test_events_with_fullcalendar_datetime_range(
+        self, client: Client
+    ) -> None:
+        """FullCalendar sends ISO timestamps (with time/offset) as start/end.
+
+        The DateField filter must accept these without raising; an in-range
+        entry is returned rather than 500ing the endpoint.
+        """
+        worker = Worker.objects.create(worker_id="W1", name="Alice Smith")
+        Availability.objects.create(
+            worker=worker, date="2026-03-15", is_available=False
+        )
+
+        response = client.get(
+            "/availability/events/",
+            {
+                "worker_id": worker.pk,
+                "start": "2026-03-01T00:00:00-05:00",
+                "end": "2026-04-05T00:00:00-05:00",
+            },
+        )
+        assert response.status_code == 200
+
+        data = json.loads(response.content)
+        assert len(data) == 1
+        assert data[0]["start"] == "2026-03-15"
+
+    def test_events_range_filters_out_of_window(self, client: Client) -> None:
+        """Entries outside the requested datetime range are excluded."""
+        worker = Worker.objects.create(worker_id="W1", name="Alice Smith")
+        Availability.objects.create(
+            worker=worker, date="2026-03-15", is_available=False
+        )
+        Availability.objects.create(
+            worker=worker, date="2026-06-20", is_available=False
+        )
+
+        response = client.get(
+            "/availability/events/",
+            {
+                "worker_id": worker.pk,
+                "start": "2026-03-01T00:00:00-05:00",
+                "end": "2026-04-05T00:00:00-05:00",
+            },
+        )
+        data = json.loads(response.content)
+
+        dates = {e["start"] for e in data}
+        assert dates == {"2026-03-15"}
+
 
 class TestAvailabilityUpdate:
     """Tests for the availability create/toggle endpoint."""

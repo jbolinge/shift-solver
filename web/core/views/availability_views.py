@@ -4,9 +4,23 @@ import datetime
 
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import render
+from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_POST
 
 from core.models import Availability, Worker
+
+
+def _coerce_date(value: str | None) -> datetime.date | None:
+    """Coerce a calendar range param into a date.
+
+    FullCalendar sends full ISO-8601 timestamps (e.g. "2026-05-31T00:00:00-05:00"),
+    but ``Availability.date`` is a ``DateField`` that rejects anything other than
+    "YYYY-MM-DD". Take the date prefix and parse it defensively so a malformed value
+    is ignored rather than raising a ValidationError (which would 500 the endpoint).
+    """
+    if not value:
+        return None
+    return parse_date(value[:10])
 
 
 def availability_page(request: HttpRequest) -> HttpResponse:
@@ -33,8 +47,8 @@ def availability_events(request: HttpRequest) -> HttpResponse:
 
     entries = Availability.objects.filter(worker_id=worker_id)
 
-    start = request.GET.get("start")
-    end = request.GET.get("end")
+    start = _coerce_date(request.GET.get("start"))
+    end = _coerce_date(request.GET.get("end"))
     if start:
         entries = entries.filter(date__gte=start)
     if end:
