@@ -1,8 +1,10 @@
 """Shared schedule reconstruction logic for CLI commands."""
 
+from collections import defaultdict
 from datetime import date, time
 from typing import Any
 
+from shift_solver.config import ShiftTypeConfig
 from shift_solver.models import (
     PeriodAssignment,
     Schedule,
@@ -10,6 +12,36 @@ from shift_solver.models import (
     ShiftType,
     Worker,
 )
+
+
+def shift_type_from_config(st: ShiftTypeConfig) -> ShiftType:
+    """
+    Build a solver-side ShiftType from a validated config ShiftTypeConfig.
+
+    Carries through ``required_attributes`` and ``applicable_days``, which
+    earlier ad-hoc ShiftType(...) call sites in the CLI silently dropped even
+    though the config schema validates them.
+
+    Args:
+        st: The Pydantic ShiftTypeConfig loaded from a config file
+
+    Returns:
+        Equivalent ShiftType domain object
+    """
+    return ShiftType(
+        id=st.id,
+        name=st.name,
+        category=st.category,
+        start_time=st.start_time,
+        end_time=st.end_time,
+        duration_hours=st.duration_hours,
+        is_undesirable=st.is_undesirable,
+        workers_required=st.workers_required,
+        required_attributes=dict(st.required_attributes),
+        applicable_days=(
+            frozenset(st.applicable_days) if st.applicable_days is not None else None
+        ),
+    )
 
 
 def infer_workers(schedule_data: dict[str, Any]) -> list[Worker]:
@@ -33,17 +65,27 @@ def infer_shift_types(schedule_data: dict[str, Any]) -> list[ShiftType]:
     """
     Infer shift types from schedule JSON data.
 
+    ``workers_required`` is derived from the max number of workers actually
+    assigned to a given shift type within any single period, rather than
+    hardcoded to 1, so a coverage check run against these inferred shift
+    types doesn't spuriously flag every real assignment beyond the first as
+    excess coverage. Everything else (category, times, duration) has no
+    signal in the schedule JSON and stays a placeholder.
+
     Args:
         schedule_data: Schedule JSON dict
 
     Returns:
-        List of ShiftType objects with minimal info
+        List of ShiftType objects with minimal (approximate) metadata
     """
-    shift_type_ids: set[str] = set()
+    counts_per_period: dict[str, dict[int, int]] = defaultdict(
+        lambda: defaultdict(int)
+    )
     for period in schedule_data.get("periods", []):
+        period_index = period.get("period_index")
         for shift_list in period.get("assignments", {}).values():
             for a in shift_list:
-                shift_type_ids.add(a.get("shift_type_id"))
+                counts_per_period[a.get("shift_type_id")][period_index] += 1
 
     return [
         ShiftType(
@@ -53,9 +95,9 @@ def infer_shift_types(schedule_data: dict[str, Any]) -> list[ShiftType]:
             start_time=time(0, 0),
             end_time=time(8, 0),
             duration_hours=8.0,
-            workers_required=1,
+            workers_required=max(period_counts.values(), default=1),
         )
-        for stid in sorted(shift_type_ids)
+        for stid, period_counts in sorted(counts_per_period.items())
     ]
 
 

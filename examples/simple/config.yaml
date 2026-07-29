@@ -32,13 +32,19 @@ constraints:
     enabled: true
     is_hard: true
 
-  worker_restriction:
+  restriction:
     enabled: true
     is_hard: true
 
   availability:
     enabled: true
     is_hard: true
+
+  worker_shift_limit:
+    enabled: true
+    is_hard: true
+    parameters:
+      max_shifts_per_period: 1   # Mutually exclusive shifts per worker per period
 
   fairness:
     enabled: true
@@ -53,7 +59,7 @@ constraints:
   request:
     enabled: false
 
-  sequence_no_consecutive:
+  sequence:
     enabled: false
 
   max_absence:

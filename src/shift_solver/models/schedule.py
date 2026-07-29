@@ -95,8 +95,8 @@ class Schedule:
         """Validate schedule fields."""
         if not self.schedule_id:
             raise ValueError("schedule_id cannot be empty")
-        if self.end_date <= self.start_date:
-            raise ValueError("end_date must be > start_date")
+        if self.end_date < self.start_date:
+            raise ValueError("end_date must be >= start_date")
 
     @property
     def num_periods(self) -> int:

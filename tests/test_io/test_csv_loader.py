@@ -86,6 +86,109 @@ class TestCSVLoaderWorkers:
             loader.load_workers(csv_file)
 
 
+class TestCSVLoaderWorkerAttributes:
+    """Tests for the optional 'attributes' worker column (defect 2): this is
+    what makes ShiftType.required_attributes / the `skills` constraint
+    reachable from CSV-loaded workers at all."""
+
+    def test_parses_semicolon_separated_key_value_pairs(
+        self, tmp_path: Path
+    ) -> None:
+        csv_file = tmp_path / "workers.csv"
+        csv_file.write_text(
+            "id,name,attributes\n"
+            "W001,Alice Smith,certification=icu;seniority=senior\n"
+        )
+
+        loader = CSVLoader()
+        workers = loader.load_workers(csv_file)
+
+        assert workers[0].attributes == {
+            "certification": "icu",
+            "seniority": "senior",
+        }
+
+    def test_missing_attributes_column_defaults_empty(
+        self, tmp_path: Path
+    ) -> None:
+        """No 'attributes' column at all (backward compat) => empty dict."""
+        csv_file = tmp_path / "workers.csv"
+        csv_file.write_text("id,name\nW001,Alice\n")
+
+        loader = CSVLoader()
+        workers = loader.load_workers(csv_file)
+
+        assert workers[0].attributes == {}
+
+    def test_empty_attributes_cell_defaults_empty(self, tmp_path: Path) -> None:
+        csv_file = tmp_path / "workers.csv"
+        csv_file.write_text("id,name,attributes\nW001,Alice,\n")
+
+        loader = CSVLoader()
+        workers = loader.load_workers(csv_file)
+
+        assert workers[0].attributes == {}
+
+    def test_whitespace_around_pairs_is_stripped(self, tmp_path: Path) -> None:
+        csv_file = tmp_path / "workers.csv"
+        csv_file.write_text(
+            'id,name,attributes\nW001,Alice," certification = icu ; seniority = senior "\n'
+        )
+
+        loader = CSVLoader()
+        workers = loader.load_workers(csv_file)
+
+        assert workers[0].attributes == {
+            "certification": "icu",
+            "seniority": "senior",
+        }
+
+    def test_single_attribute_no_trailing_semicolon(self, tmp_path: Path) -> None:
+        csv_file = tmp_path / "workers.csv"
+        csv_file.write_text("id,name,attributes\nW001,Alice,certification=icu\n")
+
+        loader = CSVLoader()
+        workers = loader.load_workers(csv_file)
+
+        assert workers[0].attributes == {"certification": "icu"}
+
+    def test_malformed_entry_missing_equals_raises(self, tmp_path: Path) -> None:
+        csv_file = tmp_path / "workers.csv"
+        csv_file.write_text("id,name,attributes\nW001,Alice,certification-icu\n")
+
+        loader = CSVLoader()
+        with pytest.raises(
+            CSVLoaderError, match=r"line 2.*key=value|key=value.*line 2"
+        ):
+            loader.load_workers(csv_file)
+
+    def test_malformed_entry_empty_key_raises(self, tmp_path: Path) -> None:
+        csv_file = tmp_path / "workers.csv"
+        csv_file.write_text("id,name,attributes\nW001,Alice,=icu\n")
+
+        loader = CSVLoader()
+        with pytest.raises(CSVLoaderError, match="line 2"):
+            loader.load_workers(csv_file)
+
+    def test_attributes_do_not_affect_worker_equality_or_hash(
+        self, tmp_path: Path
+    ) -> None:
+        """Worker.__eq__/__hash__ deliberately exclude attributes -- loading
+        should not change that contract."""
+        from shift_solver.models import Worker
+
+        csv_file = tmp_path / "workers.csv"
+        csv_file.write_text(
+            "id,name,attributes\nW001,Alice,certification=icu\n"
+        )
+
+        loader = CSVLoader()
+        workers = loader.load_workers(csv_file)
+
+        assert workers[0] == Worker(id="W001", name="Alice")
+        assert hash(workers[0]) == hash(Worker(id="W001", name="Alice"))
+
+
 class TestCSVLoaderAvailability:
     """Tests for loading availability from CSV."""
 

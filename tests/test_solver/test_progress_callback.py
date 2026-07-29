@@ -30,6 +30,18 @@ class FakeCallback(SolverProgressCallback):
 class TestSolverProgressCallback:
     """Tests for the progress callback."""
 
+    def test_exported_from_solver_package(self):
+        """The real callback is importable from shift_solver.solver directly.
+
+        There used to be a second, do-nothing SolverProgressCallback in
+        shift_solver.utils.logging; that duplicate has been removed and this
+        (the real cp_model-based) callback is the only one, re-exported from
+        the solver package's __init__.
+        """
+        from shift_solver.solver import SolverProgressCallback as ExportedCallback
+
+        assert ExportedCallback is SolverProgressCallback
+
     def test_solution_count_increments(self):
         """Each call to on_solution_callback increments the counter."""
         cb = FakeCallback()

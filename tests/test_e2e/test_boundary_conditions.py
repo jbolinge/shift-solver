@@ -51,8 +51,14 @@ class TestSingleWorkerScenarios:
         assert workers[0].id in period.assignments
         assert len(period.assignments[workers[0].id]) == 1
 
-    def test_single_worker_multiple_shifts(self, worker_factory) -> None:
-        """Single worker with multiple shift types."""
+    def test_single_worker_multiple_shifts_infeasible_by_default(
+        self, worker_factory
+    ) -> None:
+        """Single worker can't cover 2 concurrent shifts under the default
+        worker_shift_limit (max_shifts_per_period=1, hard, enabled by
+        default): coverage demands 2 assignments in the period but the lone
+        worker can only hold 1.
+        """
         workers = [worker_factory()]
 
         shift_types = [
@@ -82,6 +88,55 @@ class TestSingleWorkerScenarios:
             workers=workers,
             shift_types=shift_types,
             period_dates=periods,
+            expect_feasible=False,
+        )
+
+        assert not result.success
+
+    def test_single_worker_multiple_shifts_feasible_with_raised_limit(
+        self, worker_factory
+    ) -> None:
+        """Raising max_shifts_per_period lets a single worker legitimately
+        cover both concurrent shifts in a period."""
+        workers = [worker_factory()]
+
+        shift_types = [
+            ShiftType(
+                id="shift_a",
+                name="Shift A",
+                category="day",
+                start_time=time(6, 0),
+                end_time=time(14, 0),
+                duration_hours=8.0,
+                workers_required=1,
+            ),
+            ShiftType(
+                id="shift_b",
+                name="Shift B",
+                category="evening",
+                start_time=time(14, 0),
+                end_time=time(22, 0),
+                duration_hours=8.0,
+                workers_required=1,
+            ),
+        ]
+
+        periods = create_period_dates(num_periods=1)
+
+        constraint_configs = {
+            "coverage": ConstraintConfig(enabled=True, is_hard=True),
+            "worker_shift_limit": ConstraintConfig(
+                enabled=True,
+                is_hard=True,
+                parameters={"max_shifts_per_period": 2},
+            ),
+        }
+
+        result = solve_and_verify(
+            workers=workers,
+            shift_types=shift_types,
+            period_dates=periods,
+            constraint_configs=constraint_configs,
         )
 
         assert result.success

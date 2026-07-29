@@ -5,6 +5,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+from django.conf import settings
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 
@@ -34,6 +35,19 @@ def import_upload(request: HttpRequest) -> HttpResponse:
             request,
             "io/import_page.html",
             {"errors": ["No file uploaded."]},
+        )
+
+    max_bytes = settings.MAX_IMPORT_FILE_SIZE
+    if uploaded_file.size and uploaded_file.size > max_bytes:
+        return render(
+            request,
+            "io/import_page.html",
+            {
+                "errors": [
+                    f"File too large ({uploaded_file.size:,} bytes). "
+                    f"Maximum allowed size is {max_bytes // (1024 * 1024)} MB."
+                ]
+            },
         )
 
     filename = uploaded_file.name or ""

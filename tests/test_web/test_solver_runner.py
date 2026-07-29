@@ -236,6 +236,80 @@ class TestSolverRunner:
             assert call_kwargs.kwargs.get("log_search_progress") is False
 
 
+class TestSolverRunnerAtomicity:
+    """Assignments and final run state must persist together or not at all."""
+
+    @pytest.fixture
+    def setup_solver_data(self):
+        """Create minimal solvable data: 2 workers, 1 shift type, 1 week."""
+        w1 = Worker.objects.create(worker_id="W001", name="Alice")
+        w2 = Worker.objects.create(worker_id="W002", name="Bob")
+        st = ShiftType.objects.create(
+            shift_type_id="day",
+            name="Day",
+            category="day",
+            start_time=time(7, 0),
+            duration_hours=8.0,
+            workers_required=1,
+        )
+        ConstraintConfig.objects.create(
+            constraint_type="coverage",
+            enabled=True,
+            is_hard=True,
+            weight=100,
+        )
+        request = ScheduleRequest.objects.create(
+            name="Atomicity",
+            start_date=date(2026, 3, 2),
+            end_date=date(2026, 3, 8),
+        )
+        request.workers.add(w1, w2)
+        request.shift_types.add(st)
+        SolverSettings.objects.create(
+            schedule_request=request, time_limit_seconds=30
+        )
+        return SolverRun.objects.create(schedule_request=request)
+
+    def test_failed_final_save_rolls_back_assignments(self, setup_solver_data):
+        """A failure saving the completed run must not leave orphan assignments."""
+        from core.solver_runner import SolverRunner
+
+        run = setup_solver_data
+        real_save = SolverRun.save
+
+        def failing_save(self, *args, **kwargs):
+            if self.status == "completed":
+                raise RuntimeError("simulated save failure")
+            return real_save(self, *args, **kwargs)
+
+        with patch.object(SolverRun, "save", failing_save):
+            runner = SolverRunner(solver_run_id=run.id)
+            runner._execute()
+
+        run.refresh_from_db()
+        assert run.status == "failed"
+        assert "simulated save failure" in run.error_message
+        assert Assignment.objects.filter(solver_run=run).count() == 0
+
+    def test_bulk_create_failure_marks_run_failed(self, setup_solver_data):
+        """A failure inserting assignments marks the run failed, not completed."""
+        from core.solver_runner import SolverRunner
+
+        run = setup_solver_data
+        with patch.object(
+            Assignment.objects,
+            "bulk_create",
+            side_effect=RuntimeError("simulated insert failure"),
+        ):
+            runner = SolverRunner(solver_run_id=run.id)
+            runner._execute()
+
+        run.refresh_from_db()
+        assert run.status == "failed"
+        assert "simulated insert failure" in run.error_message
+        assert Assignment.objects.filter(solver_run=run).count() == 0
+
+
 class TestSolverRunnerCancel:
     """Tests for SolverRunner cancel registry."""
 

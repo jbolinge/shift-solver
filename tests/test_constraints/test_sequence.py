@@ -1,5 +1,6 @@
 """Tests for sequence constraint."""
 
+import logging
 from datetime import time
 
 import pytest
@@ -8,6 +9,7 @@ from ortools.sat.python import cp_model
 from shift_solver.constraints.base import ConstraintConfig
 from shift_solver.constraints.sequence import SequenceConstraint
 from shift_solver.models import ShiftType, Worker
+from shift_solver.solver.objective_builder import ObjectiveBuilder
 from shift_solver.solver.types import SolverVariables
 from shift_solver.solver.variable_builder import VariableBuilder
 
@@ -250,3 +252,81 @@ class TestSequenceConstraintSolve:
 
         # Should still find a solution even with unavoidable consecutive
         assert status in (cp_model.OPTIMAL, cp_model.FEASIBLE)
+
+
+class TestSequenceObjectiveDoubleCount:
+    """Regression tests for bug A: the debug 'total' aggregate variable must
+    not contribute an extra term to the objective on top of the individual
+    seq_viol_* violations it sums (previously this doubled the effective
+    weight of the constraint)."""
+
+    def test_total_var_registered_as_auxiliary(
+        self,
+        model_and_variables: tuple[cp_model.CpModel, SolverVariables],
+        workers: list[Worker],
+        shift_types: list[ShiftType],
+    ) -> None:
+        """The 'total' violation var must be typed as auxiliary."""
+        model, variables = model_and_variables
+        constraint = SequenceConstraint(
+            model, variables, ConstraintConfig(enabled=True, is_hard=False, weight=100)
+        )
+        constraint.apply(workers=workers, shift_types=shift_types, num_periods=6)
+
+        assert "total" in constraint.violation_variables
+        assert constraint.violation_variable_types.get("total") == "auxiliary"
+
+    def test_objective_builder_excludes_total_from_terms(
+        self,
+        model_and_variables: tuple[cp_model.CpModel, SolverVariables],
+        workers: list[Worker],
+        shift_types: list[ShiftType],
+    ) -> None:
+        """ObjectiveBuilder must skip the 'total' aggregate: the objective
+        should contain exactly one term per seq_viol_* variable and nothing
+        for 'total'."""
+        model, variables = model_and_variables
+        constraint = SequenceConstraint(
+            model, variables, ConstraintConfig(enabled=True, is_hard=False, weight=100)
+        )
+        constraint.apply(workers=workers, shift_types=shift_types, num_periods=6)
+
+        builder = ObjectiveBuilder(model)
+        builder.add_constraint(constraint)
+        builder.build()
+
+        term_names = {term.variable_name for term in builder.objective_terms}
+        seq_viol_names = {
+            k for k in constraint.violation_variables if k.startswith("seq_viol_")
+        }
+        assert "total" not in term_names
+        assert term_names == seq_viol_names
+
+
+class TestSequenceWarnsOnTooFewPeriods:
+    """Regression tests for bug D: the num_periods < 2 early return must log
+    a warning naming the constraint, the parameter, and the horizon instead
+    of silently doing nothing."""
+
+    def test_warns_when_num_periods_less_than_two(
+        self,
+        workers: list[Worker],
+        shift_types: list[ShiftType],
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        num_periods = 1
+        model = cp_model.CpModel()
+        builder = VariableBuilder(model, workers, shift_types, num_periods=num_periods)
+        variables = builder.build()
+
+        constraint = SequenceConstraint(
+            model, variables, ConstraintConfig(enabled=True, is_hard=False, weight=100)
+        )
+        with caplog.at_level(logging.WARNING):
+            constraint.apply(
+                workers=workers, shift_types=shift_types, num_periods=num_periods
+            )
+
+        assert len(constraint.violation_variables) == 0
+        assert "sequence" in caplog.text.lower()
+        assert str(num_periods) in caplog.text

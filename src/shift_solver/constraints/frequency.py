@@ -6,9 +6,12 @@ from ortools.sat.python import cp_model
 
 from shift_solver.constraints.base import BaseConstraint, ConstraintConfig
 from shift_solver.models import ShiftType, Worker
+from shift_solver.utils import get_logger
 
 if TYPE_CHECKING:
     from shift_solver.solver.types import SolverVariables
+
+logger = get_logger("constraints.frequency")
 
 
 class FrequencyConstraint(BaseConstraint):
@@ -16,8 +19,8 @@ class FrequencyConstraint(BaseConstraint):
     Soft constraint ensuring workers work shifts at regular intervals.
 
     For each sliding window of N periods, a worker should have at least
-    one assignment. This prevents workers from being absent from certain
-    shifts for too long.
+    one assignment (across the filtered shift types, combined). This
+    prevents workers from being absent from certain shifts for too long.
 
     Required context:
         - workers: list[Worker] - available workers
@@ -26,7 +29,8 @@ class FrequencyConstraint(BaseConstraint):
 
     Config parameters:
         - max_periods_between: int - maximum periods between assignments
-            (default: 4, meaning check windows of size 5)
+            (default: 4, meaning every sliding window of 4 consecutive
+            periods must contain at least one assignment)
         - shift_types: list[str] - if set, only apply to these shift types
             (default: apply to all shift types)
     """
@@ -48,8 +52,9 @@ class FrequencyConstraint(BaseConstraint):
         """
         Apply frequency constraint to the model.
 
-        Creates violation variables for each worker-window combination
-        where no assignment exists.
+        Creates one violation variable per (worker, window) that is true
+        iff the worker has zero assignments across all filtered shift
+        types anywhere in that window.
 
         Args:
             **context: Must include workers, shift_types, num_periods
@@ -65,12 +70,20 @@ class FrequencyConstraint(BaseConstraint):
         max_periods_between: int = self.config.get_param("max_periods_between", 4)
         target_shift_types: list[str] | None = self.config.get_param("shift_types")
 
-        # Window size is max_periods_between + 1
-        # (e.g., max 3 periods between = window of 4 periods)
-        window_size = max_periods_between + 1
+        # A window of N consecutive periods must contain at least one
+        # assignment, so window_size == max_periods_between.
+        window_size = max_periods_between
 
         if window_size > num_periods:
             # Window larger than schedule, nothing to constrain
+            logger.warning(
+                "frequency constraint: max_periods_between=%d (window_size=%d) "
+                "exceeds horizon of num_periods=%d periods; constraint has no "
+                "effect",
+                max_periods_between,
+                window_size,
+                num_periods,
+            )
             return
 
         # Filter shift types if specified
@@ -85,14 +98,16 @@ class FrequencyConstraint(BaseConstraint):
         violation_count = 0
 
         for worker in workers:
-            for shift_type in filtered_shifts:
-                # Check each sliding window
-                for window_start in range(num_periods - window_size + 1):
-                    window_end = window_start + window_size
+            # Check each sliding window
+            for window_start in range(num_periods - window_size + 1):
+                window_end = window_start + window_size
 
-                    # Collect all assignments in this window
-                    window_assignments = []
-                    for period in range(window_start, window_end):
+                # Collect all assignments across all filtered shift types
+                # in this window (union across shift types, not one set
+                # of violations per shift type).
+                window_assignments = []
+                for period in range(window_start, window_end):
+                    for shift_type in filtered_shifts:
                         try:
                             var = self.variables.get_assignment_var(
                                 worker.id, period, shift_type.id
@@ -101,44 +116,46 @@ class FrequencyConstraint(BaseConstraint):
                         except KeyError:
                             continue
 
-                    if not window_assignments:
-                        continue
+                if not window_assignments:
+                    continue
 
-                    # Create violation variable for this window
-                    # violation = 1 if no assignment in window, 0 otherwise
-                    violation_name = (
-                        f"freq_viol_{worker.id}_{shift_type.id}_w{window_start}"
-                    )
-                    violation_var = self.model.new_bool_var(violation_name)
+                # Create violation variable for this window
+                # violation = 1 if no assignment in window, 0 otherwise
+                violation_name = f"freq_viol_{worker.id}_w{window_start}"
+                violation_var = self.model.new_bool_var(violation_name)
 
-                    # at_least_one = sum(assignments) >= 1
-                    # violation = (sum(assignments) == 0)
-                    # We use: sum(assignments) >= 1 - violation
-                    # If violation=0, sum >= 1 (must have assignment)
-                    # If violation=1, sum >= 0 (no requirement)
-                    # And we want to minimize violations
+                # at_least_one = sum(assignments) >= 1
+                # violation = (sum(assignments) == 0)
+                # We use: sum(assignments) >= 1 - violation
+                # If violation=0, sum >= 1 (must have assignment)
+                # If violation=1, sum >= 0 (no requirement)
+                # And we want to minimize violations
 
-                    # Create indicator: has_assignment = (sum >= 1)
-                    has_assignment = self.model.new_bool_var(
-                        f"freq_has_{worker.id}_{shift_type.id}_w{window_start}"
-                    )
+                # Create indicator: has_assignment = (sum >= 1)
+                has_assignment = self.model.new_bool_var(
+                    f"freq_has_{worker.id}_w{window_start}"
+                )
 
-                    # has_assignment is true iff sum(window_assignments) >= 1
-                    self.model.add(sum(window_assignments) >= 1).only_enforce_if(
-                        has_assignment
-                    )
-                    self.model.add(sum(window_assignments) == 0).only_enforce_if(
-                        has_assignment.negated()
-                    )
+                # has_assignment is true iff sum(window_assignments) >= 1
+                self.model.add(sum(window_assignments) >= 1).only_enforce_if(
+                    has_assignment
+                )
+                self.model.add(sum(window_assignments) == 0).only_enforce_if(
+                    has_assignment.negated()
+                )
 
-                    # violation = NOT has_assignment
-                    self.model.add(violation_var == has_assignment.negated())
+                # violation = NOT has_assignment
+                self.model.add(violation_var == has_assignment.negated())
 
-                    self._violation_variables[violation_name] = violation_var
-                    violation_count += 1
-                    self._constraint_count += 3  # 3 constraints per window
+                self._violation_variables[violation_name] = violation_var
+                violation_count += 1
+                self._constraint_count += 3  # 3 constraints per window
 
-        # Also store total violation count for debugging
+        # Also store total violation count for debugging. Registered as
+        # "auxiliary" so ObjectiveBuilder skips it -- it is a derived sum
+        # of the freq_viol_* variables above, not an independent penalty,
+        # and would otherwise double the effective weight of this
+        # constraint in the objective.
         if violation_count > 0:
             total_var = self.model.new_int_var(
                 0, violation_count, "frequency_total_violations"
@@ -152,3 +169,4 @@ class FrequencyConstraint(BaseConstraint):
                 )
             )
             self._violation_variables["total"] = total_var
+            self._violation_variable_types["total"] = "auxiliary"

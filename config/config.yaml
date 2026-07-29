@@ -30,6 +30,12 @@ constraints:
     enabled: true
     is_hard: true
 
+  worker_shift_limit:
+    enabled: true
+    is_hard: true
+    parameters:
+      max_shifts_per_period: 1   # Mutually exclusive shifts per worker per period
+
   fairness:
     enabled: true
     is_hard: false
@@ -48,15 +54,13 @@ constraints:
     enabled: true
     is_hard: false
     weight: 150
-    parameters:
-      max_requests_per_worker: 8
 
   sequence:
     enabled: true
     is_hard: false
     weight: 100
     parameters:
-      categories: ["ambulatory"]
+      categories: ["night"]  # Discourage back-to-back night shifts
 
   max_absence:
     enabled: true

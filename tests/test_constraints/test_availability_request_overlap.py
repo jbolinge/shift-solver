@@ -428,9 +428,12 @@ class TestBoundaryDateScenarios:
         # Should be feasible - no overlap
         assert status in (cp_model.OPTIMAL, cp_model.FEASIBLE)
 
-        # W001 must work in period 0 and 1 (hard request)
-        assert solver.value(variables.get_assignment_var("W001", 0, "day")) == 1
-        assert solver.value(variables.get_assignment_var("W001", 1, "day")) == 1
+        # W001 must be assigned in at least one of periods 0/1 ("at least
+        # once in range" semantics for hard positive requests) - the solver
+        # is free to pick either period, not necessarily both.
+        assigned_p0 = solver.value(variables.get_assignment_var("W001", 0, "day"))
+        assigned_p1 = solver.value(variables.get_assignment_var("W001", 1, "day"))
+        assert assigned_p0 + assigned_p1 >= 1
 
 
 class TestMultipleOverlappingConstraints:

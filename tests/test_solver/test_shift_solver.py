@@ -366,6 +366,167 @@ class TestShiftSolverPreSolveFeasibility:
         issue = next(i for i in result.feasibility_issues if i["type"] == "restriction")
         assert "Night Shift" in issue["message"]
 
+    def test_hard_request_conflicting_with_restriction_is_diagnosed(self) -> None:
+        """A hard positive request for a restricted shift is now diagnosed
+        with a specific 'request' issue instead of a bare infeasible
+        (scheduler contract item B.2: FeasibilityChecker must be given
+        requests)."""
+        from shift_solver.models import SchedulingRequest
+
+        workers = [
+            Worker(id="W1", name="Alice", restricted_shifts=frozenset(["night"])),
+            Worker(id="W2", name="Bob"),
+        ]
+        shift_types = [
+            ShiftType(
+                id="night",
+                name="Night Shift",
+                category="night",
+                start_time=time(23, 0),
+                end_time=time(7, 0),
+                duration_hours=8.0,
+                workers_required=1,
+            ),
+        ]
+        period_dates = [(date(2026, 1, 1), date(2026, 1, 7))]
+        requests = [
+            SchedulingRequest(
+                worker_id="W1",
+                start_date=period_dates[0][0],
+                end_date=period_dates[0][1],
+                request_type="positive",
+                shift_type_id="night",
+                priority=1,
+                is_hard=True,
+            )
+        ]
+
+        solver = ShiftSolver(
+            workers=workers,
+            shift_types=shift_types,
+            period_dates=period_dates,
+            schedule_id="TEST-REQ-CONFLICT",
+            requests=requests,
+        )
+
+        result = solver.solve(time_limit_seconds=10)
+
+        assert not result.success
+        assert result.feasibility_issues is not None
+        assert any(i["type"] == "request" for i in result.feasibility_issues)
+
+
+class TestSolverResultWarnings:
+    """
+    Tests that SolverResult surfaces FeasibilityResult warnings on both
+    success and failure paths (scheduler contract item C).
+    """
+
+    def test_warnings_surfaced_on_pre_solve_failure(self) -> None:
+        """Warnings accompany an INFEASIBLE_PRE_SOLVE result."""
+        from shift_solver.models import ShiftFrequencyRequirement
+
+        # Infeasible: only 1 worker but 2 required.
+        workers = [Worker(id="W1", name="Alice")]
+        shift_types = [
+            ShiftType(
+                id="day",
+                name="Day Shift",
+                category="day",
+                start_time=time(7, 0),
+                end_time=time(15, 0),
+                duration_hours=8.0,
+                workers_required=2,
+            ),
+        ]
+        period_dates = [(date(2026, 1, 1), date(2026, 1, 7))]
+        # Also references an unknown worker - should surface as a warning
+        # alongside the hard coverage issue.
+        requirements = [
+            ShiftFrequencyRequirement(
+                worker_id="UNKNOWN_WORKER",
+                shift_types=frozenset(["day"]),
+                max_periods_between=1,
+            )
+        ]
+
+        solver = ShiftSolver(
+            workers=workers,
+            shift_types=shift_types,
+            period_dates=period_dates,
+            schedule_id="TEST-WARNINGS-FAIL",
+            shift_frequency_requirements=requirements,
+        )
+
+        result = solver.solve(time_limit_seconds=10)
+
+        assert not result.success
+        assert any("UNKNOWN_WORKER" in w for w in result.warnings)
+
+    def test_warnings_surfaced_on_success(self) -> None:
+        """Warnings accompany a successful solve too."""
+        from shift_solver.models import Availability
+
+        workers = [Worker(id="W1", name="Alice"), Worker(id="W2", name="Bob")]
+        shift_types = [
+            ShiftType(
+                id="day",
+                name="Day Shift",
+                category="day",
+                start_time=time(7, 0),
+                end_time=time(15, 0),
+                duration_hours=8.0,
+                workers_required=1,
+            ),
+        ]
+        period_dates = [(date(2026, 1, 1), date(2026, 1, 7))]
+        # References an unknown worker - warning only, still feasible/solvable.
+        availabilities = [
+            Availability(
+                worker_id="UNKNOWN_WORKER",
+                start_date=period_dates[0][0],
+                end_date=period_dates[0][1],
+                availability_type="unavailable",
+            ),
+        ]
+
+        solver = ShiftSolver(
+            workers=workers,
+            shift_types=shift_types,
+            period_dates=period_dates,
+            schedule_id="TEST-WARNINGS-SUCCESS",
+            availabilities=availabilities,
+        )
+
+        result = solver.solve(time_limit_seconds=10)
+
+        assert result.success
+        assert any("UNKNOWN_WORKER" in w for w in result.warnings)
+
+    def test_no_warnings_defaults_to_empty_list(self) -> None:
+        """A clean solve with nothing to warn about has an empty warnings list."""
+        solver = ShiftSolver(
+            workers=[Worker(id="W1", name="Alice")],
+            shift_types=[
+                ShiftType(
+                    id="day",
+                    name="Day Shift",
+                    category="day",
+                    start_time=time(7, 0),
+                    end_time=time(15, 0),
+                    duration_hours=8.0,
+                    workers_required=1,
+                ),
+            ],
+            period_dates=[(date(2026, 1, 1), date(2026, 1, 7))],
+            schedule_id="TEST-NO-WARNINGS",
+        )
+
+        result = solver.solve(time_limit_seconds=10)
+
+        assert result.success
+        assert result.warnings == []
+
 
 class TestShiftSolverRequestConstraintConfig:
     """Tests for RequestConstraint config handling (scheduler-56)."""
@@ -631,6 +792,123 @@ class TestShiftSolverShiftFrequencyIntegration:
         )
 
         assert solver.shift_frequency_requirements == []
+
+
+class TestShiftSolverSingleDayPeriod:
+    """Regression test: a schedule with exactly one single-day period should solve."""
+
+    def test_single_one_day_period_solves(self) -> None:
+        """A 1-period, 1-day schedule should solve and extract successfully."""
+        workers = [Worker(id="W1", name="Alice")]
+        shift_types = [
+            ShiftType(
+                id="day",
+                name="Day",
+                category="day",
+                start_time=time(7, 0),
+                end_time=time(15, 0),
+                duration_hours=8.0,
+                workers_required=1,
+            ),
+        ]
+        period_dates = [(date(2026, 1, 5), date(2026, 1, 5))]
+
+        solver = ShiftSolver(
+            workers=workers,
+            shift_types=shift_types,
+            period_dates=period_dates,
+            schedule_id="TEST-1DAY",
+        )
+
+        result = solver.solve(time_limit_seconds=10)
+
+        assert result.success
+        assert result.schedule is not None
+        assert len(result.schedule.periods) == 1
+        assert result.schedule.period_type == "day"
+
+
+class TestSoftConstraintHardModeEnforcement:
+    """
+    Regression tests for scheduler contract item A: a soft-registered
+    constraint configured with is_hard=True must actually be enforced as
+    hard, not silently dropped (the old ObjectiveBuilder skipped is_hard
+    constraints from the objective entirely, with nothing forcing their
+    violation variables to 0 - a full no-op).
+    """
+
+    def test_fairness_is_hard_forces_zero_spread(self) -> None:
+        """fairness is_hard=True must force spread==0, overriding a strong
+        conflicting preference expressed via soft requests."""
+        from shift_solver.constraints.base import ConstraintConfig
+        from shift_solver.models import SchedulingRequest
+
+        workers = [Worker(id="W1", name="Alice"), Worker(id="W2", name="Bob")]
+        shift_types = [
+            ShiftType(
+                id="night",
+                name="Night Shift",
+                category="night",
+                start_time=time(23, 0),
+                end_time=time(7, 0),
+                duration_hours=8.0,
+                workers_required=1,
+                is_undesirable=True,
+            ),
+        ]
+        base = date(2026, 1, 5)
+        period_dates = [
+            (base + timedelta(weeks=i), base + timedelta(weeks=i, days=6))
+            for i in range(2)
+        ]
+
+        # A very heavily-weighted preference for W1 to work BOTH nights -
+        # without hard fairness enforcement this would win and produce an
+        # uneven (2 vs 0) distribution.
+        requests = [
+            SchedulingRequest(
+                worker_id="W1",
+                start_date=period_dates[0][0],
+                end_date=period_dates[0][1],
+                request_type="positive",
+                shift_type_id="night",
+                priority=1,
+            ),
+            SchedulingRequest(
+                worker_id="W1",
+                start_date=period_dates[1][0],
+                end_date=period_dates[1][1],
+                request_type="positive",
+                shift_type_id="night",
+                priority=1,
+            ),
+        ]
+
+        constraint_configs = {
+            "fairness": ConstraintConfig(enabled=True, is_hard=True, weight=1),
+            "request": ConstraintConfig(enabled=True, is_hard=False, weight=1_000_000),
+        }
+
+        solver = ShiftSolver(
+            workers=workers,
+            shift_types=shift_types,
+            period_dates=period_dates,
+            schedule_id="TEST-HARD-FAIRNESS",
+            requests=requests,
+            constraint_configs=constraint_configs,
+        )
+
+        result = solver.solve(time_limit_seconds=30)
+
+        assert result.success
+        assert result.schedule is not None
+
+        # Hard fairness forces an even (1-1) split despite the strong
+        # per-worker request preference.
+        w1_nights = result.schedule.statistics["W1"].get("night", 0)
+        w2_nights = result.schedule.statistics["W2"].get("night", 0)
+        assert w1_nights == 1
+        assert w2_nights == 1
 
 
 class TestShiftSolverParameters:

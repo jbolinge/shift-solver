@@ -72,9 +72,9 @@ class TestRetailSchedule:
         workers = generator.generate_workers(20)
         shift_types = generator.generate_shift_types()
 
-        # Weekend shift requires 5 workers in retail preset
-        weekend_shift = next(st for st in shift_types if st.id == "weekend")
-        assert weekend_shift.workers_required == 5
+        # Weekend shift requires 3 workers in retail preset
+        weekend_shift = next(st for st in shift_types if st.id == "weekend_day")
+        assert weekend_shift.workers_required == 3
 
         period_dates = create_period_dates(num_periods=2)
 
@@ -102,9 +102,9 @@ class TestHealthcareSchedule:
         workers = generator.generate_workers(20)
         shift_types = generator.generate_shift_types()
 
-        # Verify 12-hour shifts
-        day_shift = next(st for st in shift_types if st.id == "day")
-        assert day_shift.duration_hours == 12.0
+        # Verify 12-hour shifts (weekend day/night shifts)
+        weekend_day_shift = next(st for st in shift_types if st.id == "weekend_day")
+        assert weekend_day_shift.duration_hours == 12.0
 
         start_date = date(2026, 2, 2)
         end_date = date(2026, 2, 22)  # 3 weeks
@@ -135,17 +135,19 @@ class TestHealthcareSchedule:
         validation = validator.validate()
         assert validation.is_valid
 
-    def test_healthcare_on_call_coverage(self) -> None:
-        """Test healthcare with on-call shift coverage."""
+    def test_healthcare_weekend_night_coverage(self) -> None:
+        """Test healthcare with weekend night (on-call-style) shift coverage."""
         generator = SampleGenerator(industry="healthcare", seed=789)
 
         workers = generator.generate_workers(15)
         shift_types = generator.generate_shift_types()
 
-        # Verify on-call shift exists
-        on_call = next((st for st in shift_types if st.id == "on_call"), None)
-        assert on_call is not None
-        assert on_call.is_undesirable is True
+        # Verify weekend night shift exists (single-worker, undesirable coverage)
+        weekend_night = next(
+            (st for st in shift_types if st.id == "weekend_night"), None
+        )
+        assert weekend_night is not None
+        assert weekend_night.is_undesirable is True
 
         period_dates = create_period_dates(num_periods=2)
 
@@ -153,7 +155,7 @@ class TestHealthcareSchedule:
             workers=workers,
             shift_types=shift_types,
             period_dates=period_dates,
-            schedule_id="HEALTHCARE-ONCALL",
+            schedule_id="HEALTHCARE-WEEKEND-NIGHT",
         )
 
         result = solver.solve(time_limit_seconds=60)
@@ -173,10 +175,15 @@ class TestWarehouseSchedule:
         workers = generator.generate_workers(25)
         shift_types = generator.generate_shift_types()
 
-        # Verify 3 shifts exist
-        assert len(shift_types) == 3
+        # Verify 4 shifts exist (three rotating shifts plus weekend coverage)
+        assert len(shift_types) == 4
         shift_ids = {st.id for st in shift_types}
-        assert shift_ids == {"first", "second", "third"}
+        assert shift_ids == {
+            "first_shift",
+            "second_shift",
+            "third_shift",
+            "weekend_shift",
+        }
 
         start_date = date(2026, 2, 2)
         end_date = date(2026, 3, 1)  # 4 weeks
@@ -208,13 +215,13 @@ class TestWarehouseSchedule:
         assert validation.is_valid
 
         # Verify third shift (night) is covered
-        third_shift = next(st for st in shift_types if st.id == "third")
+        third_shift = next(st for st in shift_types if st.id == "third_shift")
         for period in result.schedule.periods:
             total_third = sum(
                 1
                 for shifts in period.assignments.values()
                 for s in shifts
-                if s.shift_type_id == "third"
+                if s.shift_type_id == "third_shift"
             )
             assert total_third >= third_shift.workers_required
 

@@ -3,16 +3,22 @@
 from __future__ import annotations
 
 import json
-from datetime import time as dt_time
 from pathlib import Path
 
 import click
 
-from shift_solver.cli.helpers import build_schedule_from_json
+from shift_solver.cli.helpers import (
+    build_schedule_from_json,
+    infer_shift_types,
+    shift_type_from_config,
+)
 from shift_solver.config import ShiftSolverConfig
 from shift_solver.io import CSVLoader
 from shift_solver.models import ShiftType, Worker
 from shift_solver.validation import ScheduleValidator, ValidationResult
+from shift_solver.validation.schedule_validator.validator import (
+    DEFAULT_MAX_SHIFTS_PER_PERIOD,
+)
 
 
 @click.command()
@@ -67,6 +73,11 @@ def validate(
     """Validate a generated schedule against constraints."""
     verbose = ctx.obj.get("verbose", 0)
 
+    # Fall back to the group-level -c/--config when --config isn't given to
+    # this subcommand directly (same pattern as list-shifts).
+    config_path = config or ctx.obj.get("config_path")
+    config_explicit = config is not None or bool(ctx.obj.get("config_explicit", False))
+
     click.echo(f"Validating schedule: {schedule}")
 
     # Load the schedule JSON
@@ -76,8 +87,10 @@ def validate(
     except Exception as e:
         raise click.ClickException(f"Error reading schedule: {e}") from e
 
+    cfg = _load_config(config_path, config_explicit, verbose)
+
     # Load shift types from config or infer from schedule
-    shift_types = _load_shift_types(config, schedule_data, verbose)
+    shift_types = _load_shift_types(cfg, schedule_data, verbose)
 
     # Load workers
     worker_list = _load_workers(workers, schedule_data, verbose)
@@ -85,6 +98,8 @@ def validate(
     # Load availability and requests
     availabilities = _load_availability(availability, verbose)
     request_list = _load_requests(requests, verbose)
+
+    max_shifts_per_period = _resolve_max_shifts_per_period(cfg)
 
     # Build Schedule object
     schedule_obj = build_schedule_from_json(
@@ -98,6 +113,9 @@ def validate(
         schedule=schedule_obj,
         availabilities=availabilities,
         requests=request_list,
+        shift_types=shift_types,
+        workers=worker_list,
+        max_shifts_per_period=max_shifts_per_period,
     )
     result = validator.validate()
 
@@ -112,53 +130,72 @@ def validate(
         raise SystemExit(1)
 
 
+def _load_config(
+    config_path: Path | None, config_explicit: bool, verbose: int
+) -> ShiftSolverConfig | None:
+    """Load and validate a config file, or None if no config file is present.
+
+    ``config_explicit`` distinguishes "the user passed -c/--config" from
+    "click applied the default path": an explicitly-given path that doesn't
+    exist is an error (silently validating against registry defaults instead
+    of the intended config produces confidently wrong violations), while an
+    absent default just means no config.
+
+    Raises:
+        click.ClickException: If an explicitly-given path is missing, or the
+            path exists but fails to load/validate.
+    """
+    if not (config_path and config_path.exists()):
+        if config_path and config_explicit:
+            raise click.ClickException(f"Configuration file not found: {config_path}")
+        return None
+    try:
+        cfg = ShiftSolverConfig.load_from_yaml(config_path)
+    except Exception as e:
+        raise click.ClickException(f"Error loading config: {e}") from e
+    if verbose:
+        click.echo(f"Loaded config from {config_path}")
+    return cfg
+
+
+def _resolve_max_shifts_per_period(cfg: ShiftSolverConfig | None) -> int:
+    """Resolve worker_shift_limit's max_shifts_per_period from config.
+
+    Falls back to the same default ScheduleValidator/the constraint registry
+    use (DEFAULT_MAX_SHIFTS_PER_PERIOD) when no config or override is given.
+
+    When the config explicitly disables worker_shift_limit, this returns an
+    effectively-unbounded limit (the number of configured shift types, i.e.
+    more than any single period could ever assign to one worker) instead of
+    silently applying the registry's default cap of 1. Otherwise a config
+    that turns the constraint OFF would still get it enforced post-solve,
+    making generate -> validate self-contradict.
+    """
+    if cfg is None:
+        return DEFAULT_MAX_SHIFTS_PER_PERIOD
+    if not cfg.is_constraint_enabled("worker_shift_limit"):
+        return len(cfg.shift_types)
+    constraint_config = cfg.get_constraint_config("worker_shift_limit")
+    return int(
+        constraint_config.parameters.get(
+            "max_shifts_per_period", DEFAULT_MAX_SHIFTS_PER_PERIOD
+        )
+    )
+
+
 def _load_shift_types(
-    config: Path | None,
+    cfg: ShiftSolverConfig | None,
     schedule_data: dict,
     verbose: int,
 ) -> list[ShiftType]:
     """Load shift types from config or infer from schedule."""
-    if config and config.exists():
-        try:
-            cfg = ShiftSolverConfig.load_from_yaml(config)
-            shift_types = [
-                ShiftType(
-                    id=st.id,
-                    name=st.name,
-                    category=st.category,
-                    start_time=st.start_time,
-                    end_time=st.end_time,
-                    duration_hours=st.duration_hours,
-                    is_undesirable=st.is_undesirable,
-                    workers_required=st.workers_required,
-                )
-                for st in cfg.shift_types
-            ]
-            if verbose:
-                click.echo(f"Loaded {len(shift_types)} shift types from config")
-            return shift_types
-        except Exception as e:
-            raise click.ClickException(f"Error loading config: {e}") from e
+    if cfg is not None:
+        shift_types = [shift_type_from_config(st) for st in cfg.shift_types]
+        if verbose:
+            click.echo(f"Loaded {len(shift_types)} shift types from config")
+        return shift_types
     else:
-        # Infer shift types from schedule
-        shift_type_ids: set[str] = set()
-        for period in schedule_data.get("periods", []):
-            for shift_list in period.get("assignments", {}).values():
-                for a in shift_list:
-                    shift_type_ids.add(a.get("shift_type_id"))
-
-        shift_types = [
-            ShiftType(
-                id=stid,
-                name=stid,
-                category="unknown",
-                start_time=dt_time(0, 0),
-                end_time=dt_time(8, 0),
-                duration_hours=8.0,
-                workers_required=1,
-            )
-            for stid in sorted(shift_type_ids)
-        ]
+        shift_types = infer_shift_types(schedule_data)
         if verbose:
             click.echo(f"Inferred {len(shift_types)} shift types from schedule")
         return shift_types

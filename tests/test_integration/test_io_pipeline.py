@@ -153,7 +153,11 @@ class TestExcelRoundtrip:
         generator = SampleGenerator(industry="healthcare", seed=123)
         start_date = date(2026, 2, 2)
 
-        workers = generator.generate_workers(8)
+        # Healthcare preset needs 3+2+2+2+1=10 assignments per period
+        # (day/evening/night/weekend_day/weekend_night) and the default
+        # worker_shift_limit constraint caps each worker at one shift
+        # assignment per period, so at least 10 workers are required.
+        workers = generator.generate_workers(12)
         shift_types = generator.generate_shift_types()
         period_dates = create_period_dates(start_date=start_date, num_periods=3)
 

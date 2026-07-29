@@ -6,9 +6,12 @@ from ortools.sat.python import cp_model
 
 from shift_solver.constraints.base import BaseConstraint, ConstraintConfig
 from shift_solver.models import ShiftType, Worker
+from shift_solver.utils import get_logger
 
 if TYPE_CHECKING:
     from shift_solver.solver.types import SolverVariables
+
+logger = get_logger("constraints.sequence")
 
 
 class SequenceConstraint(BaseConstraint):
@@ -58,6 +61,12 @@ class SequenceConstraint(BaseConstraint):
         num_periods: int = context["num_periods"]
 
         if num_periods < 2:
+            logger.warning(
+                "sequence constraint: num_periods=%d is too small to compare "
+                "consecutive periods (need at least 2); constraint has no "
+                "effect",
+                num_periods,
+            )
             return
 
         # Get target categories
@@ -143,7 +152,11 @@ class SequenceConstraint(BaseConstraint):
                     violation_count += 1
                     self._constraint_count += 6  # Multiple constraints per pair
 
-        # Store total for debugging
+        # Store total for debugging. Registered as "auxiliary" so
+        # ObjectiveBuilder skips it -- it is a derived sum of the
+        # seq_viol_* variables above, not an independent penalty, and
+        # would otherwise double the effective weight of this constraint
+        # in the objective.
         if violation_count > 0:
             total_var = self.model.new_int_var(
                 0, violation_count, "sequence_total_violations"
@@ -155,3 +168,4 @@ class SequenceConstraint(BaseConstraint):
             ]
             self.model.add(total_var == sum(viol_vars))
             self._violation_variables["total"] = total_var
+            self._violation_variable_types["total"] = "auxiliary"

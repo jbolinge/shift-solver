@@ -19,7 +19,7 @@ class CSVLoader:
     Loads scheduling data from CSV files.
 
     Supports loading:
-    - Workers (id, name, worker_type, restricted_shifts)
+    - Workers (id, name, worker_type, restricted_shifts, attributes)
     - Availability (worker_id, start_date, end_date, availability_type, shift_type_id)
     - Requests (worker_id, start_date, end_date, request_type, shift_type_id, priority)
 
@@ -34,7 +34,8 @@ class CSVLoader:
         Load workers from a CSV file.
 
         Required columns: id, name
-        Optional columns: worker_type, restricted_shifts, preferred_shifts
+        Optional columns: worker_type, restricted_shifts, preferred_shifts,
+        attributes
 
         Args:
             file_path: Path to CSV file
@@ -210,13 +211,66 @@ class CSVLoader:
             s.strip() for s in preferred_str.split(",") if s.strip()
         )
 
+        # Parse attributes (semicolon-separated key=value pairs)
+        attributes = self._parse_attributes(row.get("attributes", ""), line_num)
+
         return Worker(
             id=worker_id,
             name=name,
             worker_type=worker_type,
             restricted_shifts=restricted_shifts,
             preferred_shifts=preferred_shifts,
+            attributes=attributes,
         )
+
+    def _parse_attributes(self, value: str, line_num: int) -> dict[str, str]:
+        """Parse the optional 'attributes' column into a Worker.attributes dict.
+
+        Format: semicolon-separated `key=value` pairs, e.g.
+        ``"certification=icu;seniority=senior"``. Whitespace around each
+        entry, key, and value is stripped. This is what makes
+        ShiftType.required_attributes / the `skills` constraint reachable
+        from CSV-loaded workers at all -- previously there was no column
+        that populated Worker.attributes.
+
+        Args:
+            value: Raw 'attributes' cell value (may be missing/empty).
+            line_num: Line number, for error messages.
+
+        Returns:
+            dict of parsed key/value pairs (empty if the column is blank).
+
+        Raises:
+            CSVLoaderError: If an entry isn't a well-formed 'key=value' pair
+                (missing '=', or an empty key).
+        """
+        raw = value.strip()
+        if not raw:
+            return {}
+
+        attributes: dict[str, str] = {}
+        for entry in raw.split(";"):
+            entry = entry.strip()
+            if not entry:
+                continue
+            if "=" not in entry:
+                raise CSVLoaderError(
+                    f"Invalid attributes entry '{entry}' on line {line_num}. "
+                    "Expected semicolon-separated 'key=value' pairs, e.g. "
+                    "'certification=icu;seniority=senior'."
+                )
+            key, _, val = entry.partition("=")
+            key = key.strip()
+            val = val.strip()
+            if not key:
+                raise CSVLoaderError(
+                    f"Invalid attributes entry '{entry}' on line {line_num}: "
+                    "empty key. Expected semicolon-separated 'key=value' "
+                    "pairs, e.g. 'certification=icu;seniority=senior'."
+                )
+            attributes[key] = val
+
+        return attributes
 
     def _parse_availability_row(
         self, row: dict[str, str], line_num: int

@@ -38,6 +38,15 @@ constraints:
     enabled: true
     is_hard: true
 
+  worker_shift_limit:
+    # Physicians legitimately combine a weeknight rotation with a weekend
+    # shift in the same week (coverage sums require it), so this site allows
+    # up to 2 shifts per worker per period rather than the usual 1.
+    enabled: true
+    is_hard: true
+    parameters:
+      max_shifts_per_period: 2
+
   # --- Soft constraints (optimized via penalty weights) ---
 
   fairness:

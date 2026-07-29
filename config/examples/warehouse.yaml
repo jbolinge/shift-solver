@@ -53,13 +53,19 @@ constraints:
     enabled: true
     is_hard: true
 
-  worker_restriction:
+  restriction:
     enabled: true
     is_hard: true
 
   availability:
     enabled: true
     is_hard: true
+
+  worker_shift_limit:
+    enabled: true
+    is_hard: true
+    parameters:
+      max_shifts_per_period: 1   # Mutually exclusive shifts per worker per period
 
   # Distribute overnight and weekend shifts fairly
   fairness:
@@ -74,16 +80,14 @@ constraints:
     is_hard: false
     weight: 300
     parameters:
-      default_max_periods_between: 4
+      max_periods_between: 4
 
   request:
     enabled: true
     is_hard: false
     weight: 100
-    parameters:
-      max_requests_per_worker: 4
 
-  sequence_no_consecutive:
+  sequence:
     enabled: true
     is_hard: false
     weight: 200

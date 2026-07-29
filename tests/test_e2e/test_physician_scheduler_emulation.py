@@ -24,7 +24,6 @@ from shift_solver.solver import ShiftSolver
 
 from .conftest import create_period_dates
 
-
 # ---------------------------------------------------------------------------
 # Helper functions
 # ---------------------------------------------------------------------------
@@ -333,6 +332,15 @@ def _create_constraint_configs() -> dict[str, ConstraintConfig]:
         "coverage": ConstraintConfig(enabled=True, is_hard=True),
         "restriction": ConstraintConfig(enabled=True, is_hard=True),
         "availability": ConstraintConfig(enabled=True, is_hard=True),
+        # Physicians legitimately work a weeknight AND a weekend shift (or
+        # any two of the 6 sites) within the same week; the worst-week
+        # vacation overlap leaves only 4 of 8 doctors available for 7 weekly
+        # slots, so exclusivity of 1 (the registry default) is infeasible.
+        "worker_shift_limit": ConstraintConfig(
+            enabled=True,
+            is_hard=True,
+            parameters={"max_shifts_per_period": 2},
+        ),
         # Soft constraints
         "fairness": ConstraintConfig(enabled=True, is_hard=False, weight=1000),
         "shift_frequency": ConstraintConfig(enabled=True, is_hard=False, weight=500),
@@ -396,7 +404,6 @@ class TestPhysicianSchedulerEmulation:
         assert len(result.schedule.periods) == 52
 
         schedule = result.schedule
-        shift_type_map = {st.id: st for st in shift_types}
         worker_map = {w.id: w for w in workers}
 
         # --- Coverage verification ---
@@ -489,7 +496,7 @@ class TestPhysicianSchedulerEmulation:
         # Night+weekend co-assignments
         night_weekend_coassign = 0
         for period in schedule.periods:
-            for worker_id, shifts in period.assignments.items():
+            for shifts in period.assignments.values():
                 types = {s.shift_type_id for s in shifts}
                 if "night" in types and "weekend" in types:
                     night_weekend_coassign += 1

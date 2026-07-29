@@ -5,7 +5,8 @@ from pathlib import Path
 
 import click
 
-from shift_solver.cli.helpers import build_schedule_from_json
+from shift_solver.cli.helpers import build_schedule_from_json, shift_type_from_config
+from shift_solver.config import ShiftSolverConfig
 from shift_solver.io import (
     CSVLoader,
     CSVLoaderError,
@@ -13,7 +14,7 @@ from shift_solver.io import (
     ExcelHandlerError,
     ExcelLoader,
 )
-from shift_solver.models import Worker
+from shift_solver.models import ShiftType, Worker
 
 
 @click.command("import-data")
@@ -53,9 +54,15 @@ def import_data(
     else:
         _import_from_separate_files(workers, availability, requests, verbose)
 
-    click.echo("Import complete!")
+    # shift-solver has no database: this command validates that the given
+    # files parse cleanly, it does not persist anything. Pass the same files
+    # directly to 'generate --workers/--availability/--requests' or
+    # 'validate --workers/--availability/--requests' to actually use them.
+    click.echo("All files are valid.")
     click.echo(
-        "Note: Database persistence not yet implemented. Data validated but not stored."
+        "Note: this command only validates files; shift-solver has no "
+        "database. Pass them to 'generate' or 'validate' via "
+        "--workers/--availability/--requests to use them."
     )
 
 
@@ -173,6 +180,14 @@ def _import_requests(
     help="Schedule JSON file to export",
 )
 @click.option(
+    "--config",
+    "-c",
+    type=click.Path(exists=True, path_type=Path),
+    default=None,
+    help="Configuration file with shift type definitions (falls back to "
+    "inferring approximate metadata from the schedule if omitted)",
+)
+@click.option(
     "--output",
     "-o",
     type=click.Path(path_type=Path),
@@ -191,13 +206,20 @@ def _import_requests(
     default=True,
     help="Include per-worker view in Excel export",
 )
+@click.pass_context
 def export_schedule(
+    ctx: click.Context,
     schedule: Path,
+    config: Path | None,
     output: Path,
     output_format: str,
     include_worker_view: bool,
 ) -> None:
     """Export a schedule to Excel or JSON format."""
+    # Fall back to the group-level -c/--config when --config isn't given to
+    # this subcommand directly (same pattern as list-shifts).
+    config_path = config or ctx.obj.get("config_path")
+
     click.echo(f"Exporting schedule from: {schedule}")
 
     # Load the schedule JSON
@@ -208,16 +230,24 @@ def export_schedule(
         raise click.ClickException(f"Error reading schedule: {e}") from e
 
     if output_format == "json":
-        # Just copy/format the JSON
+        # Just copy/format the JSON - no shift type metadata needed, so
+        # --config (or its absence) is irrelevant here.
         output.parent.mkdir(parents=True, exist_ok=True)
         with open(output, "w") as f:
             json.dump(schedule_data, f, indent=2)
         click.echo(f"Schedule exported to: {output}")
+        return
 
-    elif output_format == "plotly":
+    # Real shift type metadata (category/times/duration/workers_required)
+    # from config, if given; otherwise fall back to inference from the
+    # schedule itself with a printed warning, since that's only an
+    # approximation (category="unknown", a fixed 00:00-08:00 window).
+    shift_types = _load_export_shift_types(config_path)
+
+    if output_format == "plotly":
         from shift_solver.io import PlotlyVisualizer
 
-        schedule_obj = build_schedule_from_json(schedule_data)
+        schedule_obj = build_schedule_from_json(schedule_data, shift_types=shift_types)
         visualizer = PlotlyVisualizer()
         visualizer.export_all(schedule_obj, output)
 
@@ -226,7 +256,7 @@ def export_schedule(
 
     elif output_format == "excel":
         # Build Schedule object using helper
-        schedule_obj = build_schedule_from_json(schedule_data)
+        schedule_obj = build_schedule_from_json(schedule_data, shift_types=shift_types)
 
         exporter = ExcelExporter()
         exporter.export_schedule(
@@ -235,3 +265,25 @@ def export_schedule(
             include_worker_view=include_worker_view,
         )
         click.echo(f"Schedule exported to: {output}")
+
+
+def _load_export_shift_types(config_path: Path | None) -> list[ShiftType] | None:
+    """Build real ShiftTypes from --config, or None to fall back to inference.
+
+    Returning None lets build_schedule_from_json infer approximate shift
+    type metadata from the schedule JSON itself (see
+    cli.helpers.infer_shift_types) - a printed warning makes that fallback
+    visible rather than silent.
+    """
+    if config_path and config_path.exists():
+        try:
+            cfg = ShiftSolverConfig.load_from_yaml(config_path)
+        except Exception as e:
+            raise click.ClickException(f"Error loading config: {e}") from e
+        return [shift_type_from_config(st) for st in cfg.shift_types]
+
+    click.echo(
+        "Warning: no --config given; inferring shift type metadata from the "
+        "schedule (category/times/duration will be approximate)."
+    )
+    return None

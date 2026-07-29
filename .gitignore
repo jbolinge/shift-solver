@@ -64,3 +64,6 @@ data/output/
 !config/examples/*.xlsx
 tmp/
 plotly_chart/
+
+# Generated example outputs
+examples/*/output/

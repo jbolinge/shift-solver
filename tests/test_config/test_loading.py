@@ -86,7 +86,7 @@ constraints:
     is_hard: false
     weight: 200
     parameters:
-      max_deviation: 2
+      categories: ["night"]
   request:
     enabled: true
     is_hard: false
@@ -136,7 +136,7 @@ logging:
 
         # Check constraints
         assert cfg.constraints["fairness"].weight == 200
-        assert cfg.constraints["fairness"].parameters.get("max_deviation") == 2
+        assert cfg.constraints["fairness"].parameters.get("categories") == ["night"]
         assert cfg.constraints["frequency"].enabled is False
 
 
@@ -284,11 +284,11 @@ class TestYamlEdgeCases:
     """Test edge cases in YAML parsing."""
 
     def test_empty_file(self, tmp_path: Path) -> None:
-        """Empty YAML file should fail validation."""
+        """Empty YAML file should fail with a clear, actionable message."""
         config_file = tmp_path / "empty.yaml"
         config_file.write_text("")
 
-        with pytest.raises((ValidationError, TypeError)):
+        with pytest.raises(ValueError, match="empty"):
             ShiftSolverConfig.load_from_yaml(config_file)
 
     def test_yaml_with_comments(self, tmp_path: Path) -> None:
@@ -480,8 +480,18 @@ shift_types:
 class TestConstraintParameters:
     """Test constraint parameter handling."""
 
-    def test_unknown_parameter_accepted(self, tmp_path: Path) -> None:
-        """Extra parameters in constraint config should be stored."""
+    def test_unknown_parameter_rejected_for_typed_constraint(
+        self, tmp_path: Path
+    ) -> None:
+        """
+        Typo'd/unknown parameter keys for a typed constraint must error.
+
+        fairness has a typed parameter model (categories only), so junk keys
+        like custom_param/another_param are no longer silently stored -- they
+        would have been silently inert at solve time, which is exactly the
+        bug this schema tightening closes (scheduler config strictness, item
+        B).
+        """
         config_content = """
 constraints:
   fairness:
@@ -503,17 +513,26 @@ shift_types:
         config_file = tmp_path / "params.yaml"
         config_file.write_text(config_content)
 
-        cfg = ShiftSolverConfig.load_from_yaml(config_file)
-        params = cfg.constraints["fairness"].parameters
+        with pytest.raises(ValidationError, match="custom_param") as exc_info:
+            ShiftSolverConfig.load_from_yaml(config_file)
 
-        assert params.get("custom_param") == 42
-        assert params.get("another_param") == "value"
+        message = str(exc_info.value)
+        assert "another_param" in message
+        assert "categories" in message  # valid keys listed
 
-    def test_nested_parameters(self, tmp_path: Path) -> None:
-        """Nested parameter structures should be preserved."""
+    def test_nested_parameters_preserved_for_untyped_constraint(
+        self, tmp_path: Path
+    ) -> None:
+        """
+        Constraints with no typed parameter model still store parameters as-is.
+
+        request has no typed parameter model (it does not read any config
+        parameters today), so arbitrary/nested structures under it are still
+        preserved verbatim rather than rejected.
+        """
         config_content = """
 constraints:
-  frequency:
+  request:
     enabled: true
     parameters:
       limits:
@@ -535,7 +554,7 @@ shift_types:
         config_file.write_text(config_content)
 
         cfg = ShiftSolverConfig.load_from_yaml(config_file)
-        params = cfg.constraints["frequency"].parameters
+        params = cfg.constraints["request"].parameters
 
         assert params["limits"]["day"] == 3
         assert params["windows"]["long"] == 14

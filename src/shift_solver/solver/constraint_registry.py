@@ -134,6 +134,9 @@ def register_builtin_constraints() -> None:
         SequenceConstraint,
         ShiftFrequencyConstraint,
         ShiftOrderPreferenceConstraint,
+        SkillsConstraint,
+        WorkerShiftLimitConstraint,
+        WorkloadConstraint,
     )
 
     # Register hard constraints if not already registered by decorators
@@ -157,6 +160,28 @@ def register_builtin_constraints() -> None:
         ConstraintRegistry._hard_constraints["availability"] = ConstraintRegistration(
             constraint_id="availability",
             constraint_class=AvailabilityConstraint,
+            is_hard=True,
+            default_config=ConstraintConfig(enabled=True, is_hard=True),
+        )
+
+    if "worker_shift_limit" not in ConstraintRegistry._hard_constraints:
+        ConstraintRegistry._hard_constraints["worker_shift_limit"] = (
+            ConstraintRegistration(
+                constraint_id="worker_shift_limit",
+                constraint_class=WorkerShiftLimitConstraint,
+                is_hard=True,
+                default_config=ConstraintConfig(
+                    enabled=True,
+                    is_hard=True,
+                    parameters={"max_shifts_per_period": 1},
+                ),
+            )
+        )
+
+    if "skills" not in ConstraintRegistry._hard_constraints:
+        ConstraintRegistry._hard_constraints["skills"] = ConstraintRegistration(
+            constraint_id="skills",
+            constraint_class=SkillsConstraint,
             is_hard=True,
             default_config=ConstraintConfig(enabled=True, is_hard=True),
         )
@@ -220,4 +245,17 @@ def register_builtin_constraints() -> None:
                     enabled=False, is_hard=False, weight=200
                 ),
             )
+        )
+
+    if "workload" not in ConstraintRegistry._soft_constraints:
+        ConstraintRegistry._soft_constraints["workload"] = ConstraintRegistration(
+            constraint_id="workload",
+            constraint_class=WorkloadConstraint,
+            is_hard=False,
+            default_config=ConstraintConfig(
+                enabled=False,
+                is_hard=False,
+                weight=100,
+                parameters={"min_total_shifts": 0, "max_total_shifts": None},
+            ),
         )

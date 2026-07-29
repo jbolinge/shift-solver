@@ -36,6 +36,9 @@ shift_types:
     duration_hours: 9.0
     is_undesirable: true
     workers_required: 3
+    # Only applies Sat/Sun (0=Mon..6=Sun). Coverage is skipped in any
+    # period containing no Sat/Sun (e.g. a truncated final period).
+    applicable_days: [5, 6]
 
 # Constraints tuned for retail
 constraints:
@@ -43,13 +46,19 @@ constraints:
     enabled: true
     is_hard: true
 
-  worker_restriction:
+  restriction:
     enabled: true
     is_hard: true
 
   availability:
     enabled: true
     is_hard: true
+
+  worker_shift_limit:
+    enabled: true
+    is_hard: true
+    parameters:
+      max_shifts_per_period: 1   # Mutually exclusive shifts per worker per period
 
   fairness:
     enabled: true
@@ -65,10 +74,8 @@ constraints:
     enabled: true
     is_hard: false
     weight: 200
-    parameters:
-      max_requests_per_worker: 4
 
-  sequence_no_consecutive:
+  sequence:
     enabled: false
 
   max_absence:

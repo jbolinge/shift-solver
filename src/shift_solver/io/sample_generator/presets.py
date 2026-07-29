@@ -32,7 +32,11 @@ class IndustryPreset:
 
     @classmethod
     def _retail_preset(cls) -> "IndustryPreset":
-        """Retail industry preset."""
+        """Retail industry preset.
+
+        Shift IDs/categories/times mirror config/examples/retail.yaml so
+        generated sample data can be solved directly against that config.
+        """
         return cls(
             name="retail",
             shift_types=[
@@ -43,7 +47,7 @@ class IndustryPreset:
                     "start_time": time(6, 0),
                     "end_time": time(14, 0),
                     "duration_hours": 8.0,
-                    "workers_required": 3,
+                    "workers_required": 2,
                     "is_undesirable": False,
                 },
                 {
@@ -53,27 +57,17 @@ class IndustryPreset:
                     "start_time": time(14, 0),
                     "end_time": time(22, 0),
                     "duration_hours": 8.0,
-                    "workers_required": 4,
+                    "workers_required": 2,
                     "is_undesirable": False,
                 },
                 {
-                    "id": "night",
-                    "name": "Night Shift",
-                    "category": "night",
-                    "start_time": time(22, 0),
-                    "end_time": time(6, 0),
-                    "duration_hours": 8.0,
-                    "workers_required": 2,
-                    "is_undesirable": True,
-                },
-                {
-                    "id": "weekend",
-                    "name": "Weekend Shift",
+                    "id": "weekend_day",
+                    "name": "Weekend Day",
                     "category": "weekend",
-                    "start_time": time(10, 0),
+                    "start_time": time(9, 0),
                     "end_time": time(18, 0),
-                    "duration_hours": 8.0,
-                    "workers_required": 5,
+                    "duration_hours": 9.0,
+                    "workers_required": 3,
                     "is_undesirable": True,
                 },
             ],
@@ -85,7 +79,11 @@ class IndustryPreset:
 
     @classmethod
     def _healthcare_preset(cls) -> "IndustryPreset":
-        """Healthcare industry preset."""
+        """Healthcare industry preset.
+
+        Shift IDs/categories/times mirror config/examples/healthcare.yaml so
+        generated sample data can be solved directly against that config.
+        """
         return cls(
             name="healthcare",
             shift_types=[
@@ -94,28 +92,48 @@ class IndustryPreset:
                     "name": "Day Shift",
                     "category": "day",
                     "start_time": time(7, 0),
-                    "end_time": time(19, 0),
-                    "duration_hours": 12.0,
-                    "workers_required": 4,
+                    "end_time": time(15, 0),
+                    "duration_hours": 8.0,
+                    "workers_required": 3,
+                    "is_undesirable": False,
+                },
+                {
+                    "id": "evening",
+                    "name": "Evening Shift",
+                    "category": "evening",
+                    "start_time": time(15, 0),
+                    "end_time": time(23, 0),
+                    "duration_hours": 8.0,
+                    "workers_required": 2,
                     "is_undesirable": False,
                 },
                 {
                     "id": "night",
                     "name": "Night Shift",
                     "category": "night",
-                    "start_time": time(19, 0),
+                    "start_time": time(23, 0),
                     "end_time": time(7, 0),
-                    "duration_hours": 12.0,
-                    "workers_required": 3,
+                    "duration_hours": 8.0,
+                    "workers_required": 2,
                     "is_undesirable": True,
                 },
                 {
-                    "id": "on_call",
-                    "name": "On-Call",
-                    "category": "on_call",
-                    "start_time": time(0, 0),
-                    "end_time": time(23, 59),
-                    "duration_hours": 24.0,
+                    "id": "weekend_day",
+                    "name": "Weekend Day",
+                    "category": "weekend",
+                    "start_time": time(7, 0),
+                    "end_time": time(19, 0),
+                    "duration_hours": 12.0,
+                    "workers_required": 2,
+                    "is_undesirable": True,
+                },
+                {
+                    "id": "weekend_night",
+                    "name": "Weekend Night",
+                    "category": "weekend_night",
+                    "start_time": time(19, 0),
+                    "end_time": time(7, 0),
+                    "duration_hours": 12.0,
                     "workers_required": 1,
                     "is_undesirable": True,
                 },
@@ -128,38 +146,52 @@ class IndustryPreset:
 
     @classmethod
     def _warehouse_preset(cls) -> "IndustryPreset":
-        """Warehouse industry preset."""
+        """Warehouse industry preset.
+
+        Shift IDs/categories/times mirror config/examples/warehouse.yaml so
+        generated sample data can be solved directly against that config.
+        """
         return cls(
             name="warehouse",
             shift_types=[
                 {
-                    "id": "first",
+                    "id": "first_shift",
                     "name": "First Shift",
                     "category": "day",
                     "start_time": time(6, 0),
                     "end_time": time(14, 0),
                     "duration_hours": 8.0,
-                    "workers_required": 8,
+                    "workers_required": 4,
                     "is_undesirable": False,
                 },
                 {
-                    "id": "second",
+                    "id": "second_shift",
                     "name": "Second Shift",
                     "category": "evening",
                     "start_time": time(14, 0),
                     "end_time": time(22, 0),
                     "duration_hours": 8.0,
-                    "workers_required": 6,
+                    "workers_required": 3,
                     "is_undesirable": False,
                 },
                 {
-                    "id": "third",
-                    "name": "Third Shift",
+                    "id": "third_shift",
+                    "name": "Third Shift (Overnight)",
                     "category": "night",
                     "start_time": time(22, 0),
                     "end_time": time(6, 0),
                     "duration_hours": 8.0,
-                    "workers_required": 4,
+                    "workers_required": 2,
+                    "is_undesirable": True,
+                },
+                {
+                    "id": "weekend_shift",
+                    "name": "Weekend Shift",
+                    "category": "weekend",
+                    "start_time": time(8, 0),
+                    "end_time": time(16, 0),
+                    "duration_hours": 8.0,
+                    "workers_required": 2,
                     "is_undesirable": True,
                 },
             ],
