@@ -4,6 +4,7 @@ import contextlib
 import logging
 import threading
 
+from django.db import transaction
 from django.utils import timezone
 
 from core.converters import build_schedule_input, solver_result_to_assignments
@@ -133,22 +134,22 @@ class SolverRunner:
             )
 
             # Check if cancelled
+            assignments_to_create: list[Assignment] = []
             if cancel_event is not None and cancel_event.is_set():
                 if result.success and result.schedule:
                     # Save partial results
                     SolverRun.objects.filter(id=self.solver_run_id).update(
                         progress_json={"phase": "extracting"}
                     )
-                    assignments = solver_result_to_assignments(
+                    assignments_to_create = solver_result_to_assignments(
                         solver_run, result.schedule
                     )
-                    Assignment.objects.bulk_create(assignments)
                     solver_run.status = "cancelled"
                     solver_run.result_json = {
                         "status": "CANCELLED_WITH_SOLUTION",
                         "objective_value": result.objective_value,
                         "solve_time_seconds": result.solve_time_seconds,
-                        "assignment_count": len(assignments),
+                        "assignment_count": len(assignments_to_create),
                         "solutions_found": callback.solutions_found,
                     }
                 else:
@@ -162,16 +163,15 @@ class SolverRunner:
                 SolverRun.objects.filter(id=self.solver_run_id).update(
                     progress_json={"phase": "extracting"}
                 )
-                assignments = solver_result_to_assignments(
+                assignments_to_create = solver_result_to_assignments(
                     solver_run, result.schedule
                 )
-                Assignment.objects.bulk_create(assignments)
                 solver_run.status = "completed"
                 solver_run.result_json = {
                     "status": result.status_name,
                     "objective_value": result.objective_value,
                     "solve_time_seconds": result.solve_time_seconds,
-                    "assignment_count": len(assignments),
+                    "assignment_count": len(assignments_to_create),
                 }
             else:
                 solver_run.status = "failed"
@@ -180,7 +180,12 @@ class SolverRunner:
             solver_run.progress_percent = 100
             solver_run.completed_at = timezone.now()
             solver_run.progress_json = {"phase": "done"}
-            solver_run.save()
+            # Persist assignments and final run state together so a failure
+            # cannot leave assignments attached to a run that never completed.
+            with transaction.atomic():
+                if assignments_to_create:
+                    Assignment.objects.bulk_create(assignments_to_create)
+                solver_run.save()
 
         except Exception as e:
             logger.exception("Solver run %s failed", self.solver_run_id)

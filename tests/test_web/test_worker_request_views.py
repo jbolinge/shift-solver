@@ -57,8 +57,9 @@ class TestWorkerRequestListView:
         )
         assert response.status_code == 200
 
+    @pytest.mark.usefixtures("worker_request")
     def test_list_shows_worker_requests(
-        self, client: Client, worker_request, schedule_request
+        self, client: Client, schedule_request
     ) -> None:
         response = client.get(
             f"/requests/{schedule_request.pk}/worker-requests/"
@@ -126,6 +127,7 @@ class TestWorkerRequestCreateView:
         response = client.post(
             f"/requests/{schedule_request.pk}/worker-requests/create/", data
         )
+        assert response.status_code == 302
         assert WorkerRequest.objects.count() == 1
         wr = WorkerRequest.objects.first()
         assert wr.is_hard is True
@@ -227,7 +229,7 @@ class TestWorkerRequestUpdateView:
         assert response.status_code == 302
 
     def test_update_wrong_schedule_request_404(
-        self, client: Client, worker_request, worker, shift_type
+        self, client: Client, worker_request
     ) -> None:
         other = ScheduleRequest.objects.create(
             name="Other",
@@ -276,8 +278,9 @@ class TestWorkerRequestDeleteView:
 class TestRequestDetailShowsWorkerRequests:
     """Tests that request detail page includes worker requests."""
 
+    @pytest.mark.usefixtures("worker_request")
     def test_detail_shows_worker_requests(
-        self, client: Client, worker_request, schedule_request
+        self, client: Client, schedule_request
     ) -> None:
         response = client.get(f"/requests/{schedule_request.pk}/")
         content = response.content.decode()
@@ -297,8 +300,9 @@ class TestRequestDetailShowsWorkerRequests:
 class TestConverterIntegration:
     """Tests for the converter integration with worker requests."""
 
+    @pytest.mark.usefixtures("worker_request")
     def test_build_schedule_input_includes_requests(
-        self, schedule_request, worker_request
+        self, schedule_request
     ) -> None:
         from core.converters import build_schedule_input
 
@@ -356,8 +360,9 @@ class TestConverterIntegration:
 class TestSolverRunnerPassesRequests:
     """Tests that solver runner passes requests to ShiftSolver."""
 
+    @pytest.mark.usefixtures("worker_request")
     def test_solver_constructor_receives_requests(
-        self, schedule_request, worker_request
+        self, schedule_request
     ) -> None:
         from core.converters import build_schedule_input
 

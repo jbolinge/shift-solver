@@ -50,6 +50,20 @@ class TestImportUpload:
         assert "Alice" in content
         assert "Bob" in content
 
+    def test_upload_too_large_rejected(self, client: Client, settings) -> None:
+        """Uploads beyond MAX_IMPORT_FILE_SIZE are rejected with an error."""
+        settings.MAX_IMPORT_FILE_SIZE = 64
+        csv_file = io.BytesIO(b"id,name\n" + b"W1,Alice\n" * 50)
+        csv_file.name = "workers.csv"
+
+        response = client.post(
+            "/import/upload/",
+            {"file": csv_file, "data_type": "workers"},
+            format="multipart",
+        )
+        assert response.status_code == 200
+        assert "File too large" in response.content.decode()
+
     def test_upload_invalid_file_type(self, client: Client) -> None:
         """Uploading unsupported file type returns error."""
         txt_file = io.BytesIO(b"not a csv or excel file")
