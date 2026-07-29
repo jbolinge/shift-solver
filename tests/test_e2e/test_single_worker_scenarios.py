@@ -50,13 +50,14 @@ class TestSingleWorkerBasic:
         shift_ids = [s.shift_type_id for s in period.assignments[workers[0].id]]
         assert "shift" in shift_ids
 
-    def test_single_worker_can_work_multiple_non_overlapping_shifts(
+    def test_single_worker_cannot_double_book_by_default(
         self, worker_factory
     ) -> None:
-        """Single worker CAN work multiple non-overlapping shifts in same period.
+        """Single worker CANNOT work two shifts in the same period by default.
 
-        Note: The solver allows a worker to be assigned to multiple shifts
-        in the same period. This tests that behavior.
+        worker_shift_limit is enabled by default (hard, max_shifts_per_period=1),
+        so a lone worker can't cover both morning and afternoon coverage
+        requirements in the same period -- the solve is infeasible.
         """
         workers = [worker_factory()]
 
@@ -83,11 +84,59 @@ class TestSingleWorkerBasic:
 
         periods = create_period_dates(num_periods=1)
 
-        # Worker can work both shifts (the solver allows this)
         result = solve_and_verify(
             workers=workers,
             shift_types=shift_types,
             period_dates=periods,
+            expect_feasible=False,
+        )
+
+        assert not result.success
+
+    def test_single_worker_can_work_multiple_shifts_when_limit_raised(
+        self, worker_factory
+    ) -> None:
+        """Raising max_shifts_per_period allows a single worker to legitimately
+        cover multiple non-overlapping shifts in the same period."""
+        workers = [worker_factory()]
+
+        shift_types = [
+            ShiftType(
+                id="morning",
+                name="Morning",
+                category="day",
+                start_time=time(6, 0),
+                end_time=time(14, 0),
+                duration_hours=8.0,
+                workers_required=1,
+            ),
+            ShiftType(
+                id="afternoon",
+                name="Afternoon",
+                category="day",
+                start_time=time(14, 0),
+                end_time=time(22, 0),
+                duration_hours=8.0,
+                workers_required=1,
+            ),
+        ]
+
+        periods = create_period_dates(num_periods=1)
+
+        constraint_configs = {
+            "coverage": ConstraintConfig(enabled=True, is_hard=True),
+            "worker_shift_limit": ConstraintConfig(
+                enabled=True,
+                is_hard=True,
+                parameters={"max_shifts_per_period": 2},
+            ),
+        }
+
+        result = solve_and_verify(
+            workers=workers,
+            shift_types=shift_types,
+            period_dates=periods,
+            constraint_configs=constraint_configs,
         )
 
         assert result.success

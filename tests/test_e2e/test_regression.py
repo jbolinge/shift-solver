@@ -614,8 +614,12 @@ class TestUnicodeAndSpecialCharacters:
     def test_emoji_in_names(self, worker_factory, periods_4) -> None:
         """Names containing emoji characters."""
         workers = [
-            Worker(id="W001", name="Alice 👩‍⚕️"),
-            Worker(id="W002", name="Bob 👨‍🔧"),
+            # Named through worker_factory (rather than hardcoded "W001"/
+            # "W002") so its auto-incrementing ID counter can't collide
+            # with the IDs handed out to the plain worker_factory() calls
+            # below.
+            worker_factory(name="Alice 👩‍⚕️"),
+            worker_factory(name="Bob 👨‍🔧"),
             worker_factory(),
             worker_factory(),
             worker_factory(),

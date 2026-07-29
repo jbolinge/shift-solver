@@ -34,6 +34,13 @@ def cli(ctx: click.Context, config: Path, verbose: int) -> None:
     """shift-solver: General-purpose shift scheduling optimization."""
     ctx.ensure_object(dict)
     ctx.obj["config_path"] = config
+    # Distinguish "user explicitly passed -c/--config" from "click applied
+    # its 'config/config.yaml' default because none was given" -- callers
+    # need this to tell "no config specified" (fall back to demo data) apart
+    # from "a config WAS specified but that path doesn't exist" (an error).
+    ctx.obj["config_explicit"] = (
+        ctx.get_parameter_source("config") != click.core.ParameterSource.DEFAULT
+    )
     ctx.obj["verbose"] = verbose
 
 
@@ -76,7 +83,17 @@ def check_config(config: Path) -> None:
 @click.pass_context
 def list_shifts(ctx: click.Context, config: Path | None) -> None:
     """List all shift types from configuration."""
-    config_path = config or ctx.obj.get("config_path")
+    # list-shifts' own --config already declares exists=True, so if `config`
+    # is set here it necessarily exists (click would have rejected it
+    # before this function ran) and was explicitly passed by the user.
+    # Otherwise we fall back to the group's `-c`/default, which uses
+    # exists=False and therefore needs its own explicit-vs-default check.
+    if config is not None:
+        config_path: Path | None = config
+        config_explicit = True
+    else:
+        config_path = ctx.obj.get("config_path")
+        config_explicit = bool(ctx.obj.get("config_explicit", False))
 
     if config_path and config_path.exists():
         try:
@@ -91,6 +108,10 @@ def list_shifts(ctx: click.Context, config: Path | None) -> None:
                 )
         except Exception as e:
             raise click.ClickException(f"Error loading config: {e}") from e
+    elif config_path and config_explicit:
+        # A config path WAS specified (not just click's default) but it
+        # doesn't exist -- this is a user error, not "no config given".
+        raise click.ClickException(f"Configuration file not found: {config_path}")
     else:
         click.echo("No configuration file found. Specify with --config.")
 

@@ -3,7 +3,6 @@
 import logging
 import sys
 from pathlib import Path
-from typing import Any
 
 # Root logger name for all shift-solver loggers
 ROOT_LOGGER_NAME = "shift_solver"
@@ -112,75 +111,3 @@ class JsonFormatter(logging.Formatter):
                 log_data[key] = value
 
         return json.dumps(log_data)
-
-
-class SolverProgressCallback:
-    """
-    Callback for tracking solver progress.
-
-    Used to monitor long-running solve operations and log
-    intermediate solutions and progress.
-    """
-
-    def __init__(
-        self,
-        time_limit_seconds: float = 300.0,
-        log_interval_seconds: float = 30.0,
-    ) -> None:
-        """
-        Initialize progress callback.
-
-        Args:
-            time_limit_seconds: Expected time limit for solving
-            log_interval_seconds: Minimum interval between progress logs
-        """
-        self.time_limit_seconds = time_limit_seconds
-        self.log_interval_seconds = log_interval_seconds
-        self.solution_count = 0
-        self.best_objective: float | None = None
-        self.last_improvement_time: float = 0.0
-        self._last_log_time: float = 0.0
-        self._logger = get_logger("solver.progress")
-
-    @property
-    def progress_percentage(self) -> float:
-        """Get progress as percentage of time limit."""
-        if self.time_limit_seconds <= 0:
-            return 0.0
-        return (self.last_improvement_time / self.time_limit_seconds) * 100.0
-
-    def on_solution_found(self, objective: float, time_elapsed: float) -> None:
-        """
-        Called when a new solution is found.
-
-        Args:
-            objective: Objective value of the solution
-            time_elapsed: Time since solve started
-        """
-        self.solution_count += 1
-
-        # Track best objective (minimization)
-        if self.best_objective is None or objective < self.best_objective:
-            self.best_objective = objective
-            self.last_improvement_time = time_elapsed
-
-        # Log progress at intervals
-        if time_elapsed - self._last_log_time >= self.log_interval_seconds:
-            self._log_progress(time_elapsed)
-            self._last_log_time = time_elapsed
-
-    def _log_progress(self, time_elapsed: float) -> None:
-        """Log current progress."""
-        self._logger.info(
-            f"Progress: {self.solution_count} solutions found, "
-            f"best={self.best_objective:.1f}, "
-            f"time={time_elapsed:.1f}s"
-        )
-
-    def get_summary(self) -> dict[str, Any]:
-        """Get summary statistics."""
-        return {
-            "solution_count": self.solution_count,
-            "best_objective": self.best_objective,
-            "last_improvement_time": self.last_improvement_time,
-        }

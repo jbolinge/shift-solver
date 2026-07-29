@@ -289,8 +289,8 @@ class TestScheduleValidation:
     """Tests for Schedule validation."""
 
     def test_schedule_end_must_be_after_start(self) -> None:
-        """Schedule end date must be after start date."""
-        with pytest.raises(ValueError, match="end_date must be > start_date"):
+        """Schedule end date must be on or after start date."""
+        with pytest.raises(ValueError, match="end_date must be >= start_date"):
             Schedule(
                 schedule_id="SCH-001",
                 start_date=date(2026, 3, 31),
@@ -300,6 +300,21 @@ class TestScheduleValidation:
                 workers=[],
                 shift_types=[],
             )
+
+    def test_schedule_start_equals_end_is_valid_single_day(self) -> None:
+        """A 1-day schedule (start_date == end_date) is a valid inclusive
+        range, matching PeriodAssignment's start<=end convention."""
+        schedule = Schedule(
+            schedule_id="SCH-001",
+            start_date=date(2026, 1, 5),
+            end_date=date(2026, 1, 5),
+            period_type="day",
+            periods=[],
+            workers=[],
+            shift_types=[],
+        )
+
+        assert schedule.start_date == schedule.end_date == date(2026, 1, 5)
 
     def test_schedule_id_cannot_be_empty(self) -> None:
         """Schedule ID cannot be empty."""

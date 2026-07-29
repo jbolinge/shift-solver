@@ -443,8 +443,9 @@ class TestObjectiveTermCounting:
         # Should have 3 objective terms (one per request)
         assert len(obj_builder.objective_terms) == 3
 
-    def test_multi_period_request_creates_multiple_terms(self) -> None:
-        """A request spanning multiple periods creates multiple violation variables."""
+    def test_multi_period_positive_request_creates_single_term(self) -> None:
+        """A positive request spanning multiple periods creates ONE violation
+        variable (at-least-once-in-range semantics), not one per period."""
         workers = create_workers(2)
         shift_types = create_shift_types()
         num_periods = 4
@@ -457,6 +458,48 @@ class TestObjectiveTermCounting:
                 start_date=period_dates[0][0],
                 end_date=period_dates[-1][1],  # Spans all periods
                 request_type="positive",
+                shift_type_id=shift_types[0].id,
+                priority=1,
+            ),
+        ]
+
+        model = cp_model.CpModel()
+        var_builder = VariableBuilder(model, workers, shift_types, num_periods)
+        variables = var_builder.build()
+
+        request_constraint = RequestConstraint(
+            model, variables, ConstraintConfig(enabled=True, is_hard=False, weight=100)
+        )
+        request_constraint.apply(
+            workers=workers,
+            shift_types=shift_types,
+            num_periods=num_periods,
+            requests=requests,
+            period_dates=period_dates,
+        )
+
+        obj_builder = ObjectiveBuilder(model)
+        obj_builder.add_constraint(request_constraint)
+        obj_builder.build()
+
+        # One violation var covering the whole range (at-least-once semantics)
+        assert len(obj_builder.objective_terms) == 1
+
+    def test_multi_period_negative_request_creates_multiple_terms(self) -> None:
+        """A negative request spanning multiple periods still creates one
+        violation variable PER period (must avoid every overlapping period)."""
+        workers = create_workers(2)
+        shift_types = create_shift_types()
+        num_periods = 4
+        period_dates = create_period_dates(num_periods)
+
+        # Create request spanning all periods
+        requests = [
+            SchedulingRequest(
+                worker_id=workers[0].id,
+                start_date=period_dates[0][0],
+                end_date=period_dates[-1][1],  # Spans all periods
+                request_type="negative",
                 shift_type_id=shift_types[0].id,
                 priority=1,
             ),

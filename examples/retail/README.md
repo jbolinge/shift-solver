@@ -22,18 +22,29 @@ A retail store schedule with morning, afternoon, and weekend coverage.
 ```bash
 # From the project root directory
 
-# Generate a 4-week schedule
+# Generate a 4-week schedule from the real roster and time-off requests
 uv run shift-solver -c examples/retail/config.yaml generate \
   --start-date 2026-02-01 \
   --end-date 2026-02-28 \
-  --output examples/retail/schedule.json \
-  --demo
+  --output examples/retail/output/schedule.json \
+  --workers examples/retail/workers.csv \
+  --availability examples/retail/availability.csv \
+  --quick-solve
 
-# Validate the schedule
+# Validate the schedule against the real roster
 uv run shift-solver -c examples/retail/config.yaml validate \
-  --schedule examples/retail/schedule.json \
-  --workers examples/retail/workers.csv
+  --schedule examples/retail/output/schedule.json \
+  --workers examples/retail/workers.csv \
+  --availability examples/retail/availability.csv
+
+# Export to Excel using the real shift metadata from config.yaml
+uv run shift-solver export \
+  --schedule examples/retail/output/schedule.json \
+  --config examples/retail/config.yaml \
+  --output examples/retail/output/schedule.xlsx
 ```
+
+Or simply run `bash examples/retail/run.sh` to do all three steps at once.
 
 ## Key Features Demonstrated
 

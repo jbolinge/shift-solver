@@ -17,3 +17,4 @@ class SolverResult:
     solve_time_seconds: float
     objective_value: float | None = None
     feasibility_issues: list[dict[str, Any]] | None = field(default=None)
+    warnings: list[str] = field(default_factory=list)

@@ -50,13 +50,19 @@ constraints:
     enabled: true
     is_hard: true
 
-  worker_restriction:
+  restriction:
     enabled: true
     is_hard: true
 
   availability:
     enabled: true
     is_hard: true
+
+  worker_shift_limit:
+    enabled: true
+    is_hard: true
+    parameters:
+      max_shifts_per_period: 2   # At most two shifts per worker per period
 
   fairness:
     enabled: true
@@ -70,16 +76,14 @@ constraints:
     is_hard: false
     weight: 500
     parameters:
-      default_max_periods_between: 3
+      max_periods_between: 3
 
   request:
     enabled: true
     is_hard: false
     weight: 150
-    parameters:
-      max_requests_per_worker: 8
 
-  sequence_no_consecutive:
+  sequence:
     enabled: true
     is_hard: false
     weight: 300

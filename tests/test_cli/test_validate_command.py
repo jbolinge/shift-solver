@@ -207,3 +207,328 @@ class TestValidateWithWorkers:
         )
         # Should run validation
         assert "validation" in result.output.lower() or result.exit_code in [0, 1]
+
+
+class TestValidateConfigFallback:
+    """validate honors the group-level -c/--config (defect D)."""
+
+    def test_group_level_config_used_when_subcommand_omits_it(
+        self, runner: CliRunner, tmp_path: Path
+    ) -> None:
+        """A group-level -c reaches validate even without its own --config.
+
+        day's workers_required=2 comes only from the config; the schedule
+        below assigns just one worker, so honoring the group-level config
+        must produce a coverage violation that pure schedule-inference
+        (workers_required defaulting to what's actually observed) would not.
+        """
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text(
+            """
+shift_types:
+  - id: day
+    name: Day Shift
+    category: day
+    start_time: "09:00"
+    end_time: "17:00"
+    duration_hours: 8.0
+    workers_required: 2
+"""
+        )
+        schedule_file = tmp_path / "schedule.json"
+        schedule_file.write_text(
+            json.dumps(
+                {
+                    "schedule_id": "SCH-FALLBACK",
+                    "start_date": "2026-03-02",
+                    "end_date": "2026-03-08",
+                    "periods": [
+                        {
+                            "period_index": 0,
+                            "period_start": "2026-03-02",
+                            "period_end": "2026-03-08",
+                            "assignments": {
+                                "W1": [
+                                    {"shift_type_id": "day", "date": "2026-03-02"}
+                                ],
+                            },
+                        }
+                    ],
+                    "statistics": {},
+                }
+            )
+        )
+
+        result = runner.invoke(
+            cli,
+            [
+                "-c",
+                str(config_file),  # group-level, not validate's own --config
+                "-v",
+                "validate",
+                "--schedule",
+                str(schedule_file),
+            ],
+        )
+
+        assert result.exit_code == 1, result.output
+        assert "requires 2" in result.output
+
+
+class TestValidateSkillsAndAttributesPlumbing:
+    """validate plumbs config required_attributes through to the skills
+    check (defect E)."""
+
+    def test_missing_worker_attribute_flagged_as_skills_violation(
+        self, runner: CliRunner, tmp_path: Path
+    ) -> None:
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text(
+            """
+shift_types:
+  - id: icu
+    name: ICU Shift
+    category: day
+    start_time: "07:00"
+    end_time: "15:00"
+    duration_hours: 8.0
+    workers_required: 1
+    required_attributes:
+      certification: ICU
+"""
+        )
+        schedule_file = tmp_path / "schedule.json"
+        schedule_file.write_text(
+            json.dumps(
+                {
+                    "schedule_id": "SCH-SKILLS",
+                    "start_date": "2026-03-02",
+                    "end_date": "2026-03-08",
+                    "periods": [
+                        {
+                            "period_index": 0,
+                            "period_start": "2026-03-02",
+                            "period_end": "2026-03-08",
+                            "assignments": {
+                                "W1": [
+                                    {"shift_type_id": "icu", "date": "2026-03-02"}
+                                ],
+                            },
+                        }
+                    ],
+                    "statistics": {},
+                }
+            )
+        )
+
+        result = runner.invoke(
+            cli,
+            [
+                "validate",
+                "--schedule",
+                str(schedule_file),
+                "--config",
+                str(config_file),
+            ],
+        )
+
+        assert result.exit_code == 1, result.output
+        assert "skills" in result.output.lower()
+        assert "certification" in result.output.lower()
+
+
+class TestValidateMaxShiftsPerPeriodPlumbing:
+    """validate plumbs the resolved worker_shift_limit override through to
+    ScheduleValidator's max_shifts_per_period (defect F)."""
+
+    def test_config_override_relaxes_the_default_limit(
+        self, runner: CliRunner, tmp_path: Path
+    ) -> None:
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text(
+            """
+shift_types:
+  - id: day
+    name: Day Shift
+    category: day
+    start_time: "09:00"
+    end_time: "17:00"
+    duration_hours: 8.0
+  - id: night
+    name: Night Shift
+    category: night
+    start_time: "23:00"
+    end_time: "07:00"
+    duration_hours: 8.0
+
+constraints:
+  worker_shift_limit:
+    parameters:
+      max_shifts_per_period: 2
+"""
+        )
+        schedule_file = tmp_path / "schedule.json"
+        schedule_file.write_text(
+            json.dumps(
+                {
+                    "schedule_id": "SCH-LIMIT",
+                    "start_date": "2026-03-02",
+                    "end_date": "2026-03-08",
+                    "periods": [
+                        {
+                            "period_index": 0,
+                            "period_start": "2026-03-02",
+                            "period_end": "2026-03-08",
+                            "assignments": {
+                                "W1": [
+                                    {"shift_type_id": "day", "date": "2026-03-02"},
+                                    {"shift_type_id": "night", "date": "2026-03-02"},
+                                ],
+                            },
+                        }
+                    ],
+                    "statistics": {},
+                }
+            )
+        )
+
+        result = runner.invoke(
+            cli,
+            [
+                "validate",
+                "--schedule",
+                str(schedule_file),
+                "--config",
+                str(config_file),
+            ],
+        )
+
+        assert result.exit_code == 0, result.output
+        assert "worker_shift_limit" not in result.output
+
+    def test_default_limit_still_applies_without_override(
+        self, runner: CliRunner, tmp_path: Path
+    ) -> None:
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text(
+            """
+shift_types:
+  - id: day
+    name: Day Shift
+    category: day
+    start_time: "09:00"
+    end_time: "17:00"
+    duration_hours: 8.0
+  - id: night
+    name: Night Shift
+    category: night
+    start_time: "23:00"
+    end_time: "07:00"
+    duration_hours: 8.0
+"""
+        )
+        schedule_file = tmp_path / "schedule.json"
+        schedule_file.write_text(
+            json.dumps(
+                {
+                    "schedule_id": "SCH-LIMIT-DEFAULT",
+                    "start_date": "2026-03-02",
+                    "end_date": "2026-03-08",
+                    "periods": [
+                        {
+                            "period_index": 0,
+                            "period_start": "2026-03-02",
+                            "period_end": "2026-03-08",
+                            "assignments": {
+                                "W1": [
+                                    {"shift_type_id": "day", "date": "2026-03-02"},
+                                    {"shift_type_id": "night", "date": "2026-03-02"},
+                                ],
+                            },
+                        }
+                    ],
+                    "statistics": {},
+                }
+            )
+        )
+
+        result = runner.invoke(
+            cli,
+            [
+                "validate",
+                "--schedule",
+                str(schedule_file),
+                "--config",
+                str(config_file),
+            ],
+        )
+
+        assert result.exit_code == 1, result.output
+        assert "worker_shift_limit" in result.output
+
+    def test_disabled_constraint_is_not_enforced(
+        self, runner: CliRunner, tmp_path: Path
+    ) -> None:
+        """generate -> validate must not self-contradict: a config that
+        explicitly disables worker_shift_limit should not have validate
+        enforce its (registry-default) max_shifts_per_period=1 anyway."""
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text(
+            """
+shift_types:
+  - id: day
+    name: Day Shift
+    category: day
+    start_time: "09:00"
+    end_time: "17:00"
+    duration_hours: 8.0
+  - id: night
+    name: Night Shift
+    category: night
+    start_time: "23:00"
+    end_time: "07:00"
+    duration_hours: 8.0
+
+constraints:
+  worker_shift_limit:
+    enabled: false
+"""
+        )
+        schedule_file = tmp_path / "schedule.json"
+        schedule_file.write_text(
+            json.dumps(
+                {
+                    "schedule_id": "SCH-LIMIT-DISABLED",
+                    "start_date": "2026-03-02",
+                    "end_date": "2026-03-08",
+                    "periods": [
+                        {
+                            "period_index": 0,
+                            "period_start": "2026-03-02",
+                            "period_end": "2026-03-08",
+                            "assignments": {
+                                "W1": [
+                                    {"shift_type_id": "day", "date": "2026-03-02"},
+                                    {"shift_type_id": "night", "date": "2026-03-02"},
+                                ],
+                            },
+                        }
+                    ],
+                    "statistics": {},
+                }
+            )
+        )
+
+        result = runner.invoke(
+            cli,
+            [
+                "validate",
+                "--schedule",
+                str(schedule_file),
+                "--config",
+                str(config_file),
+            ],
+        )
+
+        assert result.exit_code == 0, result.output
+        assert "worker_shift_limit" not in result.output

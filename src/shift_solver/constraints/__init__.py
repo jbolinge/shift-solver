@@ -13,6 +13,9 @@ from shift_solver.constraints.shift_frequency import ShiftFrequencyConstraint
 from shift_solver.constraints.shift_order_preference import (
     ShiftOrderPreferenceConstraint,
 )
+from shift_solver.constraints.skills import SkillsConstraint
+from shift_solver.constraints.worker_shift_limit import WorkerShiftLimitConstraint
+from shift_solver.constraints.workload import WorkloadConstraint
 
 __all__ = [
     "BaseConstraint",
@@ -27,4 +30,7 @@ __all__ = [
     "SequenceConstraint",
     "ShiftFrequencyConstraint",
     "ShiftOrderPreferenceConstraint",
+    "SkillsConstraint",
+    "WorkloadConstraint",
+    "WorkerShiftLimitConstraint",
 ]

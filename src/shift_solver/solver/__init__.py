@@ -6,6 +6,7 @@ from shift_solver.solver.constraint_registry import (
     register_builtin_constraints,
 )
 from shift_solver.solver.objective_builder import ObjectiveBuilder, ObjectiveTerm
+from shift_solver.solver.progress_callback import SolverProgressCallback
 from shift_solver.solver.result import SolverResult
 from shift_solver.solver.shift_solver import ShiftSolver
 from shift_solver.solver.solution_extractor import SolutionExtractor
@@ -18,6 +19,7 @@ __all__ = [
     "SolutionExtractor",
     "ObjectiveBuilder",
     "ObjectiveTerm",
+    "SolverProgressCallback",
     "ShiftSolver",
     "SolverResult",
     "ConstraintRegistry",

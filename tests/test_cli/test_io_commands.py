@@ -143,6 +143,29 @@ class TestImportDataCommand:
         assert result.exit_code == 0, result.output
         assert "Loaded 2 workers" in result.output
 
+    def test_import_messaging_is_honest_about_no_persistence(
+        self, tmp_path: Path
+    ) -> None:
+        """import-data doesn't claim to have stored anything (defect F).
+
+        It validates files; it never had a database to persist into, so the
+        messaging shouldn't say "Import complete!" as if something was
+        stored.
+        """
+        workers_csv = tmp_path / "workers.csv"
+        workers_csv.write_text("id,name,worker_type\nW001,Alice,full_time\n")
+
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            ["import-data", "--workers", str(workers_csv)],
+        )
+
+        assert result.exit_code == 0, result.output
+        assert "import complete" not in result.output.lower()
+        assert "valid" in result.output.lower()
+        assert "generate" in result.output.lower() or "validate" in result.output.lower()
+
     def test_import_availability_csv(self, tmp_path: Path) -> None:
         """Test importing availability from CSV."""
         avail_csv = tmp_path / "availability.csv"
@@ -331,3 +354,165 @@ class TestExportCommand:
 
         wb = openpyxl.load_workbook(output_file)
         assert "By Worker" not in wb.sheetnames
+
+
+class TestExportCommandConfig:
+    """Tests for --config on the export command (defects D, E)."""
+
+    @pytest.fixture
+    def sample_schedule_json(self, tmp_path: Path) -> Path:
+        import json
+
+        schedule_data = {
+            "schedule_id": "SCH-CONFIG-EXPORT",
+            "start_date": "2026-01-05",
+            "end_date": "2026-01-11",
+            "periods": [
+                {
+                    "period_index": 0,
+                    "period_start": "2026-01-05",
+                    "period_end": "2026-01-11",
+                    "assignments": {
+                        "W001": [{"shift_type_id": "day", "date": "2026-01-05"}],
+                        "W002": [{"shift_type_id": "night", "date": "2026-01-05"}],
+                    },
+                }
+            ],
+            "statistics": {},
+        }
+        schedule_file = tmp_path / "schedule.json"
+        with open(schedule_file, "w") as f:
+            json.dump(schedule_data, f)
+        return schedule_file
+
+    @pytest.fixture
+    def config_file(self, tmp_path: Path) -> Path:
+        cfg = tmp_path / "config.yaml"
+        cfg.write_text(
+            """
+shift_types:
+  - id: day
+    name: Day Shift
+    category: day
+    start_time: "09:00"
+    end_time: "17:00"
+    duration_hours: 8.0
+    workers_required: 3
+  - id: night
+    name: Night Shift
+    category: night
+    start_time: "23:00"
+    end_time: "07:00"
+    duration_hours: 8.0
+    workers_required: 1
+"""
+        )
+        return cfg
+
+    def test_export_json_format_never_warns_about_config(
+        self, tmp_path: Path, sample_schedule_json: Path
+    ) -> None:
+        """--format json doesn't need shift type metadata at all, so it
+        shouldn't print the "no --config" warning regardless of --config."""
+        output_file = tmp_path / "output.json"
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            [
+                "-c",
+                str(tmp_path / "no-such-config.yaml"),
+                "export",
+                "--schedule",
+                str(sample_schedule_json),
+                "--output",
+                str(output_file),
+                "--format",
+                "json",
+            ],
+        )
+
+        assert result.exit_code == 0, result.output
+        assert "warning" not in result.output.lower()
+        assert output_file.exists()
+
+    def test_export_without_config_warns_and_falls_back_to_inference(
+        self, tmp_path: Path, sample_schedule_json: Path
+    ) -> None:
+        """No --config (and no discoverable group-level config) prints a
+        warning and still succeeds via inference."""
+        output_file = tmp_path / "output.xlsx"
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            [
+                # Explicit nonexistent group-level config: without this, the
+                # group's own default ("config/config.yaml") would resolve
+                # against this repo's real config file when tests run from
+                # the project root.
+                "-c",
+                str(tmp_path / "no-such-config.yaml"),
+                "export",
+                "--schedule",
+                str(sample_schedule_json),
+                "--output",
+                str(output_file),
+                "--format",
+                "excel",
+            ],
+        )
+
+        assert result.exit_code == 0, result.output
+        assert "warning" in result.output.lower()
+        assert "no --config" in result.output.lower()
+        assert output_file.exists()
+
+    def test_export_with_config_builds_real_shift_types_no_warning(
+        self, tmp_path: Path, sample_schedule_json: Path, config_file: Path
+    ) -> None:
+        """--config suppresses the inference warning and is used directly."""
+        output_file = tmp_path / "output.xlsx"
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            [
+                "export",
+                "--schedule",
+                str(sample_schedule_json),
+                "--config",
+                str(config_file),
+                "--output",
+                str(output_file),
+                "--format",
+                "excel",
+            ],
+        )
+
+        assert result.exit_code == 0, result.output
+        assert "warning" not in result.output.lower()
+        assert output_file.exists()
+
+    def test_export_group_level_config_fallback(
+        self, tmp_path: Path, sample_schedule_json: Path, config_file: Path
+    ) -> None:
+        """The group-level -c is honored when export's own --config is
+        omitted (defect D), matching the list-shifts fallback pattern."""
+        output_file = tmp_path / "output.xlsx"
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            [
+                "-c",
+                str(config_file),
+                "export",
+                "--schedule",
+                str(sample_schedule_json),
+                "--output",
+                str(output_file),
+                "--format",
+                "excel",
+            ],
+        )
+
+        assert result.exit_code == 0, result.output
+        assert "warning" not in result.output.lower()
+        assert output_file.exists()

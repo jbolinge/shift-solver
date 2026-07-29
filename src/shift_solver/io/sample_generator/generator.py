@@ -4,7 +4,7 @@ import random
 from datetime import date, timedelta
 
 from shift_solver.io.sample_generator.exporters import SampleExporterMixin
-from shift_solver.io.sample_generator.names import FIRST_NAMES, LAST_NAMES
+from shift_solver.io.sample_generator.names import generate_worker_name
 from shift_solver.io.sample_generator.presets import IndustryPreset
 from shift_solver.models import Availability, SchedulingRequest, ShiftType, Worker
 
@@ -14,7 +14,7 @@ class SampleGenerator(SampleExporterMixin):
     Generates sample scheduling data for different industries.
 
     Supports generating:
-    - Workers with realistic names and types
+    - Workers with generic, role-flavored display names and types
     - Shift types based on industry presets
     - Availability records (vacations, time-off)
     - Scheduling requests
@@ -48,17 +48,15 @@ class SampleGenerator(SampleExporterMixin):
             List of Worker objects
         """
         workers = []
-        used_names: set[str] = set()
 
         for i in range(num_workers):
             worker_id = f"W{i + 1:03d}"
 
-            # Generate unique name
-            name = self._generate_unique_name(used_names)
-            used_names.add(name)
-
             # Random worker type
             worker_type = self.rng.choice(self.preset.worker_types)
+
+            # Generic, role-flavored display name (no real personal names)
+            name = generate_worker_name(i + 1, worker_type)
 
             # Random restrictions
             restricted_shifts: frozenset[str] = frozenset()
@@ -206,17 +204,3 @@ class SampleGenerator(SampleExporterMixin):
                     )
 
         return requests
-
-    def _generate_unique_name(self, used_names: set[str]) -> str:
-        """Generate a unique full name."""
-        for _ in range(100):  # Max attempts
-            first = self.rng.choice(FIRST_NAMES)
-            last = self.rng.choice(LAST_NAMES)
-            name = f"{first} {last}"
-            if name not in used_names:
-                return name
-
-        # Fallback with number suffix
-        first = self.rng.choice(FIRST_NAMES)
-        last = self.rng.choice(LAST_NAMES)
-        return f"{first} {last} {len(used_names)}"

@@ -42,9 +42,18 @@ def export_to_csv(
 
     Creates:
     - workers.csv
-    - shift_types.csv
+    - shift_types.csv (informational only -- see note below)
     - availability.csv
     - requests.csv
+
+    NOTE on shift_types.csv: no CSVLoader method or CLI command reads this
+    file back in. Shift type definitions used by the solver always come
+    from the YAML config's `shift_types` list (see docs/configuration.md),
+    never from CSV. This file is written purely as a human-readable record
+    of the shift types the generator assumed while producing the other
+    three files (e.g. so restricted_shifts/shift_type_id references in
+    workers.csv/requests.csv can be cross-checked); deleting it has no
+    effect on `generate`, `validate`, or `import-data`.
 
     Args:
         output_dir: Directory to write files to
@@ -69,7 +78,8 @@ def export_to_csv(
                 ]
             )
 
-    # Write shift_types.csv
+    # Write shift_types.csv (informational only -- not read back by any
+    # loader/command; see the note in this function's docstring)
     with open(output_dir / "shift_types.csv", "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(
@@ -159,7 +169,8 @@ def export_to_excel(
 
     Creates a workbook with sheets:
     - Workers
-    - ShiftTypes
+    - ShiftTypes (informational only -- see export_to_csv's docstring;
+      no loader/command reads shift types back from CSV or Excel)
     - Availability
     - Requests
 
@@ -280,7 +291,7 @@ class SampleExporterMixin(_HasGenerateMethods):
 
         Creates:
         - workers.csv
-        - shift_types.csv
+        - shift_types.csv (informational only -- see export_to_csv)
         - availability.csv
         - requests.csv
 

@@ -845,37 +845,58 @@ class TestRequestConstraintViolationVariableCoupling:
         status = solver.solve(model)
         assert status in (cp_model.OPTIMAL, cp_model.FEASIBLE)
 
-        # Post-solve validation: manually check each violation matches assignment
-        for var_name, viol_var in constraint.violation_variables.items():
-            viol_value = solver.value(viol_var)
+        # Post-solve validation: for each request, verify its violation
+        # variable(s) reflect the actual assignment state. Positive requests
+        # use one violation var for the whole date range (at-least-once
+        # semantics); negative requests use one per overlapping period.
+        for idx, request in enumerate(requests):
+            applicable_periods = [
+                p
+                for p, (period_start, period_end) in enumerate(period_dates)
+                if request.start_date <= period_end
+                and request.end_date >= period_start
+            ]
+            assignment_values = {
+                p: solver.value(
+                    variables.get_assignment_var(
+                        request.worker_id, p, request.shift_type_id
+                    )
+                )
+                for p in applicable_periods
+            }
 
-            # Parse the variable name to extract worker, shift_type, period
-            # Format: req_viol_{worker_id}_{shift_type_id}_p{period}_r{idx}
-            parts = var_name.replace("req_viol_", "").split("_")
-            worker_id = parts[0]
-            shift_type_id = parts[1]
-            period = int(parts[2][1:])  # Remove 'p' prefix
-            request_idx = int(parts[3][1:])  # Remove 'r' prefix
-
-            assignment_var = variables.get_assignment_var(
-                worker_id, period, shift_type_id
-            )
-            assignment_value = solver.value(assignment_var)
-
-            # Determine expected violation based on request type
-            request = requests[request_idx]
             if request.is_positive:
-                # Positive: violation=1 if NOT assigned
-                expected_viol = 0 if assignment_value >= 1 else 1
+                violation_name = (
+                    f"req_viol_{request.worker_id}_{request.shift_type_id}_r{idx}"
+                )
+                viol_value = solver.value(
+                    constraint.violation_variables[violation_name]
+                )
+                # Positive: violation=1 iff assigned in NONE of the periods
+                expected_viol = (
+                    0 if any(v >= 1 for v in assignment_values.values()) else 1
+                )
+                assert viol_value == expected_viol, (
+                    f"Violation mismatch for {violation_name}: "
+                    f"expected={expected_viol}, actual={viol_value}, "
+                    f"assignments={assignment_values}"
+                )
             else:
-                # Negative: violation=1 if assigned
-                expected_viol = 1 if assignment_value >= 1 else 0
-
-            assert viol_value == expected_viol, (
-                f"Violation mismatch for {var_name}: "
-                f"expected={expected_viol}, actual={viol_value}, "
-                f"assignment={assignment_value}, is_positive={request.is_positive}"
-            )
+                for period, assignment_value in assignment_values.items():
+                    violation_name = (
+                        f"req_viol_{request.worker_id}_{request.shift_type_id}"
+                        f"_p{period}_r{idx}"
+                    )
+                    viol_value = solver.value(
+                        constraint.violation_variables[violation_name]
+                    )
+                    # Negative: violation=1 if assigned that period
+                    expected_viol = 1 if assignment_value >= 1 else 0
+                    assert viol_value == expected_viol, (
+                        f"Violation mismatch for {violation_name}: "
+                        f"expected={expected_viol}, actual={viol_value}, "
+                        f"assignment={assignment_value}"
+                    )
 
     def test_violation_coupling_bidirectional_soundness(
         self,

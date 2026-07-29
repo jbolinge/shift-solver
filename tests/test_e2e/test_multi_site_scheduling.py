@@ -200,6 +200,10 @@ class TestPhysicianStyleMultiSiteScheduling:
         - Coverage: Hard (all 7 shifts filled per period)
         - Restriction: Hard (workers can't work restricted sites)
         - Availability: Hard (vacations honored)
+        - Worker shift limit: Hard (max 2/period) - 2 of the 8 workers are
+          on vacation every week, leaving only 6 available for 7 site
+          slots, so the registry default of 1 (pure exclusivity) is
+          infeasible; 2 legitimately lets one of the 6 cover a second site.
         - Fairness: Soft (200) - fair weekend distribution
         - Request: Soft (1000) - high-cost holiday pre-assignments
         """
@@ -207,6 +211,11 @@ class TestPhysicianStyleMultiSiteScheduling:
             "coverage": ConstraintConfig(enabled=True, is_hard=True),
             "restriction": ConstraintConfig(enabled=True, is_hard=True),
             "availability": ConstraintConfig(enabled=True, is_hard=True),
+            "worker_shift_limit": ConstraintConfig(
+                enabled=True,
+                is_hard=True,
+                parameters={"max_shifts_per_period": 2},
+            ),
             "fairness": ConstraintConfig(enabled=True, is_hard=False, weight=200),
             "request": ConstraintConfig(enabled=True, is_hard=True),
         }
@@ -469,11 +478,17 @@ class TestPhysicianStyleMultiSiteScheduling:
 
         assert result.success
 
-        # Run schedule validator
+        # Run schedule validator. max_shifts_per_period must mirror the
+        # worker_shift_limit override used to solve (2, not the validator's
+        # own default of 1) or the validator flags the legitimate 2-site
+        # assignments as violations.
         validator = ScheduleValidator(
             schedule=result.schedule,
             availabilities=vacation_pattern_26_weeks,
             requests=holiday_requests_26_weeks,
+            max_shifts_per_period=comprehensive_constraint_config[
+                "worker_shift_limit"
+            ].get_param("max_shifts_per_period", 1),
         )
         validation_result = validator.validate()
 

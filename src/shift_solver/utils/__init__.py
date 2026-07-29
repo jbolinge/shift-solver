@@ -9,7 +9,6 @@ from shift_solver.utils.exceptions import (
     ValidationError,
 )
 from shift_solver.utils.logging import (
-    SolverProgressCallback,
     get_logger,
     setup_logging,
 )
@@ -25,5 +24,4 @@ __all__ = [
     # Logging
     "setup_logging",
     "get_logger",
-    "SolverProgressCallback",
 ]

@@ -121,22 +121,22 @@ class FairnessConstraint(BaseConstraint):
         max_possible = num_periods * len(undesirable_shift_ids)
 
         # Create max_undesirable variable (max across all workers)
+        # add_max_equality already implies max_undesirable >= total for every
+        # worker, so no separate per-worker bound constraints are needed.
         max_undesirable = self.model.new_int_var(
             0, max_possible, "fairness_max_undesirable"
         )
-        for total in worker_totals:
-            self.model.add(max_undesirable >= total)
         self.model.add_max_equality(max_undesirable, worker_totals)
-        self._constraint_count += len(worker_totals) + 1
+        self._constraint_count += 1
 
         # Create min_undesirable variable (min across all workers)
+        # add_min_equality already implies min_undesirable <= total for every
+        # worker, so no separate per-worker bound constraints are needed.
         min_undesirable = self.model.new_int_var(
             0, max_possible, "fairness_min_undesirable"
         )
-        for total in worker_totals:
-            self.model.add(min_undesirable <= total)
         self.model.add_min_equality(min_undesirable, worker_totals)
-        self._constraint_count += len(worker_totals) + 1
+        self._constraint_count += 1
 
         # Create spread variable (max - min)
         spread = self.model.new_int_var(0, max_possible, "fairness_spread")

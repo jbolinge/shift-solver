@@ -1,9 +1,9 @@
 id,name,worker_type,restricted_shifts,preferred_shifts
-N001,Dr. Smith,physician,,day
-N002,Nurse Johnson,full_time,,
-N003,Nurse Williams,full_time,,evening
-N004,Nurse Brown,full_time,night,day
-N005,Nurse Davis,full_time,,
-N006,Nurse Miller,part_time,night;weekend,day
-N007,Nurse Wilson,full_time,,
-N008,Nurse Moore,full_time,,night
+N001,Physician 1,physician,,day
+N002,Worker 2,full_time,,
+N003,Worker 3,full_time,,evening
+N004,Worker 4,full_time,night,day
+N005,Worker 5,full_time,,
+N006,Worker 6,part_time,"night,weekend",day
+N007,Worker 7,full_time,,
+N008,Worker 8,full_time,,night

@@ -270,6 +270,7 @@ class TestDataImportWorkflow:
             "IMP-W1,ImportAlice,full_time\n"
             "IMP-W2,ImportBob,full_time\n"
             "IMP-W3,ImportCharlie,full_time\n"
+            "IMP-W4,ImportDana,full_time\n"
         )
         csv_file = io.BytesIO(csv_content.encode("utf-8"))
         csv_file.name = "workers.csv"
@@ -284,6 +285,7 @@ class TestDataImportWorkflow:
         assert Worker.objects.filter(worker_id="IMP-W1").exists()
         assert Worker.objects.filter(worker_id="IMP-W2").exists()
         assert Worker.objects.filter(worker_id="IMP-W3").exists()
+        assert Worker.objects.filter(worker_id="IMP-W4").exists()
 
         # Create shifts manually
         _create_shifts(client)

@@ -265,17 +265,35 @@ class TestFrequencyConstraintInteractions:
 
         assert result.success
 
-    def test_frequency_limits_with_high_coverage(self, worker_factory) -> None:
-        """Frequency limits when coverage requirements are high."""
-        workers = [worker_factory() for _ in range(10)]
+    def test_worker_shift_limit_with_high_coverage(self, worker_factory) -> None:
+        """worker_shift_limit binds meaningfully against high coverage needs.
+
+        Originally this test passed max_shifts_per_period to the frequency
+        constraint (which has no such parameter -- it was silently ignored).
+        max_shifts_per_period is worker_shift_limit's real parameter, so
+        this now exercises the two concurrent shift types a per-period
+        exclusivity limit actually constrains: 6 workers exactly cover
+        morning(3) + afternoon(3) = 6 slots per period when each worker
+        may hold at most 1 shift.
+        """
+        workers = [worker_factory() for _ in range(6)]
 
         shift_types = [
             ShiftType(
-                id="shift",
-                name="Shift",
+                id="morning",
+                name="Morning",
                 category="day",
-                start_time=time(9, 0),
-                end_time=time(17, 0),
+                start_time=time(6, 0),
+                end_time=time(14, 0),
+                duration_hours=8.0,
+                workers_required=3,  # High coverage
+            ),
+            ShiftType(
+                id="afternoon",
+                name="Afternoon",
+                category="day",
+                start_time=time(14, 0),
+                end_time=time(22, 0),
                 duration_hours=8.0,
                 workers_required=3,  # High coverage
             ),
@@ -285,10 +303,9 @@ class TestFrequencyConstraintInteractions:
 
         constraint_configs = {
             "coverage": ConstraintConfig(enabled=True, is_hard=True),
-            "frequency": ConstraintConfig(
+            "worker_shift_limit": ConstraintConfig(
                 enabled=True,
-                is_hard=False,
-                weight=100,
+                is_hard=True,
                 parameters={"max_shifts_per_period": 1},
             ),
         }
@@ -301,6 +318,11 @@ class TestFrequencyConstraintInteractions:
         )
 
         assert result.success
+        # Every worker holds at most 1 shift per period, the limit being
+        # tested, and the pool is sized so that's also exactly enough.
+        for period in result.schedule.periods:
+            for shifts in period.assignments.values():
+                assert len(shifts) <= 1
 
 
 @pytest.mark.e2e

@@ -10,7 +10,7 @@ from shift_solver.config.schema import (
     parse_shift_frequency_requirements,
     parse_shift_order_preferences,
 )
-from shift_solver.constraints.base import ConstraintConfig
+from shift_solver.constraints.base import BaseConstraint, ConstraintConfig
 from shift_solver.models import (
     Availability,
     SchedulingRequest,
@@ -160,6 +160,9 @@ class ShiftSolver:
 
         # Run pre-solve feasibility check
         feasibility_result = self._check_feasibility()
+        feasibility_warnings = [
+            f"{w['type']}: {w['message']}" for w in feasibility_result.warnings
+        ]
         if not feasibility_result.is_feasible:
             return SolverResult(
                 success=False,
@@ -168,6 +171,7 @@ class ShiftSolver:
                 status_name="INFEASIBLE_PRE_SOLVE",
                 solve_time_seconds=time_module.time() - start_time,
                 feasibility_issues=feasibility_result.issues,
+                warnings=feasibility_warnings,
             )
 
         # Create model and variables
@@ -219,9 +223,8 @@ class ShiftSolver:
                 status=status,
                 status_name=self._solver.StatusName(status),
                 solve_time_seconds=solve_time,
-                objective_value=self._solver.ObjectiveValue()
-                if hasattr(self._solver, "ObjectiveValue")
-                else None,
+                objective_value=self._solver.ObjectiveValue(),
+                warnings=feasibility_warnings,
             )
         else:
             return SolverResult(
@@ -230,6 +233,7 @@ class ShiftSolver:
                 status=status,
                 status_name=self._solver.StatusName(status),
                 solve_time_seconds=solve_time,
+                warnings=feasibility_warnings,
             )
 
     def _apply_constraints(self) -> None:
@@ -302,17 +306,7 @@ class ShiftSolver:
             )
 
         for constraint_id, registration in ConstraintRegistry.get_soft_constraints().items():
-            # Get config with special handling for request constraint
-            default_config = registration.default_config
-            if constraint_id == "request" and not default_config.enabled:
-                # Enable request constraint by default if there are requests
-                default_config = ConstraintConfig(
-                    enabled=bool(self.requests),
-                    is_hard=False,
-                    weight=default_config.weight,
-                )
-
-            config = self._get_constraint_config(constraint_id, default_config)
+            config = self._get_constraint_config(constraint_id, registration.default_config)
             if not config.enabled:
                 continue
 
@@ -322,7 +316,35 @@ class ShiftSolver:
                 config,
             )
             constraint.apply(**context)
+
+            if config.is_hard and not constraint.handles_hard_mode:
+                self._enforce_hard_mode(constraint)
+
             self._objective_builder.add_constraint(constraint)
+
+    def _enforce_hard_mode(self, constraint: BaseConstraint) -> None:
+        """
+        Force a soft-registered constraint's violations to zero.
+
+        Soft constraints can be configured with is_hard=True, meaning the
+        deployment wants this normally-preferential rule treated as
+        mandatory. Constraints that implement their own hard/soft semantics
+        (handles_hard_mode=True, e.g. RequestConstraint) are skipped here
+        since they've already enforced hardness internally.
+
+        For everything else, every "violation" or "objective_target"
+        variable (e.g. fairness's spread) is pinned to 0 - "auxiliary"
+        helper variables (e.g. fairness's max/min intermediates) are left
+        alone since they aren't the thing being violated.
+        """
+        if self._model is None:
+            raise RuntimeError("Cannot enforce hard mode: model not initialized")
+
+        for var_name, var in constraint.violation_variables.items():
+            var_type = constraint.violation_variable_types.get(var_name, "violation")
+            if var_type == "auxiliary":
+                continue
+            self._model.add(var == 0)
 
     def _check_feasibility(self) -> FeasibilityResult:
         """Run pre-solve feasibility check."""
@@ -333,5 +355,7 @@ class ShiftSolver:
             availabilities=self.availabilities,
             shift_frequency_requirements=self.shift_frequency_requirements,
             shift_order_preferences=self.shift_order_preferences,
+            requests=self.requests,
+            constraint_configs=self.constraint_configs,
         )
         return checker.check()

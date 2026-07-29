@@ -1,6 +1,5 @@
 """ObjectiveBuilder - builds weighted objective from soft constraint violations."""
 
-import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -115,20 +114,8 @@ class ObjectiveBuilder:
         self.model.minimize(objective_expr)
 
     def _get_priority(self, constraint: "BaseConstraint", var_name: str) -> int:
-        """Get priority from constraint metadata or fallback to name-based extraction."""
-        # First check the violation_priorities dict
-        if var_name in constraint.violation_priorities:
-            return constraint.violation_priorities[var_name]
-        # Fallback to regex for backwards compatibility
-        return self._extract_priority(var_name)
-
-    def _extract_priority(self, var_name: str) -> int:
-        """Extract priority multiplier from variable name (legacy fallback)."""
-        # Look for _prioN at end of name
-        match = re.search(r"_prio(\d+)$", var_name)
-        if match:
-            return int(match.group(1))
-        return 1
+        """Get priority from constraint metadata, defaulting to 1."""
+        return constraint.violation_priorities.get(var_name, 1)
 
     def get_objective_breakdown(self) -> dict[str, list[ObjectiveTerm]]:
         """

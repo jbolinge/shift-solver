@@ -1,7 +1,7 @@
 id,name,worker_type,restricted_shifts,preferred_shifts
-R001,Manager Mike,full_time,,morning
-R002,Alice,full_time,,
-R003,Bob,full_time,,afternoon
-R004,Carol,part_time,weekend,morning
-R005,Dave,part_time,,afternoon
-R006,Emma,part_time,,weekend
+R001,Worker 1,full_time,,morning
+R002,Worker 2,full_time,,
+R003,Worker 3,full_time,,afternoon
+R004,Worker 4,part_time,weekend,morning
+R005,Worker 5,part_time,,afternoon
+R006,Worker 6,part_time,,weekend

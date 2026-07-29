@@ -6,9 +6,12 @@ from ortools.sat.python import cp_model
 
 from shift_solver.constraints.base import BaseConstraint, ConstraintConfig
 from shift_solver.models import ShiftFrequencyRequirement, ShiftType, Worker
+from shift_solver.utils import get_logger
 
 if TYPE_CHECKING:
     from shift_solver.solver.types import SolverVariables
+
+logger = get_logger("constraints.shift_frequency")
 
 
 class ShiftFrequencyConstraint(BaseConstraint):
@@ -38,6 +41,11 @@ class ShiftFrequencyConstraint(BaseConstraint):
     """
 
     constraint_id = "shift_frequency"
+    # Implements per-record hard semantics internally (each requirement is
+    # independently hard/soft based on the constraint's own config), so the
+    # solver's generic soft->hard enforcement must not also force every
+    # violation variable to 0 on top of that.
+    handles_hard_mode = True
 
     def __init__(
         self,
@@ -99,13 +107,23 @@ class ShiftFrequencyConstraint(BaseConstraint):
         if not valid_shift_types:
             return
 
-        # Window size is max_periods_between + 1
-        # e.g., max_periods_between=4 means must work at least once every 4 periods,
-        # which is a sliding window of 5 periods (matches FrequencyConstraint).
-        window_size = req.max_periods_between + 1
+        # A window of N consecutive periods must contain at least one
+        # assignment, so window_size == max_periods_between (matches
+        # FrequencyConstraint's sliding window convention).
+        # e.g., max_periods_between=4 means must work at least once in
+        # every window of 4 consecutive periods.
+        window_size = req.max_periods_between
 
         if window_size > num_periods:
             # Window larger than schedule, only one window covering all periods
+            logger.warning(
+                "shift_frequency constraint: worker_id=%s max_periods_between=%d "
+                "exceeds horizon of num_periods=%d periods; clamping window to "
+                "the full horizon",
+                req.worker_id,
+                req.max_periods_between,
+                num_periods,
+            )
             window_size = num_periods
 
         # Create sliding window constraints

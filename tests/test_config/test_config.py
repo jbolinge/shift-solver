@@ -56,12 +56,18 @@ class TestConstraintConfig:
     """Tests for ConstraintConfig."""
 
     def test_default_values(self) -> None:
-        """ConstraintConfig has sensible defaults."""
+        """
+        ConstraintConfig defaults to None for enabled/is_hard/weight.
+
+        None means "inherit the ConstraintRegistry registration default" --
+        the registry is the single source of truth for defaults, not this
+        model. Use ShiftSolverConfig.get_constraint_config() to resolve them.
+        """
         config = ConstraintConfig()
 
-        assert config.enabled is True
-        assert config.is_hard is True
-        assert config.weight == 100
+        assert config.enabled is None
+        assert config.is_hard is None
+        assert config.weight is None
         assert config.parameters == {}
 
     def test_soft_constraint_config(self) -> None:
@@ -210,7 +216,7 @@ class TestTimeParsingValidation:
             category="day",
             start_time="09:30",  # type: ignore
             end_time="17:45",  # type: ignore
-            duration_hours=8.0,
+            duration_hours=8.25,  # 09:30-17:45 spans 8h15m, matching duration
         )
         assert config.start_time == time(9, 30)
         assert config.end_time == time(17, 45)

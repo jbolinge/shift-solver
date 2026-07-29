@@ -39,6 +39,12 @@ class BaseConstraint(ABC):
 
     constraint_id: str = "base"
 
+    # Set to True on subclasses that implement their own hard/soft semantics
+    # internally (e.g. per-record is_hard overrides), so ShiftSolver's generic
+    # soft->hard enforcement (forcing every violation var to 0 when the
+    # constraint's config.is_hard is True) does not double-enforce them.
+    handles_hard_mode: bool = False
+
     def __init__(
         self,
         model: cp_model.CpModel,
@@ -116,13 +122,3 @@ class BaseConstraint(ABC):
                 (e.g., workers, shift_types, availabilities)
         """
         pass
-
-    def _add_hard_constraint(self, _constraint: cp_model.Constraint) -> None:
-        """Add a hard constraint and increment counter."""
-        self._constraint_count += 1
-
-    def _create_violation_var(self, name: str) -> cp_model.IntVar:
-        """Create and track a violation variable for soft constraints."""
-        var = self.model.new_bool_var(f"{self.constraint_id}_{name}")
-        self._violation_variables[name] = var
-        return var

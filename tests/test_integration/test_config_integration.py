@@ -175,8 +175,8 @@ constraints:
     is_hard: false
     weight: 50
     parameters:
-      max_per_period: 3
-      min_spacing_days: 2
+      max_periods_between: 3
+      shift_types: ["day"]
 
 shift_types:
   - id: day
@@ -193,8 +193,8 @@ shift_types:
         cfg = ShiftSolverConfig.load_from_yaml(config_file)
 
         freq_config = cfg.get_constraint_config("frequency")
-        assert freq_config.parameters.get("max_per_period") == 3
-        assert freq_config.parameters.get("min_spacing_days") == 2
+        assert freq_config.parameters.get("max_periods_between") == 3
+        assert freq_config.parameters.get("shift_types") == ["day"]
 
 
 @pytest.mark.integration

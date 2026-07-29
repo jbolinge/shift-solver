@@ -207,11 +207,19 @@ class TestGenerateValidateWorkflow:
         assert result.exit_code == 0, f"Generate failed: {result.output}"
 
         # Step 2: Validate schedule
+        # Pass --config explicitly so validate reads the same shift type
+        # definitions (workers_required, etc.) that generate used. Without
+        # it, validate falls back to inferring shift types from the
+        # schedule JSON alone, which always guesses workers_required=1 --
+        # a mismatch with the real config's day_shift/evening_shift
+        # requirement of 2 that produces spurious coverage_excess
+        # violations unrelated to what's being tested here.
         result = e2e_runner.invoke(
             cli,
             [
                 "validate",
                 "--schedule", str(schedule_json),
+                "--config", "config/config.yaml",
             ],
         )
         # Should pass validation
@@ -286,11 +294,17 @@ class TestCompleteWorkflowCSV:
         assert result.exit_code == 0, f"Export failed: {result.output}"
 
         # Step 5: Validate
+        # Pass --config explicitly (matching the config used to generate)
+        # so validate uses the real workers_required per shift type instead
+        # of inferring workers_required=1 for everything from the schedule
+        # JSON, which would spuriously flag the morning/afternoon shifts
+        # (workers_required=2 in sample_config_file) as over-covered.
         result = e2e_runner.invoke(
             cli,
             [
                 "validate",
                 "--schedule", str(schedule_json),
+                "--config", str(sample_config_file),
             ],
         )
         assert result.exit_code == 0, f"Validate failed: {result.output}"

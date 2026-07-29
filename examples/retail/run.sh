@@ -19,7 +19,8 @@ uv run shift-solver -c "$EXAMPLE_DIR/config.yaml" generate \
   --start-date 2026-02-01 \
   --end-date 2026-02-28 \
   --output "$OUTPUT_DIR/schedule.json" \
-  --demo \
+  --workers "$EXAMPLE_DIR/workers.csv" \
+  --availability "$EXAMPLE_DIR/availability.csv" \
   --quick-solve
 
 echo ""
@@ -37,6 +38,7 @@ echo ""
 echo "3. Exporting to Excel..."
 uv run shift-solver export \
   --schedule "$OUTPUT_DIR/schedule.json" \
+  --config "$EXAMPLE_DIR/config.yaml" \
   --output "$OUTPUT_DIR/schedule.xlsx"
 
 echo ""
