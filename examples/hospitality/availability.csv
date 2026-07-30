@@ -1,0 +1,4 @@
+worker_id,start_date,end_date,availability_type,shift_type_id
+worker_4,2026-02-09,2026-02-11,unavailable,
+worker_5,2026-02-02,2026-02-06,required,
+worker_6,2026-02-16,2026-02-20,preferred,shift_late

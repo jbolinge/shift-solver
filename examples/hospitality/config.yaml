@@ -1,0 +1,138 @@
+# Hospitality example: a hotel front desk scheduled at DAY granularity,
+# exercising the commercial-parity constraint set (min rest, consecutive-day
+# caps, shift successions, night-block rules, weekend rules, hours-based
+# workload windows, preferences, pinned assignments, worker pairing).
+#
+# Run with: bash examples/hospitality/run.sh
+
+solver:
+  max_time_seconds: 120
+  quick_solution_seconds: 30
+
+schedule:
+  period_type: "day"      # each calendar day is its own period
+  num_periods: 28         # used when generate is called without --end-date
+
+shift_types:
+  - id: shift_early
+    name: Early Shift
+    category: cat_day
+    start_time: "06:00"
+    end_time: "14:00"
+    duration_hours: 8.0
+    workers_required: 2
+  - id: shift_late
+    name: Late Shift
+    category: cat_day
+    start_time: "14:00"
+    end_time: "22:00"
+    duration_hours: 8.0
+    workers_required: 2
+  - id: shift_night
+    name: Night Shift
+    category: cat_night
+    start_time: "22:00"
+    end_time: "06:00"
+    duration_hours: 8.0
+    workers_required: 1
+    is_undesirable: true
+
+constraints:
+  # No "clopening": at least 11 hours between any two shifts. Forbids
+  # late (ends 22:00) -> early (starts 06:00 next day, 8h gap) and any
+  # night -> day-shift transition that cuts rest short.
+  min_rest:
+    enabled: true
+    is_hard: true
+    parameters:
+      min_rest_hours: 11.0
+
+  # At most 5 working days in a row.
+  max_consecutive:
+    enabled: true
+    is_hard: true
+    parameters:
+      max_consecutive_periods: 5
+
+  # Never an early shift the day after a night shift (also implied by
+  # min_rest here; kept as an explicit named rule for reporting).
+  shift_succession:
+    enabled: true
+    is_hard: false
+    weight: 300
+    parameters:
+      rules:
+        - rule_id: no_early_after_night
+          from_type: shift_type
+          from_value: shift_night
+          to_type: shift_type
+          to_value: shift_early
+          is_hard: true
+
+  # Night blocks: at most 3 nights in a row, then a full day off.
+  consecutive_shift_type:
+    enabled: true
+    is_hard: true
+    parameters:
+      rules:
+        - rule_id: night_block
+          categories: ["cat_night"]
+          max_consecutive: 3
+          rest_after_run: 1
+
+  # Weekend hygiene: prefer complete weekends, at most 3 working
+  # weekends per 4-week roster.
+  weekend:
+    enabled: true
+    is_hard: false
+    weight: 150
+    parameters:
+      require_complete: true
+      max_working_weekends: 3
+
+  # Weekly overtime cap: at most 40 hours in any rolling 7-day window.
+  workload:
+    enabled: true
+    is_hard: false
+    weight: 50
+    parameters:
+      unit: hours
+      window_periods: 7
+      max_total_hours: 40.0
+
+  # Spread the night burden: tolerate a spread of 1, penalize beyond.
+  fairness:
+    enabled: true
+    is_hard: false
+    weight: 500
+    parameters:
+      tolerance: 1
+
+  # Honor workers.csv preferred_shifts and availability preferred/
+  # required records.
+  preference:
+    enabled: true
+    is_hard: false
+    weight: 100
+
+  # worker_2 and worker_3 should not share the same shift.
+  worker_pairing:
+    enabled: true
+    is_hard: false
+    weight: 200
+    parameters:
+      rules:
+        - rule_id: keep_apart
+          type: apart
+          worker_a: worker_2
+          worker_b: worker_3
+
+  # The first day's early crew is already published - keep it fixed.
+  pinned:
+    enabled: true
+    parameters:
+      assignments:
+        - worker_id: worker_1
+          period_index: 0
+          shift_type_id: shift_early
+          value: 1
