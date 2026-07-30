@@ -16,8 +16,11 @@ if TYPE_CHECKING:
     from shift_solver.io.csv_loader import CSVLoader
     from shift_solver.io.excel_handler.loader import ExcelLoader
 
-# Suffixes (case-insensitive) recognized as Excel workbooks by make_loader/
-# is_excel_path. Everything else is treated as CSV.
+# Suffixes (case-insensitive) recognized as Excel-shaped by make_loader/
+# is_excel_path. Everything else is treated as CSV. Note .xls is routed to
+# ExcelLoader only so it can fail with a clear "save as .xlsx" error --
+# openpyxl cannot read the legacy binary format, and sending .xls to the
+# CSV loader instead would produce a far more confusing parse failure.
 EXCEL_SUFFIXES = frozenset({".xlsx", ".xls"})
 
 
@@ -31,11 +34,14 @@ def make_loader(
 ) -> "CSVLoader | ExcelLoader":
     """Construct the loader appropriate for `file_path`'s suffix.
 
-    .xlsx/.xls -> ExcelLoader, everything else -> CSVLoader. This centralizes
-    the suffix dispatch previously duplicated (and CSV-only, so .xlsx paths
-    died with a CSVLoaderError) across the generate/validate/import-data CLI
-    commands. Imports are deferred to avoid a circular import: csv_loader.py
-    and excel_handler/loader.py both import cell parsers from this module.
+    .xlsx -> ExcelLoader, everything else -> CSVLoader. Legacy .xls paths
+    are also routed to ExcelLoader, which rejects them with an actionable
+    "save as .xlsx" error (openpyxl cannot read the old binary format).
+    This centralizes the suffix dispatch previously duplicated (and
+    CSV-only, so .xlsx paths died with a CSVLoaderError) across the
+    generate/validate/import-data CLI commands. Imports are deferred to
+    avoid a circular import: csv_loader.py and excel_handler/loader.py
+    both import cell parsers from this module.
 
     Args:
         file_path: Path whose suffix determines the loader type.

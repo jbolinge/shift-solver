@@ -198,13 +198,21 @@ No parameters.
 #### `worker_shift_limit` (hard)
 
 Caps how many shift assignments a single worker may hold within one
-period (across all shift types combined). Without this constraint
-nothing stops one worker from being assigned the day, evening, *and*
-night shift in the same period.
+period. Without this constraint nothing stops one worker from being
+assigned the day, evening, *and* night shift in the same period.
+
+The limit is **day-aware**: shift types only compete for the same slots
+on calendar days where they both apply (per `applicable_days`). Two
+shift types with disjoint `applicable_days` -- e.g. a weekday-only shift
+and a weekend-only shift -- can both be held by the same worker in the
+same (weekly) period under `max_shifts_per_period: 1`, since they never
+occur on the same day. Shift types without `applicable_days` apply every
+day and always compete. The post-solve validator applies the same
+day-aware rule.
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `max_shifts_per_period` | int >= 1 | 1 | Maximum simultaneous shift assignments per worker per period. The default of 1 makes shifts mutually exclusive. |
+| `max_shifts_per_period` | int >= 1 | 1 | Maximum shift assignments per worker on any single calendar day of a period. The default of 1 makes same-day shifts mutually exclusive. |
 
 #### `skills` (hard)
 
@@ -614,31 +622,29 @@ The solver's only decision variable is a boolean "assignment" per
 period. Practical consequences:
 
 - **One assignment covers the entire period**, however long that period
-  is. With the CLI's current weekly periods, a worker assigned the
-  `"day"` shift type for period 3 has that single assignment represent
-  the *whole week*, not "the day shift on one day of that week." Getting
-  actual day-by-day assignment requires each period to be one calendar
-  day (i.e. a `period_dates` list with one day per period) -- today that
-  means calling `ShiftSolver` directly with daily `period_dates`, since
-  the shipped `generate` CLI command only builds weekly periods (see the
-  `schedule.period_type` note above).
+  is. With `period_type: week`, a worker assigned the `"day"` shift type
+  for period 3 has that single assignment represent the *whole week*,
+  not "the day shift on one day of that week." For actual day-by-day
+  assignment, set `schedule.period_type: day` -- each calendar day
+  becomes its own period, fully supported by the shipped `generate`
+  command (see the `schedule.period_type` note above and the
+  `examples/hospitality/` walkthrough).
 - **`ShiftInstance.date` is always the period's start date** --
   `SolutionExtractor` stamps every generated shift instance with
-  `period_start`, never a per-day date within a multi-day period.
-- **Not expressible at this granularity**: minimum rest time between
-  shifts, maximum consecutive calendar days worked, and maximum hours
-  worked per week are all *sub-period* concepts and cannot be enforced by
-  any constraint in this library when `period_type` is `"week"` or
-  `"month"`. The closest analogues available are: `worker_shift_limit`
-  (caps simultaneous shift types *within* one period, not across periods),
-  `sequence` (discourages the same shift *category* in two *consecutive
-  periods*, which only approximates "no back-to-back shifts" at
-  week/month granularity), and `workload`/`shift_counts` (whole-horizon
-  totals). If you need true rest-hours/consecutive-days/hours-per-week
-  enforcement, drive `ShiftSolver` with daily `period_dates` directly
-  (bypassing the CLI's weekly-only `generate` command) and express the
-  rule via `sequence` (categories) and `worker_shift_limit` at day
-  granularity instead.
+  `period_start`. With day periods this *is* the calendar day; with
+  multi-day periods it is only the period's first day.
+- **Day-granular rules need day periods**: minimum rest time between
+  shifts (`min_rest`), maximum consecutive calendar days worked
+  (`max_consecutive`), weekend rules (`weekend`), and rolling
+  hours-per-week caps (`workload` with `unit: hours` +
+  `window_periods: 7`) are all *day-level* concepts. Run them with
+  `period_type: day`; with `week` periods, `min_rest` only checks
+  period-boundary days, `weekend` disables itself with a warning, and a
+  "consecutive periods" cap means consecutive *weeks*. The older
+  week-granularity approximations (`sequence` for back-to-back
+  categories, day-aware `worker_shift_limit` for within-period
+  exclusivity, whole-horizon `workload` totals) remain available when
+  week periods are the right model.
 
 ## Positive vs. negative requests
 

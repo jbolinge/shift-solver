@@ -99,6 +99,23 @@ class TestMakeLoader:
         loader = make_loader(tmp_path / "workers.xls")
         assert isinstance(loader, ExcelLoader)
 
+    def test_legacy_xls_rejected_with_actionable_error(
+        self, tmp_path: Path
+    ) -> None:
+        """openpyxl can't read binary .xls: fail with 'save as .xlsx', not
+        openpyxl's own xlrd recommendation (a library the project doesn't
+        ship) or an uncaught traceback."""
+        from shift_solver.io.excel_handler.exceptions import ExcelHandlerError
+
+        xls_path = tmp_path / "workers.xls"
+        xls_path.write_bytes(b"\xd0\xcf\x11\xe0legacy-biff-junk")
+
+        loader = make_loader(xls_path)
+        with pytest.raises(ExcelHandlerError, match="save it as .xlsx"):
+            loader.load_workers(xls_path)
+        with pytest.raises(ExcelHandlerError, match="save it as .xlsx"):
+            loader.load_all(xls_path)
+
     def test_csv_dispatches_to_csv_loader(self, tmp_path: Path) -> None:
         loader = make_loader(tmp_path / "workers.csv")
         assert isinstance(loader, CSVLoader)

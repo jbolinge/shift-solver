@@ -12,6 +12,21 @@ from shift_solver.models import Availability, SchedulingRequest, Worker
 from shift_solver.models.data_models import AVAILABILITY_TYPES, REQUEST_TYPES
 
 
+def _reject_legacy_xls(file_path: Path) -> None:
+    """Fail fast on legacy binary .xls workbooks with an actionable message.
+
+    openpyxl only reads OOXML (.xlsx) workbooks; without this guard a .xls
+    file surfaces openpyxl's own error recommending xlrd - a library this
+    loader doesn't use and the project doesn't ship - or, on code paths
+    without a try/except, an uncaught traceback.
+    """
+    if file_path.suffix.lower() == ".xls":
+        raise ExcelHandlerError(
+            f"Legacy .xls format is not supported: {file_path}. "
+            f"Open the file in Excel/LibreOffice and save it as .xlsx."
+        )
+
+
 class ExcelLoader:
     """
     Loads scheduling data from Excel files.
@@ -142,8 +157,12 @@ class ExcelLoader:
         """
         if not file_path.exists():
             raise ExcelHandlerError(f"File not found: {file_path}")
+        _reject_legacy_xls(file_path)
 
-        wb = openpyxl.load_workbook(file_path, data_only=True)
+        try:
+            wb = openpyxl.load_workbook(file_path, data_only=True)
+        except Exception as e:
+            raise ExcelHandlerError(f"Error reading Excel file: {e}") from e
 
         result: dict[str, Any] = {
             "workers": [],
@@ -166,6 +185,7 @@ class ExcelLoader:
         """Read a sheet and return list of row dicts."""
         if not file_path.exists():
             raise ExcelHandlerError(f"File not found: {file_path}")
+        _reject_legacy_xls(file_path)
 
         try:
             wb = openpyxl.load_workbook(file_path, data_only=True)
