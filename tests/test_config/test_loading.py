@@ -587,4 +587,7 @@ shift_types:
             ShiftSolverConfig.load_from_yaml(config_file)
 
         # Should mention uniqueness
-        assert "unique" in str(exc_info.value).lower() or "duplicate" in str(exc_info.value).lower()
+        assert (
+            "unique" in str(exc_info.value).lower()
+            or "duplicate" in str(exc_info.value).lower()
+        )

@@ -51,7 +51,10 @@ class TestVariableBuilder:
 
     @pytest.fixture
     def builder(
-        self, model: cp_model.CpModel, workers: list[Worker], shift_types: list[ShiftType]
+        self,
+        model: cp_model.CpModel,
+        workers: list[Worker],
+        shift_types: list[ShiftType],
     ) -> VariableBuilder:
         """Create a VariableBuilder instance."""
         return VariableBuilder(
@@ -81,7 +84,9 @@ class TestVariableBuilder:
         all_vars = list(variables.all_assignment_vars())
         assert len(all_vars) == 24
 
-    def test_assignment_var_names_are_descriptive(self, builder: VariableBuilder) -> None:
+    def test_assignment_var_names_are_descriptive(
+        self, builder: VariableBuilder
+    ) -> None:
         """Assignment variable names include worker, period, and shift type."""
         variables = builder.build()
 
@@ -102,7 +107,10 @@ class TestVariableBuilder:
                 assert var is not None
 
     def test_shift_count_vars_bounded(
-        self, model: cp_model.CpModel, workers: list[Worker], shift_types: list[ShiftType]
+        self,
+        model: cp_model.CpModel,
+        workers: list[Worker],
+        shift_types: list[ShiftType],
     ) -> None:
         """Shift count variables have correct bounds (0 to num_periods)."""
         num_periods = 10

@@ -35,7 +35,9 @@ def _create_workers() -> list[Worker]:
         Worker(id="doctor1", name="Doctor 1", restricted_shifts=frozenset({"site_c"})),
         Worker(id="doctor2", name="Doctor 2", restricted_shifts=frozenset()),
         Worker(id="doctor3", name="Doctor 3", restricted_shifts=frozenset({"site_b"})),
-        Worker(id="doctor4", name="Doctor 4", restricted_shifts=frozenset({"hospital_day"})),
+        Worker(
+            id="doctor4", name="Doctor 4", restricted_shifts=frozenset({"hospital_day"})
+        ),
         Worker(id="doctor5", name="Doctor 5", restricted_shifts=frozenset({"site_a"})),
         Worker(id="doctor6", name="Doctor 6", restricted_shifts=frozenset({"site_a"})),
         Worker(id="doctor7", name="Doctor 7", restricted_shifts=frozenset({"site_b"})),
@@ -464,9 +466,9 @@ class TestPhysicianSchedulerEmulation:
         assert weekend_spread <= 4, f"Weekend spread too large: {weekend_spread}"
 
         # --- Statistics reporting (informational) ---
-        print(f"\n{'='*70}")
+        print(f"\n{'=' * 70}")
         print("Multi-Site Scheduling Emulation Results")
-        print(f"{'='*70}")
+        print(f"{'=' * 70}")
         print(f"Solve time: {result.solve_time_seconds:.1f}s")
         print(f"Objective value: {result.objective_value}")
         print()
@@ -480,17 +482,19 @@ class TestPhysicianSchedulerEmulation:
                 for shift in shifts:
                     worker_shift_counts[worker_id][shift.shift_type_id] += 1
 
-        header = f"{'Worker':<12}" + "".join(
-            f"{st.id:<14}" for st in shift_types
-        ) + "Total"
+        header = (
+            f"{'Worker':<12}" + "".join(f"{st.id:<14}" for st in shift_types) + "Total"
+        )
         print(header)
         print("-" * len(header))
         for w in workers:
             counts = worker_shift_counts[w.id]
             total = sum(counts.values())
-            row = f"{w.id:<12}" + "".join(
-                f"{counts.get(st.id, 0):<14}" for st in shift_types
-            ) + str(total)
+            row = (
+                f"{w.id:<12}"
+                + "".join(f"{counts.get(st.id, 0):<14}" for st in shift_types)
+                + str(total)
+            )
             print(row)
 
         # Night+weekend co-assignments
@@ -504,4 +508,4 @@ class TestPhysicianSchedulerEmulation:
         print(f"\nNight+weekend co-assignments: {night_weekend_coassign} (goal: 0)")
         print(f"Night spread: {night_spread} (max-min across workers)")
         print(f"Weekend spread: {weekend_spread} (max-min across workers)")
-        print(f"{'='*70}")
+        print(f"{'=' * 70}")

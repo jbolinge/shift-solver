@@ -149,9 +149,7 @@ class TestMultipleShiftInfeasibility:
         result = checker.check()
         assert not result.is_feasible
         # Check that issue mentions night shift specifically
-        restriction_issue = next(
-            i for i in result.issues if i["type"] == "restriction"
-        )
+        restriction_issue = next(i for i in result.issues if i["type"] == "restriction")
         assert "night" in restriction_issue["shift_type_id"].lower()
 
     def test_combined_restrictions_multiple_shifts(self, worker_factory) -> None:
@@ -243,9 +241,7 @@ class TestAllWorkersRestricted:
         assert not result.is_feasible
 
         # Message should be clear about 0 available
-        restriction_issue = next(
-            i for i in result.issues if i["type"] == "restriction"
-        )
+        restriction_issue = next(i for i in result.issues if i["type"] == "restriction")
         assert restriction_issue["workers_available"] == 0
         assert restriction_issue["workers_required"] == 1
 
@@ -351,9 +347,7 @@ class TestPartialPeriodInfeasibility:
         assert not result.is_feasible
 
         # Should detect combined issue for period 0
-        combined_issue = next(
-            i for i in result.issues if i["type"] == "combined"
-        )
+        combined_issue = next(i for i in result.issues if i["type"] == "combined")
         assert combined_issue["period_index"] == 0
 
 
@@ -391,9 +385,7 @@ class TestErrorMessageQuality:
         result = checker.check()
         assert not result.is_feasible
 
-        restriction_issue = next(
-            i for i in result.issues if i["type"] == "restriction"
-        )
+        restriction_issue = next(i for i in result.issues if i["type"] == "restriction")
         # Message should contain the human-readable name
         assert "Night Shift" in restriction_issue["message"]
 
@@ -428,9 +420,7 @@ class TestErrorMessageQuality:
         result = checker.check()
         assert not result.is_feasible
 
-        restriction_issue = next(
-            i for i in result.issues if i["type"] == "restriction"
-        )
+        restriction_issue = next(i for i in result.issues if i["type"] == "restriction")
         # Message should show "1 available, 3 required"
         assert "1 available" in restriction_issue["message"]
         assert "3 required" in restriction_issue["message"]

@@ -51,11 +51,7 @@ class SolverProgressCallback(cp_model.CpSolverSolutionCallback):
                 self._last_report_time = now
                 objective = self.ObjectiveValue()
                 best_bound = self.BestObjectiveBound()
-                gap = (
-                    abs(objective - best_bound)
-                    / max(1.0, abs(objective))
-                    * 100
-                )
+                gap = abs(objective - best_bound) / max(1.0, abs(objective)) * 100
                 self._on_progress(
                     {
                         "phase": "solving",

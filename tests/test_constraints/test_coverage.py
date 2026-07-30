@@ -55,7 +55,10 @@ class TestCoverageConstraint:
 
     @pytest.fixture
     def variables(
-        self, model: cp_model.CpModel, workers: list[Worker], shift_types: list[ShiftType]
+        self,
+        model: cp_model.CpModel,
+        workers: list[Worker],
+        shift_types: list[ShiftType],
     ):
         """Build solver variables."""
         builder = VariableBuilder(model, workers, shift_types, num_periods=2)
@@ -105,7 +108,9 @@ class TestCoverageConstraint:
                 solver.Value(variables.get_assignment_var(w.id, period, "night"))
                 for w in workers
             )
-            assert night_count == 1, f"Night shift in period {period} should have 1 worker"
+            assert night_count == 1, (
+                f"Night shift in period {period} should have 1 worker"
+            )
 
     def test_coverage_infeasible_when_not_enough_workers(
         self, model: cp_model.CpModel
@@ -517,8 +522,7 @@ class TestCoverageApplicableDays:
 
         # Should still require 2 workers (None means all days)
         count = sum(
-            solver.Value(variables.get_assignment_var(w.id, 0, "any"))
-            for w in workers
+            solver.Value(variables.get_assignment_var(w.id, 0, "any")) for w in workers
         )
         assert count == 2
 

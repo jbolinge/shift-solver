@@ -17,12 +17,14 @@ class TestCoverageChart:
         fig = create_coverage_chart(sample_schedule)
         assert isinstance(fig, go.Figure)
 
-    def test_coverage_has_line_per_shift_type(
-        self, sample_schedule: Schedule
-    ) -> None:
+    def test_coverage_has_line_per_shift_type(self, sample_schedule: Schedule) -> None:
         """One Scatter trace per shift type."""
         fig = create_coverage_chart(sample_schedule)
-        scatter_traces = [t for t in fig.data if isinstance(t, go.Scatter) and t.mode and "lines" in t.mode]
+        scatter_traces = [
+            t
+            for t in fig.data
+            if isinstance(t, go.Scatter) and t.mode and "lines" in t.mode
+        ]
         assert len(scatter_traces) == 2  # day and night
 
     def test_coverage_100_percent_when_fully_covered(self) -> None:
@@ -45,10 +47,20 @@ class TestCoverageChart:
             period_end=date(2026, 2, 8),
             assignments={
                 "W1": [
-                    ShiftInstance(shift_type_id="day", period_index=0, date=date(2026, 2, 2), worker_id="W1"),
+                    ShiftInstance(
+                        shift_type_id="day",
+                        period_index=0,
+                        date=date(2026, 2, 2),
+                        worker_id="W1",
+                    ),
                 ],
                 "W2": [
-                    ShiftInstance(shift_type_id="day", period_index=0, date=date(2026, 2, 2), worker_id="W2"),
+                    ShiftInstance(
+                        shift_type_id="day",
+                        period_index=0,
+                        date=date(2026, 2, 2),
+                        worker_id="W2",
+                    ),
                 ],
             },
         )
@@ -62,7 +74,11 @@ class TestCoverageChart:
             shift_types=shift_types,
         )
         fig = create_coverage_chart(schedule)
-        scatter_traces = [t for t in fig.data if isinstance(t, go.Scatter) and t.mode and "lines" in t.mode]
+        scatter_traces = [
+            t
+            for t in fig.data
+            if isinstance(t, go.Scatter) and t.mode and "lines" in t.mode
+        ]
         assert len(scatter_traces) == 1
         assert scatter_traces[0].y[0] == pytest.approx(100.0)
 
@@ -86,7 +102,12 @@ class TestCoverageChart:
             period_end=date(2026, 2, 8),
             assignments={
                 "W1": [
-                    ShiftInstance(shift_type_id="day", period_index=0, date=date(2026, 2, 2), worker_id="W1"),
+                    ShiftInstance(
+                        shift_type_id="day",
+                        period_index=0,
+                        date=date(2026, 2, 2),
+                        worker_id="W1",
+                    ),
                 ],
             },
         )
@@ -100,7 +121,11 @@ class TestCoverageChart:
             shift_types=shift_types,
         )
         fig = create_coverage_chart(schedule)
-        scatter_traces = [t for t in fig.data if isinstance(t, go.Scatter) and t.mode and "lines" in t.mode]
+        scatter_traces = [
+            t
+            for t in fig.data
+            if isinstance(t, go.Scatter) and t.mode and "lines" in t.mode
+        ]
         assert scatter_traces[0].y[0] == pytest.approx(50.0)
 
     def test_coverage_reference_line_at_100(self, sample_schedule: Schedule) -> None:

@@ -21,12 +21,18 @@ class TestGenerateSamplesWorkflow:
             cli,
             [
                 "generate-samples",
-                "--output-dir", str(output_dir),
-                "--industry", "retail",
-                "--num-workers", "10",
-                "--months", "1",
-                "--format", "csv",
-                "--seed", "42",
+                "--output-dir",
+                str(output_dir),
+                "--industry",
+                "retail",
+                "--num-workers",
+                "10",
+                "--months",
+                "1",
+                "--format",
+                "csv",
+                "--seed",
+                "42",
             ],
         )
 
@@ -36,7 +42,9 @@ class TestGenerateSamplesWorkflow:
         assert (output_dir / "availability.csv").exists()
         assert (output_dir / "requests.csv").exists()
 
-    def test_generate_samples_excel(self, e2e_runner: CliRunner, tmp_path: Path) -> None:
+    def test_generate_samples_excel(
+        self, e2e_runner: CliRunner, tmp_path: Path
+    ) -> None:
         """Test generating sample data to Excel."""
         output_dir = tmp_path / "samples"
 
@@ -44,12 +52,18 @@ class TestGenerateSamplesWorkflow:
             cli,
             [
                 "generate-samples",
-                "--output-dir", str(output_dir),
-                "--industry", "healthcare",
-                "--num-workers", "15",
-                "--months", "2",
-                "--format", "excel",
-                "--seed", "123",
+                "--output-dir",
+                str(output_dir),
+                "--industry",
+                "healthcare",
+                "--num-workers",
+                "15",
+                "--months",
+                "2",
+                "--format",
+                "excel",
+                "--seed",
+                "123",
             ],
         )
 
@@ -66,10 +80,14 @@ class TestGenerateSamplesWorkflow:
             cli,
             [
                 "generate-samples",
-                "--output-dir", str(output_dir),
-                "--industry", "warehouse",
-                "--num-workers", "12",
-                "--format", "both",
+                "--output-dir",
+                str(output_dir),
+                "--industry",
+                "warehouse",
+                "--num-workers",
+                "12",
+                "--format",
+                "both",
             ],
         )
 
@@ -94,9 +112,12 @@ class TestDemoScheduleWorkflow:
             cli,
             [
                 "generate",
-                "--start-date", "2026-02-02",
-                "--end-date", "2026-02-15",
-                "--output", str(output_file),
+                "--start-date",
+                "2026-02-02",
+                "--end-date",
+                "2026-02-15",
+                "--output",
+                str(output_file),
                 "--demo",
                 "--quick-solve",
             ],
@@ -125,11 +146,15 @@ class TestDemoScheduleWorkflow:
             cli,
             [
                 "generate",
-                "--start-date", "2026-02-02",
-                "--end-date", "2026-02-08",
-                "--output", str(output_file),
+                "--start-date",
+                "2026-02-02",
+                "--end-date",
+                "2026-02-08",
+                "--output",
+                str(output_file),
                 "--demo",
-                "--time-limit", "30",
+                "--time-limit",
+                "30",
             ],
         )
 
@@ -153,9 +178,12 @@ class TestGenerateAndExportWorkflow:
             cli,
             [
                 "generate",
-                "--start-date", "2026-02-02",
-                "--end-date", "2026-02-22",
-                "--output", str(schedule_json),
+                "--start-date",
+                "2026-02-02",
+                "--end-date",
+                "2026-02-22",
+                "--output",
+                str(schedule_json),
                 "--demo",
                 "--quick-solve",
             ],
@@ -167,9 +195,12 @@ class TestGenerateAndExportWorkflow:
             cli,
             [
                 "export",
-                "--schedule", str(schedule_json),
-                "--output", str(excel_output),
-                "--format", "excel",
+                "--schedule",
+                str(schedule_json),
+                "--output",
+                str(excel_output),
+                "--format",
+                "excel",
             ],
         )
         assert result.exit_code == 0, f"Export failed: {result.output}"
@@ -197,9 +228,12 @@ class TestGenerateValidateWorkflow:
             cli,
             [
                 "generate",
-                "--start-date", "2026-02-02",
-                "--end-date", "2026-02-15",
-                "--output", str(schedule_json),
+                "--start-date",
+                "2026-02-02",
+                "--end-date",
+                "2026-02-15",
+                "--output",
+                str(schedule_json),
                 "--demo",
                 "--quick-solve",
             ],
@@ -218,8 +252,10 @@ class TestGenerateValidateWorkflow:
             cli,
             [
                 "validate",
-                "--schedule", str(schedule_json),
-                "--config", "config/config.yaml",
+                "--schedule",
+                str(schedule_json),
+                "--config",
+                "config/config.yaml",
             ],
         )
         # Should pass validation
@@ -244,12 +280,18 @@ class TestCompleteWorkflowCSV:
             cli,
             [
                 "generate-samples",
-                "--output-dir", str(data_dir),
-                "--industry", "retail",
-                "--num-workers", "8",
-                "--months", "1",
-                "--format", "csv",
-                "--seed", "42",
+                "--output-dir",
+                str(data_dir),
+                "--industry",
+                "retail",
+                "--num-workers",
+                "8",
+                "--months",
+                "1",
+                "--format",
+                "csv",
+                "--seed",
+                "42",
             ],
         )
         assert result.exit_code == 0, f"Generate samples failed: {result.output}"
@@ -259,9 +301,12 @@ class TestCompleteWorkflowCSV:
             cli,
             [
                 "import-data",
-                "--workers", str(data_dir / "workers.csv"),
-                "--availability", str(data_dir / "availability.csv"),
-                "--requests", str(data_dir / "requests.csv"),
+                "--workers",
+                str(data_dir / "workers.csv"),
+                "--availability",
+                str(data_dir / "availability.csv"),
+                "--requests",
+                str(data_dir / "requests.csv"),
             ],
         )
         assert result.exit_code == 0, f"Import failed: {result.output}"
@@ -270,11 +315,15 @@ class TestCompleteWorkflowCSV:
         result = e2e_runner.invoke(
             cli,
             [
-                "-c", str(sample_config_file),
+                "-c",
+                str(sample_config_file),
                 "generate",
-                "--start-date", "2026-02-02",
-                "--end-date", "2026-02-22",
-                "--output", str(schedule_json),
+                "--start-date",
+                "2026-02-02",
+                "--end-date",
+                "2026-02-22",
+                "--output",
+                str(schedule_json),
                 "--demo",
                 "--quick-solve",
             ],
@@ -286,9 +335,12 @@ class TestCompleteWorkflowCSV:
             cli,
             [
                 "export",
-                "--schedule", str(schedule_json),
-                "--output", str(schedule_xlsx),
-                "--format", "excel",
+                "--schedule",
+                str(schedule_json),
+                "--output",
+                str(schedule_xlsx),
+                "--format",
+                "excel",
             ],
         )
         assert result.exit_code == 0, f"Export failed: {result.output}"
@@ -303,8 +355,10 @@ class TestCompleteWorkflowCSV:
             cli,
             [
                 "validate",
-                "--schedule", str(schedule_json),
-                "--config", str(sample_config_file),
+                "--schedule",
+                str(schedule_json),
+                "--config",
+                str(sample_config_file),
             ],
         )
         assert result.exit_code == 0, f"Validate failed: {result.output}"

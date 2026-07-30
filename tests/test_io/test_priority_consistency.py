@@ -94,9 +94,25 @@ class TestPriorityCoercionExcel:
         ws = wb.active
         ws.title = "Requests"
         ws.append(
-            ["worker_id", "start_date", "end_date", "request_type", "shift_type_id", "priority"]
+            [
+                "worker_id",
+                "start_date",
+                "end_date",
+                "request_type",
+                "shift_type_id",
+                "priority",
+            ]
         )
-        ws.append(["W001", date(2026, 1, 10), date(2026, 1, 10), "positive", "day", priority_value])
+        ws.append(
+            [
+                "W001",
+                date(2026, 1, 10),
+                date(2026, 1, 10),
+                "positive",
+                "day",
+                priority_value,
+            ]
+        )
         excel_file = tmp_path / "requests.xlsx"
         wb.save(excel_file)
         return excel_file
@@ -191,9 +207,18 @@ class TestPriorityConsistencyBetweenLoaders:
         ws = wb.active
         ws.title = "Requests"
         ws.append(
-            ["worker_id", "start_date", "end_date", "request_type", "shift_type_id", "priority"]
+            [
+                "worker_id",
+                "start_date",
+                "end_date",
+                "request_type",
+                "shift_type_id",
+                "priority",
+            ]
         )
-        ws.append(["W001", date(2026, 1, 10), date(2026, 1, 10), "positive", "day", priority])
+        ws.append(
+            ["W001", date(2026, 1, 10), date(2026, 1, 10), "positive", "day", priority]
+        )
         excel_file = tmp_path / "requests.xlsx"
         wb.save(excel_file)
         return excel_file

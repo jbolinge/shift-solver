@@ -22,9 +22,7 @@ class TestSunburstChart:
         trace = fig.data[0]
         assert "Schedule" in list(trace.labels)
 
-    def test_sunburst_categories_at_level_two(
-        self, sample_schedule: Schedule
-    ) -> None:
+    def test_sunburst_categories_at_level_two(self, sample_schedule: Schedule) -> None:
         """Category nodes have 'Schedule' as parent."""
         fig = create_sunburst(sample_schedule)
         trace = fig.data[0]

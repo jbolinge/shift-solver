@@ -28,7 +28,9 @@ class TestGanttChart:
         fig = create_gantt(sample_schedule)
         # Should have traces for 'day' and 'night' categories
         trace_names = {trace.name for trace in fig.data}
-        assert "day" in trace_names or "Day Shift" in trace_names or len(trace_names) >= 2
+        assert (
+            "day" in trace_names or "Day Shift" in trace_names or len(trace_names) >= 2
+        )
 
     def test_gantt_all_workers_present_on_yaxis(
         self, sample_schedule: Schedule

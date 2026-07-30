@@ -323,9 +323,7 @@ class TestTrainingMentorshipRequirements:
     def test_senior_junior_coverage_model(self, worker_factory, periods_4) -> None:
         """Model pairing by requiring coverage from different groups."""
         # Seniors and juniors
-        seniors = [
-            worker_factory(attributes={"level": "senior"}) for _ in range(4)
-        ]
+        seniors = [worker_factory(attributes={"level": "senior"}) for _ in range(4)]
         # Juniors can't work alone (restrict from senior-only shift)
         juniors = [
             worker_factory(
@@ -413,12 +411,8 @@ class TestPartTimeFullTimeDistribution:
 
     def test_mixed_part_time_full_time(self, worker_factory, periods_4) -> None:
         """Schedule with both part-time and full-time workers."""
-        full_time = [
-            worker_factory(attributes={"type": "full_time"}) for _ in range(5)
-        ]
-        part_time = [
-            worker_factory(attributes={"type": "part_time"}) for _ in range(5)
-        ]
+        full_time = [worker_factory(attributes={"type": "full_time"}) for _ in range(5)]
+        part_time = [worker_factory(attributes={"type": "part_time"}) for _ in range(5)]
         workers = full_time + part_time
 
         shift_types = [

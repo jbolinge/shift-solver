@@ -182,7 +182,9 @@ class RequestConstraint(BaseConstraint):
         if not assignment_vars:
             return
 
-        request_is_hard = request.is_hard if request.is_hard is not None else self.is_hard
+        request_is_hard = (
+            request.is_hard if request.is_hard is not None else self.is_hard
+        )
 
         if request.is_positive:
             self._add_positive_request_constraint(
@@ -254,9 +256,7 @@ class RequestConstraint(BaseConstraint):
             )
             violation_var = self.model.new_bool_var(violation_name)
             self.model.add(assignment_var >= 1).only_enforce_if(violation_var)
-            self.model.add(assignment_var == 0).only_enforce_if(
-                violation_var.negated()
-            )
+            self.model.add(assignment_var == 0).only_enforce_if(violation_var.negated())
 
             self._violation_variables[violation_name] = violation_var
             self._violation_priorities[violation_name] = request.priority

@@ -12,33 +12,45 @@ from shift_solver.cli import cli
 class TestMissingRequiredOptions:
     """Test CLI error handling for missing required options."""
 
-    def test_generate_missing_start_date(self, e2e_runner: CliRunner, tmp_path: Path) -> None:
+    def test_generate_missing_start_date(
+        self, e2e_runner: CliRunner, tmp_path: Path
+    ) -> None:
         """Test generate command fails without start-date."""
         result = e2e_runner.invoke(
             cli,
             [
                 "generate",
-                "--end-date", "2026-02-15",
-                "--output", str(tmp_path / "schedule.json"),
+                "--end-date",
+                "2026-02-15",
+                "--output",
+                str(tmp_path / "schedule.json"),
                 "--demo",
             ],
         )
         assert result.exit_code != 0
-        assert "start-date" in result.output.lower() or "required" in result.output.lower()
+        assert (
+            "start-date" in result.output.lower() or "required" in result.output.lower()
+        )
 
-    def test_generate_missing_end_date(self, e2e_runner: CliRunner, tmp_path: Path) -> None:
+    def test_generate_missing_end_date(
+        self, e2e_runner: CliRunner, tmp_path: Path
+    ) -> None:
         """Test generate command fails without end-date."""
         result = e2e_runner.invoke(
             cli,
             [
                 "generate",
-                "--start-date", "2026-02-01",
-                "--output", str(tmp_path / "schedule.json"),
+                "--start-date",
+                "2026-02-01",
+                "--output",
+                str(tmp_path / "schedule.json"),
                 "--demo",
             ],
         )
         assert result.exit_code != 0
-        assert "end-date" in result.output.lower() or "required" in result.output.lower()
+        assert (
+            "end-date" in result.output.lower() or "required" in result.output.lower()
+        )
 
     def test_generate_missing_output(self, e2e_runner: CliRunner) -> None:
         """Test generate command fails without output."""
@@ -46,25 +58,32 @@ class TestMissingRequiredOptions:
             cli,
             [
                 "generate",
-                "--start-date", "2026-02-01",
-                "--end-date", "2026-02-15",
+                "--start-date",
+                "2026-02-01",
+                "--end-date",
+                "2026-02-15",
                 "--demo",
             ],
         )
         assert result.exit_code != 0
         assert "output" in result.output.lower() or "required" in result.output.lower()
 
-    def test_export_missing_schedule(self, e2e_runner: CliRunner, tmp_path: Path) -> None:
+    def test_export_missing_schedule(
+        self, e2e_runner: CliRunner, tmp_path: Path
+    ) -> None:
         """Test export command fails without schedule file."""
         result = e2e_runner.invoke(
             cli,
             [
                 "export",
-                "--output", str(tmp_path / "schedule.xlsx"),
+                "--output",
+                str(tmp_path / "schedule.xlsx"),
             ],
         )
         assert result.exit_code != 0
-        assert "schedule" in result.output.lower() or "required" in result.output.lower()
+        assert (
+            "schedule" in result.output.lower() or "required" in result.output.lower()
+        )
 
     def test_validate_missing_schedule(self, e2e_runner: CliRunner) -> None:
         """Test validate command fails without schedule file."""
@@ -73,7 +92,9 @@ class TestMissingRequiredOptions:
             ["validate"],
         )
         assert result.exit_code != 0
-        assert "schedule" in result.output.lower() or "required" in result.output.lower()
+        assert (
+            "schedule" in result.output.lower() or "required" in result.output.lower()
+        )
 
 
 @pytest.mark.e2e
@@ -88,9 +109,12 @@ class TestInvalidDateFormat:
             cli,
             [
                 "generate",
-                "--start-date", "02-01-2026",  # Wrong format (should be YYYY-MM-DD)
-                "--end-date", "2026-02-15",
-                "--output", str(tmp_path / "schedule.json"),
+                "--start-date",
+                "02-01-2026",  # Wrong format (should be YYYY-MM-DD)
+                "--end-date",
+                "2026-02-15",
+                "--output",
+                str(tmp_path / "schedule.json"),
                 "--demo",
             ],
         )
@@ -104,9 +128,12 @@ class TestInvalidDateFormat:
             cli,
             [
                 "generate",
-                "--start-date", "2026-02-01",
-                "--end-date", "15/02/2026",  # Wrong format
-                "--output", str(tmp_path / "schedule.json"),
+                "--start-date",
+                "2026-02-01",
+                "--end-date",
+                "15/02/2026",  # Wrong format
+                "--output",
+                str(tmp_path / "schedule.json"),
                 "--demo",
             ],
         )
@@ -118,9 +145,12 @@ class TestInvalidDateFormat:
             cli,
             [
                 "generate",
-                "--start-date", "2026-02-30",  # Invalid day
-                "--end-date", "2026-02-28",
-                "--output", str(tmp_path / "schedule.json"),
+                "--start-date",
+                "2026-02-30",  # Invalid day
+                "--end-date",
+                "2026-02-28",
+                "--output",
+                str(tmp_path / "schedule.json"),
                 "--demo",
             ],
         )
@@ -139,7 +169,11 @@ class TestInvalidConfigFile:
         )
         assert result.exit_code != 0
         # Should mention file not found or similar
-        assert "not found" in result.output.lower() or "no such file" in result.output.lower() or "error" in result.output.lower()
+        assert (
+            "not found" in result.output.lower()
+            or "no such file" in result.output.lower()
+            or "error" in result.output.lower()
+        )
 
     def test_check_config_invalid_yaml(
         self, e2e_runner: CliRunner, tmp_path: Path
@@ -203,8 +237,10 @@ class TestMissingInputFile:
             cli,
             [
                 "export",
-                "--schedule", "/nonexistent/schedule.json",
-                "--output", str(tmp_path / "schedule.xlsx"),
+                "--schedule",
+                "/nonexistent/schedule.json",
+                "--output",
+                str(tmp_path / "schedule.xlsx"),
             ],
         )
         assert result.exit_code != 0
@@ -266,9 +302,12 @@ class TestValidationFailureOutput:
             cli,
             [
                 "generate",
-                "--start-date", "2026-02-02",
-                "--end-date", "2026-02-08",
-                "--output", str(schedule_json),
+                "--start-date",
+                "2026-02-02",
+                "--end-date",
+                "2026-02-08",
+                "--output",
+                str(schedule_json),
                 "--demo",
                 "--quick-solve",
             ],
@@ -281,8 +320,10 @@ class TestValidationFailureOutput:
             cli,
             [
                 "validate",
-                "--schedule", str(schedule_json),
-                "--output", str(report_json),
+                "--schedule",
+                str(schedule_json),
+                "--output",
+                str(report_json),
             ],
         )
 
@@ -310,9 +351,12 @@ class TestGenerateWithoutDemo:
             cli,
             [
                 "generate",
-                "--start-date", "2026-02-02",
-                "--end-date", "2026-02-15",
-                "--output", str(tmp_path / "schedule.json"),
+                "--start-date",
+                "2026-02-02",
+                "--end-date",
+                "2026-02-15",
+                "--output",
+                str(tmp_path / "schedule.json"),
                 # No --demo flag
             ],
         )
@@ -354,8 +398,10 @@ class TestErrorHandlingSmoke:
             cli,
             [
                 "generate-samples",
-                "--output-dir", str(tmp_path),
-                "--industry", "invalid_industry",
+                "--output-dir",
+                str(tmp_path),
+                "--industry",
+                "invalid_industry",
             ],
         )
         # Click should catch this since it's a Choice type

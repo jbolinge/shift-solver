@@ -278,9 +278,14 @@ class ShiftSolver:
         if self._model is None:
             raise RuntimeError("Cannot apply hard constraints: model not initialized")
         if self._variables is None:
-            raise RuntimeError("Cannot apply hard constraints: variables not initialized")
+            raise RuntimeError(
+                "Cannot apply hard constraints: variables not initialized"
+            )
 
-        for constraint_id, registration in ConstraintRegistry.get_hard_constraints().items():
+        for (
+            constraint_id,
+            registration,
+        ) in ConstraintRegistry.get_hard_constraints().items():
             config = self._get_constraint_config(
                 constraint_id, registration.default_config
             )
@@ -299,14 +304,21 @@ class ShiftSolver:
         if self._model is None:
             raise RuntimeError("Cannot apply soft constraints: model not initialized")
         if self._variables is None:
-            raise RuntimeError("Cannot apply soft constraints: variables not initialized")
+            raise RuntimeError(
+                "Cannot apply soft constraints: variables not initialized"
+            )
         if self._objective_builder is None:
             raise RuntimeError(
                 "Cannot apply soft constraints: objective builder not initialized"
             )
 
-        for constraint_id, registration in ConstraintRegistry.get_soft_constraints().items():
-            config = self._get_constraint_config(constraint_id, registration.default_config)
+        for (
+            constraint_id,
+            registration,
+        ) in ConstraintRegistry.get_soft_constraints().items():
+            config = self._get_constraint_config(
+                constraint_id, registration.default_config
+            )
             if not config.enabled:
                 continue
 

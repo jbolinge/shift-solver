@@ -26,7 +26,7 @@ class TestFrozensetParsingCSV:
         csv_file = tmp_path / "workers.csv"
         # Use quotes to handle commas in field values
         csv_file.write_text(
-            f'id,name,restricted_shifts,preferred_shifts\n'
+            f"id,name,restricted_shifts,preferred_shifts\n"
             f'W001,Alice,"{restricted}","{preferred}"\n'
         )
         return csv_file
@@ -125,9 +125,7 @@ class TestFrozensetParsingCSV:
 class TestFrozensetParsingExcel:
     """Tests for frozenset parsing in Excel loader."""
 
-    def _create_worker_excel(
-        self, tmp_path: Path, restricted, preferred=""
-    ) -> Path:
+    def _create_worker_excel(self, tmp_path: Path, restricted, preferred="") -> Path:
         """Helper to create a worker Excel file with specific shift values."""
         wb = openpyxl.Workbook()
         ws = wb.active
@@ -226,10 +224,7 @@ class TestFrozensetConsistencyBetweenLoaders:
     def _create_csv_worker(self, tmp_path: Path, restricted: str) -> Path:
         """Create CSV worker file."""
         csv_file = tmp_path / "workers.csv"
-        csv_file.write_text(
-            f'id,name,restricted_shifts\n'
-            f'W001,Alice,"{restricted}"\n'
-        )
+        csv_file.write_text(f'id,name,restricted_shifts\nW001,Alice,"{restricted}"\n')
         return csv_file
 
     def _create_excel_worker(self, tmp_path: Path, restricted: str) -> Path:
@@ -275,4 +270,6 @@ class TestFrozensetConsistencyBetweenLoaders:
 
         assert csv_result == expected, f"CSV: {csv_result} != {expected}"
         assert excel_result == expected, f"Excel: {excel_result} != {expected}"
-        assert csv_result == excel_result, f"CSV ({csv_result}) != Excel ({excel_result})"
+        assert csv_result == excel_result, (
+            f"CSV ({csv_result}) != Excel ({excel_result})"
+        )

@@ -172,9 +172,7 @@ class TestSingleWorkerUndesirable:
                     if shift.shift_type_id == "night":
                         assert worker_id == workers[3].id
 
-    def test_bottleneck_worker_fairness_impact(
-        self, worker_factory, periods_4
-    ) -> None:
+    def test_bottleneck_worker_fairness_impact(self, worker_factory, periods_4) -> None:
         """Fairness when one worker is a bottleneck."""
         # 2 workers can work all shifts, 3 can only work day
         workers = [

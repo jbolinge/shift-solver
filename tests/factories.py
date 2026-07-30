@@ -144,7 +144,9 @@ class ShiftTypeFactory:
     ) -> ShiftType:
         """Create a shift type from a named preset."""
         if preset not in self.PRESETS:
-            raise ValueError(f"Unknown preset: {preset}. Available: {list(self.PRESETS)}")
+            raise ValueError(
+                f"Unknown preset: {preset}. Available: {list(self.PRESETS)}"
+            )
 
         config = self.PRESETS[preset].copy()
         self._counter += 1
@@ -157,16 +159,26 @@ class ShiftTypeFactory:
     def create_standard_set(self, workers_per_shift: int = 1) -> list[ShiftType]:
         """Create a standard set of day, night, and weekend shifts."""
         return [
-            self.create_from_preset("day_8", id="day", workers_required=workers_per_shift),
-            self.create_from_preset("night_8", id="night", workers_required=workers_per_shift),
-            self.create_from_preset("weekend", id="weekend", workers_required=workers_per_shift),
+            self.create_from_preset(
+                "day_8", id="day", workers_required=workers_per_shift
+            ),
+            self.create_from_preset(
+                "night_8", id="night", workers_required=workers_per_shift
+            ),
+            self.create_from_preset(
+                "weekend", id="weekend", workers_required=workers_per_shift
+            ),
         ]
 
     def create_healthcare_set(self, workers_per_shift: int = 2) -> list[ShiftType]:
         """Create healthcare-style 12-hour shifts."""
         return [
-            self.create_from_preset("day_12", id="day", workers_required=workers_per_shift),
-            self.create_from_preset("night_12", id="night", workers_required=workers_per_shift),
+            self.create_from_preset(
+                "day_12", id="day", workers_required=workers_per_shift
+            ),
+            self.create_from_preset(
+                "night_12", id="night", workers_required=workers_per_shift
+            ),
         ]
 
     def create_warehouse_set(self) -> list[ShiftType]:
@@ -273,7 +285,9 @@ class ScenarioBuilder:
         if isinstance(count, list):
             self._workers = count
         else:
-            self._workers = self._worker_factory.create_batch(count, worker_type=worker_type)
+            self._workers = self._worker_factory.create_batch(
+                count, worker_type=worker_type
+            )
         return self
 
     def with_worker(
@@ -309,9 +323,13 @@ class ScenarioBuilder:
         if isinstance(shift_types, list):
             self._shift_types = shift_types
         elif shift_types == "standard":
-            self._shift_types = self._shift_factory.create_standard_set(workers_per_shift)
+            self._shift_types = self._shift_factory.create_standard_set(
+                workers_per_shift
+            )
         elif shift_types == "healthcare":
-            self._shift_types = self._shift_factory.create_healthcare_set(workers_per_shift)
+            self._shift_types = self._shift_factory.create_healthcare_set(
+                workers_per_shift
+            )
         elif shift_types == "warehouse":
             self._shift_types = self._shift_factory.create_warehouse_set()
         else:
@@ -348,7 +366,9 @@ class ScenarioBuilder:
         """
         if period is not None:
             if not self._period_dates:
-                raise ValueError("Call with_periods() before with_unavailability(period=...)")
+                raise ValueError(
+                    "Call with_periods() before with_unavailability(period=...)"
+                )
             start = self._period_dates[period][0]
             end = self._period_dates[period][1]
         elif start_date and end_date:

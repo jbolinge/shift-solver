@@ -22,19 +22,13 @@ from shift_solver.models import (
 @pytest.fixture
 def sample_workers() -> list[Worker]:
     """Create a basic set of 5 workers."""
-    return [
-        Worker(id=f"W{i:03d}", name=f"Worker {i}")
-        for i in range(1, 6)
-    ]
+    return [Worker(id=f"W{i:03d}", name=f"Worker {i}") for i in range(1, 6)]
 
 
 @pytest.fixture
 def sample_workers_large() -> list[Worker]:
     """Create a larger set of 15 workers."""
-    return [
-        Worker(id=f"W{i:03d}", name=f"Worker {i}")
-        for i in range(1, 16)
-    ]
+    return [Worker(id=f"W{i:03d}", name=f"Worker {i}") for i in range(1, 16)]
 
 
 @pytest.fixture
@@ -44,7 +38,9 @@ def sample_workers_with_restrictions() -> list[Worker]:
         Worker(id="W001", name="Alice", restricted_shifts=frozenset(["night"])),
         Worker(id="W002", name="Bob", restricted_shifts=frozenset(["weekend"])),
         Worker(id="W003", name="Charlie"),  # No restrictions
-        Worker(id="W004", name="Diana", restricted_shifts=frozenset(["night", "weekend"])),
+        Worker(
+            id="W004", name="Diana", restricted_shifts=frozenset(["night", "weekend"])
+        ),
         Worker(id="W005", name="Eve"),  # No restrictions
     ]
 
@@ -189,8 +185,7 @@ def sample_period_dates() -> list[tuple[date, date]]:
     """Create 4 weekly periods starting from a fixed date."""
     base = date(2026, 2, 2)  # A Monday
     return [
-        (base + timedelta(weeks=i), base + timedelta(weeks=i, days=6))
-        for i in range(4)
+        (base + timedelta(weeks=i), base + timedelta(weeks=i, days=6)) for i in range(4)
     ]
 
 
@@ -204,6 +199,7 @@ def single_period_dates() -> list[tuple[date, date]]:
 @pytest.fixture
 def period_dates_factory():
     """Factory for creating custom period date ranges."""
+
     def _create(
         start_date: date = date(2026, 2, 2),
         num_periods: int = 4,
@@ -216,6 +212,7 @@ def period_dates_factory():
             periods.append((current, period_end))
             current = period_end + timedelta(days=1)
         return periods
+
     return _create
 
 
@@ -225,7 +222,9 @@ def period_dates_factory():
 
 
 @pytest.fixture
-def sample_availability(sample_period_dates: list[tuple[date, date]]) -> list[Availability]:
+def sample_availability(
+    sample_period_dates: list[tuple[date, date]],
+) -> list[Availability]:
     """Create sample availability records."""
     start_date, end_date = sample_period_dates[0]
     return [
@@ -246,7 +245,9 @@ def sample_availability(sample_period_dates: list[tuple[date, date]]) -> list[Av
 
 
 @pytest.fixture
-def full_unavailability(sample_period_dates: list[tuple[date, date]]) -> list[Availability]:
+def full_unavailability(
+    sample_period_dates: list[tuple[date, date]],
+) -> list[Availability]:
     """Create availability that marks workers unavailable for entire schedule."""
     start_date = sample_period_dates[0][0]
     end_date = sample_period_dates[-1][1]
@@ -266,7 +267,9 @@ def full_unavailability(sample_period_dates: list[tuple[date, date]]) -> list[Av
 
 
 @pytest.fixture
-def sample_requests(sample_period_dates: list[tuple[date, date]]) -> list[SchedulingRequest]:
+def sample_requests(
+    sample_period_dates: list[tuple[date, date]],
+) -> list[SchedulingRequest]:
     """Create sample scheduling requests."""
     start_date, _ = sample_period_dates[0]
     return [
@@ -484,5 +487,3 @@ def data_dir(tmp_path: Path) -> Path:
     data = tmp_path / "data"
     data.mkdir()
     return data
-
-

@@ -258,11 +258,15 @@ class TestFrequencyWindowEdgeCases:
             parameters={"max_periods_between": num_periods},
         )
         constraint = FrequencyConstraint(model, variables, config)
-        constraint.apply(workers=workers, shift_types=shift_types, num_periods=num_periods)
+        constraint.apply(
+            workers=workers, shift_types=shift_types, num_periods=num_periods
+        )
 
         # One aggregated violation var per worker per window (not per
         # shift type): 2 workers * 1 window = 2 freq_viol variables.
-        freq_viol_vars = [k for k in constraint.violation_variables if k.startswith("freq_viol_")]
+        freq_viol_vars = [
+            k for k in constraint.violation_variables if k.startswith("freq_viol_")
+        ]
         assert len(freq_viol_vars) == len(workers)
 
     def test_window_exceeds_num_periods(
@@ -286,7 +290,9 @@ class TestFrequencyWindowEdgeCases:
         )
         constraint = FrequencyConstraint(model, variables, config)
         with caplog.at_level(logging.WARNING):
-            constraint.apply(workers=workers, shift_types=shift_types, num_periods=num_periods)
+            constraint.apply(
+                workers=workers, shift_types=shift_types, num_periods=num_periods
+            )
 
         # No violation variables should be created when window > num_periods
         assert len(constraint.violation_variables) == 0
@@ -317,7 +323,9 @@ class TestFrequencyWindowEdgeCases:
         )
         constraint = FrequencyConstraint(model, variables, config)
         with caplog.at_level(logging.WARNING):
-            constraint.apply(workers=workers, shift_types=shift_types, num_periods=num_periods)
+            constraint.apply(
+                workers=workers, shift_types=shift_types, num_periods=num_periods
+            )
 
         # Should be skipped, with a warning logged
         assert len(constraint.violation_variables) == 0
@@ -343,11 +351,15 @@ class TestFrequencyWindowEdgeCases:
             parameters={"max_periods_between": 1},
         )
         constraint = FrequencyConstraint(model, variables, config)
-        constraint.apply(workers=workers, shift_types=shift_types, num_periods=num_periods)
+        constraint.apply(
+            workers=workers, shift_types=shift_types, num_periods=num_periods
+        )
 
         # Should have num_periods windows per worker (aggregated across
         # shift types, not multiplied by them).
-        freq_viol_vars = [k for k in constraint.violation_variables if k.startswith("freq_viol_")]
+        freq_viol_vars = [
+            k for k in constraint.violation_variables if k.startswith("freq_viol_")
+        ]
         expected_count = len(workers) * num_periods
         assert len(freq_viol_vars) == expected_count
 
@@ -371,7 +383,9 @@ class TestFrequencyWindowEdgeCases:
             parameters={"max_periods_between": 0},
         )
         constraint = FrequencyConstraint(model, variables, config)
-        constraint.apply(workers=workers, shift_types=shift_types, num_periods=num_periods)
+        constraint.apply(
+            workers=workers, shift_types=shift_types, num_periods=num_periods
+        )
 
         assert len(constraint.violation_variables) == 0
 
@@ -395,10 +409,14 @@ class TestFrequencyWindowEdgeCases:
             parameters={"max_periods_between": num_periods},
         )
         constraint = FrequencyConstraint(model, variables, config)
-        constraint.apply(workers=workers, shift_types=shift_types, num_periods=num_periods)
+        constraint.apply(
+            workers=workers, shift_types=shift_types, num_periods=num_periods
+        )
 
         # Should have exactly 1 window per worker
-        freq_viol_vars = [k for k in constraint.violation_variables if k.startswith("freq_viol_")]
+        freq_viol_vars = [
+            k for k in constraint.violation_variables if k.startswith("freq_viol_")
+        ]
         assert len(freq_viol_vars) == len(workers)
 
     def test_window_size_one_more_than_periods_boundary(
@@ -420,7 +438,9 @@ class TestFrequencyWindowEdgeCases:
             parameters={"max_periods_between": num_periods + 1},
         )
         constraint = FrequencyConstraint(model, variables, config)
-        constraint.apply(workers=workers, shift_types=shift_types, num_periods=num_periods)
+        constraint.apply(
+            workers=workers, shift_types=shift_types, num_periods=num_periods
+        )
 
         # Should be skipped since window > num_periods
         assert len(constraint.violation_variables) == 0
@@ -444,7 +464,9 @@ class TestFrequencyWindowEdgeCases:
             parameters={"max_periods_between": num_periods},
         )
         constraint = FrequencyConstraint(model, variables, config)
-        constraint.apply(workers=workers, shift_types=shift_types, num_periods=num_periods)
+        constraint.apply(
+            workers=workers, shift_types=shift_types, num_periods=num_periods
+        )
 
         # Add coverage
         for period in range(num_periods):
@@ -458,7 +480,8 @@ class TestFrequencyWindowEdgeCases:
         # Minimize violations
         if constraint.violation_variables:
             freq_viols = [
-                v for k, v in constraint.violation_variables.items()
+                v
+                for k, v in constraint.violation_variables.items()
                 if k.startswith("freq_viol_")
             ]
             if freq_viols:
@@ -550,10 +573,14 @@ class TestFrequencyAggregation:
             parameters={"max_periods_between": max_periods_between},
         )
         constraint = FrequencyConstraint(model, variables, config)
-        constraint.apply(workers=workers, shift_types=shift_types, num_periods=num_periods)
+        constraint.apply(
+            workers=workers, shift_types=shift_types, num_periods=num_periods
+        )
 
         num_windows = num_periods - max_periods_between + 1
-        freq_viol_vars = [k for k in constraint.violation_variables if k.startswith("freq_viol_")]
+        freq_viol_vars = [
+            k for k in constraint.violation_variables if k.startswith("freq_viol_")
+        ]
         assert len(freq_viol_vars) == len(workers) * num_windows
 
     def test_worker_touching_only_one_shift_type_has_no_violation(
@@ -578,7 +605,9 @@ class TestFrequencyAggregation:
             parameters={"max_periods_between": num_periods},
         )
         constraint = FrequencyConstraint(model, variables, config)
-        constraint.apply(workers=workers, shift_types=shift_types, num_periods=num_periods)
+        constraint.apply(
+            workers=workers, shift_types=shift_types, num_periods=num_periods
+        )
 
         # W001 works "day" every period and never "night".
         for period in range(num_periods):
@@ -618,14 +647,21 @@ class TestFrequencyWindowOffByOne:
             enabled=True,
             is_hard=False,
             weight=100,
-            parameters={"max_periods_between": max_periods_between, "shift_types": ["day"]},
+            parameters={
+                "max_periods_between": max_periods_between,
+                "shift_types": ["day"],
+            },
         )
         constraint = FrequencyConstraint(model, variables, config)
-        constraint.apply(workers=workers, shift_types=shift_types, num_periods=num_periods)
+        constraint.apply(
+            workers=workers, shift_types=shift_types, num_periods=num_periods
+        )
 
         # window_size == max_periods_between (NOT +1): 6 - 3 + 1 = 4 windows
         expected_windows = num_periods - max_periods_between + 1
-        freq_viol_vars = [k for k in constraint.violation_variables if k.startswith("freq_viol_")]
+        freq_viol_vars = [
+            k for k in constraint.violation_variables if k.startswith("freq_viol_")
+        ]
         assert len(freq_viol_vars) == len(workers) * expected_windows
 
     def test_gap_of_exactly_max_periods_between_is_flagged(
@@ -649,7 +685,9 @@ class TestFrequencyWindowOffByOne:
             parameters={"max_periods_between": max_periods_between},
         )
         constraint = FrequencyConstraint(model, variables, config)
-        constraint.apply(workers=workers, shift_types=shift_types, num_periods=num_periods)
+        constraint.apply(
+            workers=workers, shift_types=shift_types, num_periods=num_periods
+        )
 
         # No assignment at all in periods 0,1,2 (a gap of exactly 3 == max_periods_between).
         for period in range(3):

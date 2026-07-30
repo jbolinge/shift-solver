@@ -236,9 +236,7 @@ class TestHighConstraintDensity:
 class TestSolverTimeoutBehavior:
     """Tests for solver timeout behavior."""
 
-    def test_timeout_returns_unknown_for_complex_problem(
-        self, worker_factory
-    ) -> None:
+    def test_timeout_returns_unknown_for_complex_problem(self, worker_factory) -> None:
         """Very short timeout on complex problem returns UNKNOWN or partial."""
         workers = [worker_factory() for _ in range(30)]
 

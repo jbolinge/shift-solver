@@ -168,8 +168,8 @@ class TestPhysicianStyleMultiSiteScheduling:
         """
         # (week_index, worker_id, shift_type_id)
         holiday_assignments = [
-            (0, "W005", "site_a"),   # Week 1: New Year
-            (6, "W003", "site_b"),   # Week 7: Presidents Day
+            (0, "W005", "site_a"),  # Week 1: New Year
+            (6, "W003", "site_b"),  # Week 7: Presidents Day
             (11, "W004", "site_a"),  # Week 12: Spring (W004 restricted from site_c)
             (16, "W006", "site_d"),  # Week 17: Memorial Day
             (21, "W001", "site_e"),  # Week 22: Independence
@@ -431,8 +431,8 @@ class TestPhysicianStyleMultiSiteScheduling:
 
         # Verify each holiday assignment
         expected_assignments = [
-            (0, "W005", "site_a"),   # Week 1
-            (6, "W003", "site_b"),   # Week 7
+            (0, "W005", "site_a"),  # Week 1
+            (6, "W003", "site_b"),  # Week 7
             (11, "W004", "site_a"),  # Week 12 (W004 restricted from site_c)
             (16, "W006", "site_d"),  # Week 17
             (21, "W001", "site_e"),  # Week 22
@@ -580,7 +580,9 @@ class TestPhysicianStyleMultiSiteScheduling:
             count = assignments_per_worker[worker_id]
             weekend = weekend_counts.get(worker_id, 0)
             print(f"  {worker_id}: {count} total, {weekend} weekends")
-        print(f"\nWeekend distribution spread: {max(weekend_counts.values()) - min(weekend_counts.values())}")
+        print(
+            f"\nWeekend distribution spread: {max(weekend_counts.values()) - min(weekend_counts.values())}"
+        )
 
     @pytest.mark.slow
     def test_coverage_every_period(

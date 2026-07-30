@@ -370,7 +370,9 @@ class FeasibilityChecker:
                         workers_required=shift_type.workers_required,
                     )
 
-    def _worker_qualifies_for_skills(self, worker: Worker, shift_type: ShiftType) -> bool:
+    def _worker_qualifies_for_skills(
+        self, worker: Worker, shift_type: ShiftType
+    ) -> bool:
         """
         Check whether a worker's attributes satisfy a shift's requirements.
 
@@ -598,9 +600,7 @@ class FeasibilityChecker:
 
             # Check if worker can work any of the required shift types
             valid_shifts = req.shift_types & shift_type_ids
-            workable_shifts = {
-                st for st in valid_shifts if worker.can_work_shift(st)
-            }
+            workable_shifts = {st for st in valid_shifts if worker.can_work_shift(st)}
 
             if not workable_shifts:
                 result.add_issue(
@@ -657,8 +657,7 @@ class FeasibilityChecker:
                     rule_id=pref.rule_id,
                 )
             elif (
-                pref.trigger_type == "category"
-                and pref.trigger_value not in categories
+                pref.trigger_type == "category" and pref.trigger_value not in categories
             ):
                 result.add_warning(
                     "shift_order_preference",
@@ -706,7 +705,10 @@ class FeasibilityChecker:
                 if pref.worker_ids
                 else list(self.workers)
             )
-            if pref.preferred_type == "shift_type" and pref.preferred_value in shift_type_ids:
+            if (
+                pref.preferred_type == "shift_type"
+                and pref.preferred_value in shift_type_ids
+            ):
                 all_restricted = all(
                     not w.can_work_shift(pref.preferred_value)
                     for w in applicable_workers
@@ -719,9 +721,7 @@ class FeasibilityChecker:
                         rule_id=pref.rule_id,
                     )
 
-    def _applicable_periods_for_request(
-        self, request: SchedulingRequest
-    ) -> list[int]:
+    def _applicable_periods_for_request(self, request: SchedulingRequest) -> list[int]:
         """Find which period indices overlap with a request's date range."""
         applicable = []
         for period_idx, (period_start, period_end) in enumerate(self.period_dates):

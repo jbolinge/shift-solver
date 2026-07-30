@@ -228,11 +228,15 @@ def register_builtin_constraints() -> None:
         )
 
     if "shift_frequency" not in ConstraintRegistry._soft_constraints:
-        ConstraintRegistry._soft_constraints["shift_frequency"] = ConstraintRegistration(
-            constraint_id="shift_frequency",
-            constraint_class=ShiftFrequencyConstraint,
-            is_hard=False,
-            default_config=ConstraintConfig(enabled=False, is_hard=False, weight=500),
+        ConstraintRegistry._soft_constraints["shift_frequency"] = (
+            ConstraintRegistration(
+                constraint_id="shift_frequency",
+                constraint_class=ShiftFrequencyConstraint,
+                is_hard=False,
+                default_config=ConstraintConfig(
+                    enabled=False, is_hard=False, weight=500
+                ),
+            )
         )
 
     if "shift_order_preference" not in ConstraintRegistry._soft_constraints:

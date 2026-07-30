@@ -65,9 +65,7 @@ def test_shipped_config_validates(config_path: Path) -> None:
     assert config.shift_types
 
 
-@pytest.mark.parametrize(
-    "example_dir", RUNNABLE_EXAMPLE_DIRS, ids=lambda p: p.name
-)
+@pytest.mark.parametrize("example_dir", RUNNABLE_EXAMPLE_DIRS, ids=lambda p: p.name)
 def test_shipped_example_solves(example_dir: Path, tmp_path: Path) -> None:
     """A runnable example's config.yaml + CSVs must actually produce a
     feasible schedule -- mirrors what examples/<name>/run.sh does end to end,

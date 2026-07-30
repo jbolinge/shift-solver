@@ -226,7 +226,10 @@ class TestAvailabilityConstraint:
         # Check W001 blocked in periods 0 and 2
         for period in [0, 2]:
             for st in shift_types:
-                assert solver.Value(variables.get_assignment_var("W001", period, st.id)) == 0
+                assert (
+                    solver.Value(variables.get_assignment_var("W001", period, st.id))
+                    == 0
+                )
 
     def test_availability_infeasible_when_no_workers(
         self,

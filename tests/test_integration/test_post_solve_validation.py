@@ -197,7 +197,9 @@ class TestHardConstraintValidation:
                     if shift.shift_type_id == "day":
                         day_count += 1
 
-            assert day_count >= 3, f"Period {period.period_index} has insufficient coverage"
+            assert day_count >= 3, (
+                f"Period {period.period_index} has insufficient coverage"
+            )
 
 
 @pytest.mark.integration

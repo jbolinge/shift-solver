@@ -50,9 +50,7 @@ class TestSingleWorkerBasic:
         shift_ids = [s.shift_type_id for s in period.assignments[workers[0].id]]
         assert "shift" in shift_ids
 
-    def test_single_worker_cannot_double_book_by_default(
-        self, worker_factory
-    ) -> None:
+    def test_single_worker_cannot_double_book_by_default(self, worker_factory) -> None:
         """Single worker CANNOT work two shifts in the same period by default.
 
         worker_shift_limit is enabled by default (hard, max_shifts_per_period=1),
@@ -372,9 +370,7 @@ class TestSingleWorkerWithAvailability:
 
         assert not result.success
 
-    def test_single_worker_partial_availability_feasible(
-        self, worker_factory
-    ) -> None:
+    def test_single_worker_partial_availability_feasible(self, worker_factory) -> None:
         """Single worker available for some periods - feasible for those."""
         workers = [worker_factory()]
 

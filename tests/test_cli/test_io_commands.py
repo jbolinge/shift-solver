@@ -132,7 +132,9 @@ class TestImportDataCommand:
         """Test importing workers from CSV."""
         # Create a test CSV file
         workers_csv = tmp_path / "workers.csv"
-        workers_csv.write_text("id,name,worker_type\nW001,Alice,full_time\nW002,Bob,part_time\n")
+        workers_csv.write_text(
+            "id,name,worker_type\nW001,Alice,full_time\nW002,Bob,part_time\n"
+        )
 
         runner = CliRunner()
         result = runner.invoke(
@@ -164,7 +166,9 @@ class TestImportDataCommand:
         assert result.exit_code == 0, result.output
         assert "import complete" not in result.output.lower()
         assert "valid" in result.output.lower()
-        assert "generate" in result.output.lower() or "validate" in result.output.lower()
+        assert (
+            "generate" in result.output.lower() or "validate" in result.output.lower()
+        )
 
     def test_import_availability_csv(self, tmp_path: Path) -> None:
         """Test importing availability from CSV."""
@@ -274,9 +278,7 @@ class TestExportCommand:
 
         return schedule_file
 
-    def test_export_to_excel(
-        self, tmp_path: Path, sample_schedule_json: Path
-    ) -> None:
+    def test_export_to_excel(self, tmp_path: Path, sample_schedule_json: Path) -> None:
         """Test exporting schedule to Excel."""
         output_file = tmp_path / "output.xlsx"
 
@@ -298,9 +300,7 @@ class TestExportCommand:
         assert output_file.exists()
         assert "Schedule exported to" in result.output
 
-    def test_export_to_json(
-        self, tmp_path: Path, sample_schedule_json: Path
-    ) -> None:
+    def test_export_to_json(self, tmp_path: Path, sample_schedule_json: Path) -> None:
         """Test exporting schedule to JSON."""
         output_file = tmp_path / "output.json"
 

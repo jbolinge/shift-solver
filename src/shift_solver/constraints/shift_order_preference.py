@@ -110,7 +110,8 @@ class ShiftOrderPreferenceConstraint(BaseConstraint):
         """Apply a single shift order preference rule."""
         # Validate trigger exists
         if (
-            rule.trigger_type == "shift_type" and rule.trigger_value not in shift_type_map
+            rule.trigger_type == "shift_type"
+            and rule.trigger_value not in shift_type_map
         ) or (
             rule.trigger_type == "category"
             and rule.trigger_value not in shifts_by_category
@@ -199,9 +200,7 @@ class ShiftOrderPreferenceConstraint(BaseConstraint):
         if preferred_met is None:
             return  # Skip - worker can't work preferred shift
 
-        violation_name = (
-            f"sop_viol_{worker.id}_{rule.rule_id}_p{trigger_period}"
-        )
+        violation_name = f"sop_viol_{worker.id}_{rule.rule_id}_p{trigger_period}"
 
         if isinstance(trigger_met, bool):
             # Constant trigger (unavailability) - trigger is always true for this pair

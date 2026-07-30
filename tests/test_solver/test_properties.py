@@ -132,9 +132,7 @@ class TestWorkerProperties:
         assert worker == worker
 
     @given(w1=workers(), w2=workers())
-    def test_worker_equality_implies_same_hash(
-        self, w1: Worker, w2: Worker
-    ) -> None:
+    def test_worker_equality_implies_same_hash(self, w1: Worker, w2: Worker) -> None:
         """If two workers are equal, they should have the same hash."""
         if w1 == w2:
             assert hash(w1) == hash(w2)
@@ -217,6 +215,7 @@ class TestPeriodDateProperties:
             next_start = periods[i + 1][0]
             # Next period should start day after current ends
             from datetime import timedelta
+
             assert next_start == current_end + timedelta(days=1)
 
     @given(periods=period_dates())

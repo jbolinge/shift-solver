@@ -287,8 +287,7 @@ class TestCategorySolverIntegration:
         for period in range(2):
             for st in shift_types:
                 assignment_vars = [
-                    variables.get_assignment_var(w.id, period, st.id)
-                    for w in workers
+                    variables.get_assignment_var(w.id, period, st.id) for w in workers
                 ]
                 model.add(sum(assignment_vars) == st.workers_required)
 

@@ -77,9 +77,7 @@ class CoverageValidationStrategy(BaseValidationStrategy):
                         required=required,
                     )
 
-    def _expected_workers(
-        self, shift_type: ShiftType, period: PeriodAssignment
-    ) -> int:
+    def _expected_workers(self, shift_type: ShiftType, period: PeriodAssignment) -> int:
         """
         Compute the expected worker count for a shift type in a period.
 

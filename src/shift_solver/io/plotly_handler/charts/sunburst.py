@@ -22,9 +22,7 @@ def create_sunburst(schedule: Schedule) -> go.Figure:
     # Count assignments per category, shift_type, and worker
     cat_totals: dict[str, int] = defaultdict(int)
     st_totals: dict[str, int] = defaultdict(int)
-    worker_st_counts: dict[str, dict[str, int]] = defaultdict(
-        lambda: defaultdict(int)
-    )
+    worker_st_counts: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
 
     for rec in flat_records:
         cat_totals[rec["category"]] += 1
@@ -59,9 +57,7 @@ def create_sunburst(schedule: Schedule) -> go.Figure:
             colors.append(get_category_color(category))
 
             # Workers with this shift type
-            for worker_id, count in sorted(
-                worker_st_counts[st.id].items()
-            ):
+            for worker_id, count in sorted(worker_st_counts[st.id].items()):
                 worker = worker_map.get(worker_id)
                 w_id = f"w-{worker_id}-{st.id}"
                 ids.append(w_id)

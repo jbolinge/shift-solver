@@ -205,9 +205,7 @@ class TestExcelRoundtrip:
         for worker in workers:
             original_totals[worker.id] = 0
             for period in schedule.periods:
-                original_totals[worker.id] += len(
-                    period.get_worker_shifts(worker.id)
-                )
+                original_totals[worker.id] += len(period.get_worker_shifts(worker.id))
 
         for worker_id in original_totals:
             assert exported_totals.get(worker_id) == original_totals[worker_id], (

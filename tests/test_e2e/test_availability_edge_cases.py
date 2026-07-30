@@ -51,9 +51,10 @@ class TestOverlappingVacations:
         # Verify unavailable workers not assigned in period 1
         period_1 = result.schedule.periods[1]
         for worker_id in [workers[0].id, workers[1].id]:
-            assert worker_id not in period_1.assignments or not period_1.assignments[
-                worker_id
-            ], f"Worker {worker_id} should not be assigned during vacation"
+            assert (
+                worker_id not in period_1.assignments
+                or not period_1.assignments[worker_id]
+            ), f"Worker {worker_id} should not be assigned during vacation"
 
     def test_three_workers_cascading_overlaps(
         self, worker_factory, standard_shifts, periods_4

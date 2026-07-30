@@ -131,9 +131,7 @@ class TestInfeasibilityDetectionAccuracy:
 class TestSoftConstraintViolationTracking:
     """Tests for soft constraint violation tracking."""
 
-    def test_violation_tracking_with_requests(
-        self, worker_factory, periods_4
-    ) -> None:
+    def test_violation_tracking_with_requests(self, worker_factory, periods_4) -> None:
         """Verify request violations are tracked in objective."""
         workers = [worker_factory() for _ in range(4)]
         period_start, period_end = periods_4[0]
@@ -727,9 +725,7 @@ class TestRegressionFromKnownIssues:
             or not period_1.assignments[workers[0].id]
         )
 
-    def test_request_outside_schedule_period(
-        self, worker_factory, periods_4
-    ) -> None:
+    def test_request_outside_schedule_period(self, worker_factory, periods_4) -> None:
         """Request dates outside schedule period should be handled."""
         workers = [worker_factory() for _ in range(5)]
         schedule_start = periods_4[0][0]

@@ -86,9 +86,7 @@ class ShiftFrequencyConstraint(BaseConstraint):
         shift_type_ids = {st.id for st in shift_types}
 
         for req in requirements:
-            self._apply_requirement(
-                req, worker_map, shift_type_ids, num_periods
-            )
+            self._apply_requirement(req, worker_map, shift_type_ids, num_periods)
 
     def _apply_requirement(
         self,
@@ -190,9 +188,7 @@ class ShiftFrequencyConstraint(BaseConstraint):
             )
 
             # has_assignment is true iff sum(window_assignments) >= 1
-            self.model.add(sum(window_assignments) >= 1).only_enforce_if(
-                has_assignment
-            )
+            self.model.add(sum(window_assignments) >= 1).only_enforce_if(has_assignment)
             self.model.add(sum(window_assignments) == 0).only_enforce_if(
                 has_assignment.negated()
             )

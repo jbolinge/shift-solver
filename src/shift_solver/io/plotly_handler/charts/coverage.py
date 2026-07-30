@@ -46,9 +46,7 @@ def create_coverage_chart(schedule: Schedule) -> go.Figure:
             label = f"P{period.period_index}: {period.period_start}"
             assigned = len(period.get_shifts_by_type(shift_type.id))
             required = shift_type.workers_required
-            coverage_pct = (
-                (assigned / required * 100) if required > 0 else 100.0
-            )
+            coverage_pct = (assigned / required * 100) if required > 0 else 100.0
 
             x_labels.append(label)
             y_values.append(coverage_pct)
