@@ -59,15 +59,11 @@ class TestExtraForbidRejectsTypos:
 
     def test_unknown_top_level_section_rejected(self) -> None:
         with pytest.raises(ValidationError, match="bogus_section"):
-            ShiftSolverConfig.model_validate(
-                _config(bogus_section={"anything": True})
-            )
+            ShiftSolverConfig.model_validate(_config(bogus_section={"anything": True}))
 
     def test_typo_in_solver_section_rejected(self) -> None:
         with pytest.raises(ValidationError, match="maxTimeSeconds"):
-            ShiftSolverConfig.model_validate(
-                _config(solver={"maxTimeSeconds": 100})
-            )
+            ShiftSolverConfig.model_validate(_config(solver={"maxTimeSeconds": 100}))
 
     def test_typo_in_constraint_field_rejected(self) -> None:
         """'weigth' (typo of 'weight') must error, not be silently dropped."""
@@ -156,9 +152,7 @@ class TestRegistryIsSingleSourceOfDefaults:
         cfg = ShiftSolverConfig.model_validate(
             _config(
                 constraints={
-                    "worker_shift_limit": {
-                        "parameters": {"max_shifts_per_period": 2}
-                    }
+                    "worker_shift_limit": {"parameters": {"max_shifts_per_period": 2}}
                 }
             )
         )
@@ -376,9 +370,7 @@ class TestConstraintFilterCrossValidation:
 
     def test_fairness_known_category_accepted(self) -> None:
         cfg = ShiftSolverConfig.model_validate(
-            _config(
-                constraints={"fairness": {"parameters": {"categories": ["day"]}}}
-            )
+            _config(constraints={"fairness": {"parameters": {"categories": ["day"]}}})
         )
         assert cfg.constraints["fairness"].parameters["categories"] == ["day"]
 
@@ -406,9 +398,7 @@ class TestConstraintFilterCrossValidation:
 
     def test_frequency_known_shift_type_accepted(self) -> None:
         cfg = ShiftSolverConfig.model_validate(
-            _config(
-                constraints={"frequency": {"parameters": {"shift_types": ["day"]}}}
-            )
+            _config(constraints={"frequency": {"parameters": {"shift_types": ["day"]}}})
         )
         assert cfg.constraints["frequency"].parameters["shift_types"] == ["day"]
 

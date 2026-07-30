@@ -30,9 +30,7 @@ ids = st.text(
 ).filter(lambda s: s[0].isalpha())  # Must start with letter
 
 # Names: printable text, non-empty
-names = st.text(min_size=1, max_size=50).filter(
-    lambda s: s.strip() and not s.isspace()
-)
+names = st.text(min_size=1, max_size=50).filter(lambda s: s.strip() and not s.isspace())
 
 # Worker types
 worker_types = st.sampled_from(["full_time", "part_time", "contractor", None])
@@ -279,7 +277,11 @@ def shift_instances(
         A valid ShiftInstance
     """
     st_id = shift_type_id or draw(ids)
-    p_idx = period_index if period_index is not None else draw(st.integers(min_value=0, max_value=52))
+    p_idx = (
+        period_index
+        if period_index is not None
+        else draw(st.integers(min_value=0, max_value=52))
+    )
     shift_date = draw(dates)
 
     worker_id: str | None = None

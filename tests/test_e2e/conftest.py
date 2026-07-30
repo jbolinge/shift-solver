@@ -300,7 +300,9 @@ logging:
 @pytest.fixture
 def cli_with_config(e2e_runner: CliRunner, sample_config_file: Path):
     """Helper to run CLI commands with config file."""
+
     def run(*args: str, **kwargs) -> object:
         full_args = ["--config", str(sample_config_file)] + list(args)
         return e2e_runner.invoke(cli, full_args, **kwargs)
+
     return run

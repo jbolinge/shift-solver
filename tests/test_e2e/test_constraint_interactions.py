@@ -121,9 +121,7 @@ class TestFairnessVsRequestConflicts:
 class TestCoverageVsAvailabilityTension:
     """Tests for coverage vs availability constraint tension."""
 
-    def test_coverage_hard_availability_hard(
-        self, worker_factory, periods_4
-    ) -> None:
+    def test_coverage_hard_availability_hard(self, worker_factory, periods_4) -> None:
         """Both coverage and availability as hard constraints."""
         workers = [worker_factory() for _ in range(6)]
         period_start, period_end = periods_4[0]
@@ -569,8 +567,8 @@ class TestWeightSensitivityAnalysis:
         ]
 
         weight_configs = [
-            {"fairness": 500, "request": 50},   # Fairness dominant
-            {"fairness": 50, "request": 500},   # Request dominant
+            {"fairness": 500, "request": 50},  # Fairness dominant
+            {"fairness": 50, "request": 500},  # Request dominant
             {"fairness": 100, "request": 100},  # Equal weights
         ]
 

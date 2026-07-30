@@ -57,16 +57,12 @@ class WorkerShiftLimitConstraint(BaseConstraint):
         shift_types: list[ShiftType] = context["shift_types"]
         num_periods: int = context["num_periods"]
 
-        max_shifts_per_period: int = self.config.get_param(
-            "max_shifts_per_period", 1
-        )
+        max_shifts_per_period: int = self.config.get_param("max_shifts_per_period", 1)
 
         for worker in workers:
             for period in range(num_periods):
                 assignment_vars = [
-                    self.variables.get_assignment_var(
-                        worker.id, period, shift_type.id
-                    )
+                    self.variables.get_assignment_var(worker.id, period, shift_type.id)
                     for shift_type in shift_types
                 ]
                 self.model.add(sum(assignment_vars) <= max_shifts_per_period)

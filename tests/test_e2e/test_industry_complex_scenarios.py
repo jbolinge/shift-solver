@@ -125,7 +125,9 @@ class TestHealthcareSkillMatching:
                 id="LPN004", name="LPN Taylor", restricted_shifts=frozenset(["charge"])
             ),
             worker_factory(
-                id="LPN005", name="LPN Anderson", restricted_shifts=frozenset(["charge"])
+                id="LPN005",
+                name="LPN Anderson",
+                restricted_shifts=frozenset(["charge"]),
             ),
         ]
 
@@ -308,9 +310,7 @@ class TestRetailPartTimeMix:
 
         # Part-time workers restricted from morning (students, etc.)
         parttime = [
-            worker_factory(
-                name=f"PT-{i}", restricted_shifts=frozenset(["morning"])
-            )
+            worker_factory(name=f"PT-{i}", restricted_shifts=frozenset(["morning"]))
             for i in range(5)
         ]
 
@@ -365,7 +365,9 @@ class TestRetailPartTimeMix:
         assert result.success
 
         # Verify part-timers never assigned to morning
-        _parttime_ids = {f"PT-{i}" for i in range(5)}  # Reference set (not used directly)
+        _parttime_ids = {
+            f"PT-{i}" for i in range(5)
+        }  # Reference set (not used directly)
         for period in result.schedule.periods:
             for assignment in period.assignments.get("morning", []):
                 # Part-timer names start with "PT-"
@@ -696,9 +698,7 @@ class TestLogisticsMultipleTimeWindows:
 class TestComplexConstraintCombinations:
     """Tests combining multiple industry patterns."""
 
-    def test_restrictions_availability_requests_combined(
-        self, worker_factory
-    ) -> None:
+    def test_restrictions_availability_requests_combined(self, worker_factory) -> None:
         """Complex scenario with all constraint types."""
         # Workers with various restrictions
         workers = [
@@ -709,7 +709,9 @@ class TestComplexConstraintCombinations:
             worker_factory(name="Eve", restricted_shifts=frozenset(["weekend"])),
             worker_factory(name="Frank"),
             worker_factory(name="Grace"),
-            worker_factory(name="Henry", restricted_shifts=frozenset(["night", "weekend"])),
+            worker_factory(
+                name="Henry", restricted_shifts=frozenset(["night", "weekend"])
+            ),
         ]
 
         shift_types = [

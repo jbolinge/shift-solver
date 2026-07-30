@@ -662,11 +662,11 @@ class TestComplexRealWorldScenarios:
         """Retail-like scenario with part-time and full-time mix."""
         # Mix of full-time and part-time workers
         full_time = [
-            worker_factory(id=f"FT{i+1:03d}", name=f"Full Time {i+1}")
+            worker_factory(id=f"FT{i + 1:03d}", name=f"Full Time {i + 1}")
             for i in range(4)
         ]
         part_time = [
-            worker_factory(id=f"PT{i+1:03d}", name=f"Part Time {i+1}")
+            worker_factory(id=f"PT{i + 1:03d}", name=f"Part Time {i + 1}")
             for i in range(6)
         ]
         workers = full_time + part_time

@@ -491,7 +491,9 @@ class TestShiftFrequencyEdgeCases:
         """Test worker restricted from some but not all shift types in group."""
         # Worker restricted from mvsc_day but can work mvsc_night
         workers = [
-            Worker(id="W001", name="Worker 1", restricted_shifts=frozenset(["mvsc_day"])),
+            Worker(
+                id="W001", name="Worker 1", restricted_shifts=frozenset(["mvsc_day"])
+            ),
             Worker(id="W002", name="Worker 2"),
         ]
 
@@ -505,7 +507,9 @@ class TestShiftFrequencyEdgeCases:
         requirements = [
             ShiftFrequencyRequirement(
                 worker_id="W001",
-                shift_types=frozenset(["mvsc_day", "mvsc_night"]),  # Can only work mvsc_night
+                shift_types=frozenset(
+                    ["mvsc_day", "mvsc_night"]
+                ),  # Can only work mvsc_night
                 max_periods_between=2,
             )
         ]
@@ -701,9 +705,7 @@ constraints:
                 model.add(sum(vars_for_shift) == shift_type.workers_required)
 
         # Minimize violations
-        model.minimize(
-            sum(constraint.violation_variables.values()) * constraint.weight
-        )
+        model.minimize(sum(constraint.violation_variables.values()) * constraint.weight)
 
         solver = cp_model.CpSolver()
         status = solver.solve(model)

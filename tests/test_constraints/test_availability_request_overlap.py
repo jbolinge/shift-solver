@@ -60,8 +60,7 @@ def period_dates() -> list[tuple[date, date]]:
     """Create period dates (4 weeks)."""
     base = date(2026, 1, 5)  # Monday
     return [
-        (base + timedelta(weeks=i), base + timedelta(weeks=i, days=6))
-        for i in range(4)
+        (base + timedelta(weeks=i), base + timedelta(weeks=i, days=6)) for i in range(4)
     ]
 
 

@@ -91,13 +91,10 @@ class TestCSVLoaderWorkerAttributes:
     what makes ShiftType.required_attributes / the `skills` constraint
     reachable from CSV-loaded workers at all."""
 
-    def test_parses_semicolon_separated_key_value_pairs(
-        self, tmp_path: Path
-    ) -> None:
+    def test_parses_semicolon_separated_key_value_pairs(self, tmp_path: Path) -> None:
         csv_file = tmp_path / "workers.csv"
         csv_file.write_text(
-            "id,name,attributes\n"
-            "W001,Alice Smith,certification=icu;seniority=senior\n"
+            "id,name,attributes\nW001,Alice Smith,certification=icu;seniority=senior\n"
         )
 
         loader = CSVLoader()
@@ -108,9 +105,7 @@ class TestCSVLoaderWorkerAttributes:
             "seniority": "senior",
         }
 
-    def test_missing_attributes_column_defaults_empty(
-        self, tmp_path: Path
-    ) -> None:
+    def test_missing_attributes_column_defaults_empty(self, tmp_path: Path) -> None:
         """No 'attributes' column at all (backward compat) => empty dict."""
         csv_file = tmp_path / "workers.csv"
         csv_file.write_text("id,name\nW001,Alice\n")
@@ -178,9 +173,7 @@ class TestCSVLoaderWorkerAttributes:
         from shift_solver.models import Worker
 
         csv_file = tmp_path / "workers.csv"
-        csv_file.write_text(
-            "id,name,attributes\nW001,Alice,certification=icu\n"
-        )
+        csv_file.write_text("id,name,attributes\nW001,Alice,certification=icu\n")
 
         loader = CSVLoader()
         workers = loader.load_workers(csv_file)
@@ -529,5 +522,7 @@ class TestCSVLoaderTypeCoercion:
         )
 
         loader = CSVLoader()
-        with pytest.raises(CSVLoaderError, match="priority must be positive.*-1.*line 2"):
+        with pytest.raises(
+            CSVLoaderError, match="priority must be positive.*-1.*line 2"
+        ):
             loader.load_requests(csv_file)

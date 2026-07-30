@@ -62,7 +62,9 @@ class TestSolverWithAllHardConstraints:
         # Verify restrictions - workers should not be on restricted shifts
         for period in schedule.periods:
             for worker_id, shifts in period.assignments.items():
-                worker = next(w for w in sample_workers_with_restrictions if w.id == worker_id)
+                worker = next(
+                    w for w in sample_workers_with_restrictions if w.id == worker_id
+                )
                 for shift in shifts:
                     assert shift.shift_type_id not in worker.restricted_shifts, (
                         f"Restriction violation: {worker_id} assigned to {shift.shift_type_id}"
@@ -167,7 +169,9 @@ class TestSolverWithSoftConstraints:
                     undesirable_counts[worker_id] = 0
                 for shift in shifts:
                     shift_type = next(
-                        st for st in scenario["shift_types"] if st.id == shift.shift_type_id
+                        st
+                        for st in scenario["shift_types"]
+                        if st.id == shift.shift_type_id
                     )
                     if shift_type.is_undesirable:
                         undesirable_counts[worker_id] += 1
@@ -220,17 +224,19 @@ class TestMinimalFeasibleProblems:
         scenario = (
             ScenarioBuilder()
             .with_workers(1)
-            .with_shift_types([
-                ShiftType(
-                    id="single",
-                    name="Single Shift",
-                    category="day",
-                    start_time=__import__("datetime").time(9, 0),
-                    end_time=__import__("datetime").time(17, 0),
-                    duration_hours=8.0,
-                    workers_required=1,
-                )
-            ])
+            .with_shift_types(
+                [
+                    ShiftType(
+                        id="single",
+                        name="Single Shift",
+                        category="day",
+                        start_time=__import__("datetime").time(9, 0),
+                        end_time=__import__("datetime").time(17, 0),
+                        duration_hours=8.0,
+                        workers_required=1,
+                    )
+                ]
+            )
             .with_periods(1)
             .with_schedule_id("MINIMAL")
             .build()
@@ -305,8 +311,12 @@ class TestInfeasibleProblems:
 
         # All workers restricted from the only shift type
         workers = [
-            Worker(id="W001", name="Worker 1", restricted_shifts=frozenset(["only_shift"])),
-            Worker(id="W002", name="Worker 2", restricted_shifts=frozenset(["only_shift"])),
+            Worker(
+                id="W001", name="Worker 1", restricted_shifts=frozenset(["only_shift"])
+            ),
+            Worker(
+                id="W002", name="Worker 2", restricted_shifts=frozenset(["only_shift"])
+            ),
         ]
 
         shift_types = [
@@ -440,7 +450,10 @@ class TestLargeScaleProblems:
         """Test solver handles various problem sizes."""
         from datetime import time
 
-        workers = [Worker(id=f"W{i:03d}", name=f"Worker {i}") for i in range(1, num_workers + 1)]
+        workers = [
+            Worker(id=f"W{i:03d}", name=f"Worker {i}")
+            for i in range(1, num_workers + 1)
+        ]
 
         shift_types = [
             ShiftType(

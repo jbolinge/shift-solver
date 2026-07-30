@@ -99,7 +99,9 @@ class TestObjectiveWeightAnalysis:
         period_dates = create_period_dates(num_periods)
 
         # Create 10 requests (2 per worker)
-        requests = create_requests(workers, shift_types, period_dates, requests_per_worker=2)
+        requests = create_requests(
+            workers, shift_types, period_dates, requests_per_worker=2
+        )
 
         model = cp_model.CpModel()
         var_builder = VariableBuilder(model, workers, shift_types, num_periods)
@@ -108,7 +110,9 @@ class TestObjectiveWeightAnalysis:
         # Create constraints
         fairness_config = ConstraintConfig(enabled=True, is_hard=False, weight=1000)
         fairness = FairnessConstraint(model, variables, fairness_config)
-        fairness.apply(workers=workers, shift_types=shift_types, num_periods=num_periods)
+        fairness.apply(
+            workers=workers, shift_types=shift_types, num_periods=num_periods
+        )
 
         request_config = ConstraintConfig(enabled=True, is_hard=False, weight=150)
         request_constraint = RequestConstraint(model, variables, request_config)
@@ -146,7 +150,9 @@ class TestObjectiveWeightAnalysis:
         period_dates = create_period_dates(num_periods)
 
         # Create 100 requests (10 per worker)
-        requests = create_requests(workers, shift_types, period_dates, requests_per_worker=10)
+        requests = create_requests(
+            workers, shift_types, period_dates, requests_per_worker=10
+        )
         assert len(requests) == 100
 
         model = cp_model.CpModel()
@@ -157,7 +163,9 @@ class TestObjectiveWeightAnalysis:
         fairness = FairnessConstraint(
             model, variables, ConstraintConfig(enabled=True, is_hard=False, weight=1000)
         )
-        fairness.apply(workers=workers, shift_types=shift_types, num_periods=num_periods)
+        fairness.apply(
+            workers=workers, shift_types=shift_types, num_periods=num_periods
+        )
 
         request_constraint = RequestConstraint(
             model, variables, ConstraintConfig(enabled=True, is_hard=False, weight=150)
@@ -231,8 +239,12 @@ class TestObjectiveWeightAnalysis:
         request_terms = breakdown.get("request", [])
 
         # Check that high priority requests have higher effective weight
-        low_prio_weights = [t.effective_weight for t in request_terms if t.priority_multiplier == 1]
-        high_prio_weights = [t.effective_weight for t in request_terms if t.priority_multiplier == 3]
+        low_prio_weights = [
+            t.effective_weight for t in request_terms if t.priority_multiplier == 1
+        ]
+        high_prio_weights = [
+            t.effective_weight for t in request_terms if t.priority_multiplier == 3
+        ]
 
         if low_prio_weights and high_prio_weights:
             assert all(w == 150 for w in low_prio_weights)  # base weight × 1
@@ -250,7 +262,9 @@ class TestObjectiveScalingSolver:
         period_dates = create_period_dates(num_periods)
 
         # Create 80 requests
-        requests = create_requests(workers, shift_types, period_dates, requests_per_worker=8)
+        requests = create_requests(
+            workers, shift_types, period_dates, requests_per_worker=8
+        )
 
         model = cp_model.CpModel()
         var_builder = VariableBuilder(model, workers, shift_types, num_periods)
@@ -269,7 +283,9 @@ class TestObjectiveScalingSolver:
         fairness = FairnessConstraint(
             model, variables, ConstraintConfig(enabled=True, is_hard=False, weight=1000)
         )
-        fairness.apply(workers=workers, shift_types=shift_types, num_periods=num_periods)
+        fairness.apply(
+            workers=workers, shift_types=shift_types, num_periods=num_periods
+        )
 
         request_constraint = RequestConstraint(
             model, variables, ConstraintConfig(enabled=True, is_hard=False, weight=150)
@@ -342,7 +358,9 @@ class TestObjectiveScalingSolver:
         fairness = FairnessConstraint(
             model, variables, ConstraintConfig(enabled=True, is_hard=False, weight=1000)
         )
-        fairness.apply(workers=workers, shift_types=shift_types, num_periods=num_periods)
+        fairness.apply(
+            workers=workers, shift_types=shift_types, num_periods=num_periods
+        )
 
         request_constraint = RequestConstraint(
             model, variables, ConstraintConfig(enabled=True, is_hard=False, weight=150)
@@ -540,7 +558,9 @@ class TestLargeScaleObjective:
         period_dates = create_period_dates(num_periods)
 
         # Create ~500 requests
-        requests = create_requests(workers, shift_types, period_dates, requests_per_worker=26)
+        requests = create_requests(
+            workers, shift_types, period_dates, requests_per_worker=26
+        )
         assert len(requests) >= 500
 
         model = cp_model.CpModel()

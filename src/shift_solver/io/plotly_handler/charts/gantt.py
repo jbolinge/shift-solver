@@ -52,10 +52,7 @@ def create_gantt(schedule: Schedule) -> go.Figure:
     fig = go.Figure()
     for category, records in sorted(category_records.items()):
         color = get_category_color(category)
-        durations_ms = [
-            (rec.end - rec.start).total_seconds() * 1000
-            for rec in records
-        ]
+        durations_ms = [(rec.end - rec.start).total_seconds() * 1000 for rec in records]
         fig.add_trace(
             go.Bar(
                 x=durations_ms,

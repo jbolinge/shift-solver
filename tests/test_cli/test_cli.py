@@ -40,7 +40,9 @@ class TestCLIBasics:
         """CLI main group exists and is callable."""
         result = runner.invoke(cli, ["--help"])
         assert result.exit_code == 0
-        assert "shift-solver" in result.output.lower() or "usage" in result.output.lower()
+        assert (
+            "shift-solver" in result.output.lower() or "usage" in result.output.lower()
+        )
 
     def test_version_command(self, runner: CliRunner) -> None:
         """Version command shows version."""
@@ -61,7 +63,9 @@ class TestCheckConfigCommand:
         self, runner: CliRunner, sample_config_file: Path
     ) -> None:
         """check-config validates a valid config file."""
-        result = runner.invoke(cli, ["check-config", "--config", str(sample_config_file)])
+        result = runner.invoke(
+            cli, ["check-config", "--config", str(sample_config_file)]
+        )
 
         assert result.exit_code == 0
         assert "valid" in result.output.lower()
@@ -230,11 +234,15 @@ class TestExplicitVsDefaultConfigPath:
         result = runner.invoke(
             cli,
             [
-                "-c", str(missing),
+                "-c",
+                str(missing),
                 "generate",
-                "--start-date", "2026-06-01",
-                "--end-date", "2026-06-07",
-                "--output", str(tmp_path / "sched.json"),
+                "--start-date",
+                "2026-06-01",
+                "--end-date",
+                "2026-06-07",
+                "--output",
+                str(tmp_path / "sched.json"),
                 "--demo",
                 "--quick-solve",
             ],
@@ -306,9 +314,12 @@ class TestExplicitVsDefaultConfigPath:
             cli,
             [
                 "generate",
-                "--start-date", "2026-06-01",
-                "--end-date", "2026-06-07",
-                "--output", str(output),
+                "--start-date",
+                "2026-06-01",
+                "--end-date",
+                "2026-06-07",
+                "--output",
+                str(output),
                 "--demo",
                 "--quick-solve",
             ],
@@ -365,12 +376,17 @@ shift_types:
         result = runner.invoke(
             cli,
             [
-                "-c", str(config_file),
+                "-c",
+                str(config_file),
                 "generate",
-                "--start-date", "2026-06-01",
-                "--end-date", "2026-06-07",
-                "--output", str(output),
-                "--workers", str(workers_csv),
+                "--start-date",
+                "2026-06-01",
+                "--end-date",
+                "2026-06-07",
+                "--output",
+                str(output),
+                "--workers",
+                str(workers_csv),
                 "--quick-solve",
             ],
         )

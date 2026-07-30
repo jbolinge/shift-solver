@@ -853,8 +853,7 @@ class TestRequestConstraintViolationVariableCoupling:
             applicable_periods = [
                 p
                 for p, (period_start, period_end) in enumerate(period_dates)
-                if request.start_date <= period_end
-                and request.end_date >= period_start
+                if request.start_date <= period_end and request.end_date >= period_start
             ]
             assignment_values = {
                 p: solver.value(
@@ -1292,9 +1291,7 @@ class TestHardVsSoftRequestSemantics:
         )
 
         # Coverage: exactly 1 worker for day shift
-        vars_day_soft = [
-            vars_soft.get_assignment_var(w.id, 0, "day") for w in workers
-        ]
+        vars_day_soft = [vars_soft.get_assignment_var(w.id, 0, "day") for w in workers]
         model_soft.add(sum(vars_day_soft) == 1)
 
         # Minimize violations with priority weighting
@@ -1337,9 +1334,7 @@ class TestHardVsSoftRequestSemantics:
         )
 
         # Coverage: exactly 1 worker for day shift
-        vars_day_hard = [
-            vars_hard.get_assignment_var(w.id, 0, "day") for w in workers
-        ]
+        vars_day_hard = [vars_hard.get_assignment_var(w.id, 0, "day") for w in workers]
         model_hard.add(sum(vars_day_hard) == 1)
 
         solver_hard = cp_model.CpSolver()

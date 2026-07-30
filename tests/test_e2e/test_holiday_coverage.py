@@ -171,9 +171,7 @@ class TestHolidayPremiumShifts:
         )
         assert assigned_count >= 2
 
-    def test_mixed_priority_negative_requests(
-        self, worker_factory, periods_4
-    ) -> None:
+    def test_mixed_priority_negative_requests(self, worker_factory, periods_4) -> None:
         """Different priority levels for holiday negative requests."""
         workers = [worker_factory() for _ in range(6)]
         period_start, period_end = periods_4[0]
@@ -231,7 +229,7 @@ class TestYearEndScheduling:
         # Create periods around year-end
         periods = [
             (date(2026, 12, 21), date(2026, 12, 27)),  # Christmas week
-            (date(2026, 12, 28), date(2027, 1, 3)),    # New Year week
+            (date(2026, 12, 28), date(2027, 1, 3)),  # New Year week
         ]
 
         shift_types = [
@@ -325,9 +323,7 @@ class TestYearEndScheduling:
 class TestFairHolidayRotation:
     """Tests for fair distribution of holiday assignments."""
 
-    def test_fair_holiday_rotation_over_two_periods(
-        self, worker_factory
-    ) -> None:
+    def test_fair_holiday_rotation_over_two_periods(self, worker_factory) -> None:
         """Verify fair rotation of holiday shifts across periods."""
         workers = [worker_factory() for _ in range(6)]
 
@@ -403,9 +399,7 @@ class TestFairHolidayRotation:
 class TestMixedNormalHolidayPeriods:
     """Tests for schedules mixing normal and holiday periods."""
 
-    def test_mixed_shift_types_same_schedule(
-        self, worker_factory, periods_4
-    ) -> None:
+    def test_mixed_shift_types_same_schedule(self, worker_factory, periods_4) -> None:
         """Schedule with both normal and holiday shift types."""
         workers = [worker_factory() for _ in range(12)]
 

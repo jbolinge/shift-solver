@@ -18,9 +18,7 @@ def create_fairness_chart(schedule: Schedule) -> go.Figure:
     categories = sorted({st.category for st in schedule.shift_types})
 
     # Count assignments per worker per category
-    worker_cat_counts: dict[str, dict[str, int]] = defaultdict(
-        lambda: defaultdict(int)
-    )
+    worker_cat_counts: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
     for rec in flat_records:
         worker_cat_counts[rec["worker_id"]][rec["category"]] += 1
 
@@ -42,9 +40,7 @@ def create_fairness_chart(schedule: Schedule) -> go.Figure:
                 marker_color=get_category_color(category),
                 text=names,
                 hovertemplate=(
-                    "Worker: %{text}<br>"
-                    "Assignments: %{y}<br>"
-                    "<extra></extra>"
+                    "Worker: %{text}<br>Assignments: %{y}<br><extra></extra>"
                 ),
             )
         )

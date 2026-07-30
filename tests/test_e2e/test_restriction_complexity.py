@@ -35,8 +35,8 @@ class TestMultipleRestrictionsPerWorker:
 
         shift_types = [
             ShiftType(
-                id=f"shift_{chr(97+i)}",  # a through f
-                name=f"Shift {chr(65+i)}",
+                id=f"shift_{chr(97 + i)}",  # a through f
+                name=f"Shift {chr(65 + i)}",
                 category="day" if i < 3 else "night",
                 start_time=time(6 + i * 2, 0),
                 end_time=time((14 + i * 2) % 24, 0),
@@ -419,9 +419,7 @@ class TestDynamicRestrictionsByPeriod:
 
         assert result.success
 
-    def test_alternating_availability_pattern(
-        self, worker_factory, periods_4
-    ) -> None:
+    def test_alternating_availability_pattern(self, worker_factory, periods_4) -> None:
         """Workers alternate availability by period."""
         workers = [worker_factory() for _ in range(8)]
 

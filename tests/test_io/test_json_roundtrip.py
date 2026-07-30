@@ -39,7 +39,7 @@ class TestWorkerFrozensetRoundTrip:
         assert len(restored) == 0
         assert restored == frozenset()
         # Important: should NOT be frozenset([''])
-        assert '' not in restored
+        assert "" not in restored
 
     def test_single_element_frozenset(self) -> None:
         """Test single-element frozenset round-trip."""

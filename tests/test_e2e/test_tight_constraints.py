@@ -203,9 +203,7 @@ class TestHighRestrictionCount:
         workers = []
         for i in range(10):
             if i < 5:
-                workers.append(
-                    worker_factory(restricted_shifts=frozenset(["night"]))
-                )
+                workers.append(worker_factory(restricted_shifts=frozenset(["night"])))
             else:
                 workers.append(worker_factory())
 
@@ -246,9 +244,7 @@ class TestHighRestrictionCount:
         workers = []
         for i in range(10):
             if i < 3:
-                workers.append(
-                    worker_factory(restricted_shifts=frozenset(["weekend"]))
-                )
+                workers.append(worker_factory(restricted_shifts=frozenset(["weekend"])))
             else:
                 workers.append(worker_factory())
 
@@ -629,9 +625,7 @@ class TestFeasibilityCheckerAccuracy:
         feasibility = checker.check()
 
         assert not feasibility.is_feasible
-        assert any(
-            issue["type"] == "restriction" for issue in feasibility.issues
-        )
+        assert any(issue["type"] == "restriction" for issue in feasibility.issues)
 
     def test_checker_detects_combined_infeasibility(
         self, worker_factory, periods_4

@@ -155,7 +155,9 @@ class TestSolutionExtractor:
 
         # Check that shifts are assigned in each period
         for period in schedule.periods:
-            all_shifts = period.get_shifts_by_type("day") + period.get_shifts_by_type("night")
+            all_shifts = period.get_shifts_by_type("day") + period.get_shifts_by_type(
+                "night"
+            )
             assigned_shifts = [s for s in all_shifts if s.is_assigned]
             # At least some shifts should be assigned
             assert len(assigned_shifts) > 0
@@ -381,12 +383,8 @@ class TestSolutionExtractorStatistics:
         schedule = extractor.extract()
 
         # Count total shifts by type
-        total_day = sum(
-            s.get("day", 0) for s in schedule.statistics.values()
-        )
-        total_night = sum(
-            s.get("night", 0) for s in schedule.statistics.values()
-        )
+        total_day = sum(s.get("day", 0) for s in schedule.statistics.values())
+        total_night = sum(s.get("night", 0) for s in schedule.statistics.values())
 
         # 2 periods, 1 day and 1 night each = 2 of each
         assert total_day == 2

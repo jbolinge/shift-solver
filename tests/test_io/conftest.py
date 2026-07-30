@@ -55,14 +55,34 @@ def sample_schedule() -> Schedule:
         period_end=date(2026, 2, 8),
         assignments={
             "W001": [
-                ShiftInstance(shift_type_id="day", period_index=0, date=date(2026, 2, 2), worker_id="W001"),
-                ShiftInstance(shift_type_id="night", period_index=0, date=date(2026, 2, 3), worker_id="W001"),
+                ShiftInstance(
+                    shift_type_id="day",
+                    period_index=0,
+                    date=date(2026, 2, 2),
+                    worker_id="W001",
+                ),
+                ShiftInstance(
+                    shift_type_id="night",
+                    period_index=0,
+                    date=date(2026, 2, 3),
+                    worker_id="W001",
+                ),
             ],
             "W002": [
-                ShiftInstance(shift_type_id="day", period_index=0, date=date(2026, 2, 2), worker_id="W002"),
+                ShiftInstance(
+                    shift_type_id="day",
+                    period_index=0,
+                    date=date(2026, 2, 2),
+                    worker_id="W002",
+                ),
             ],
             "W003": [
-                ShiftInstance(shift_type_id="night", period_index=0, date=date(2026, 2, 4), worker_id="W003"),
+                ShiftInstance(
+                    shift_type_id="night",
+                    period_index=0,
+                    date=date(2026, 2, 4),
+                    worker_id="W003",
+                ),
             ],
         },
     )
@@ -72,14 +92,34 @@ def sample_schedule() -> Schedule:
         period_end=date(2026, 2, 15),
         assignments={
             "W001": [
-                ShiftInstance(shift_type_id="day", period_index=1, date=date(2026, 2, 9), worker_id="W001"),
+                ShiftInstance(
+                    shift_type_id="day",
+                    period_index=1,
+                    date=date(2026, 2, 9),
+                    worker_id="W001",
+                ),
             ],
             "W002": [
-                ShiftInstance(shift_type_id="night", period_index=1, date=date(2026, 2, 10), worker_id="W002"),
+                ShiftInstance(
+                    shift_type_id="night",
+                    period_index=1,
+                    date=date(2026, 2, 10),
+                    worker_id="W002",
+                ),
             ],
             "W003": [
-                ShiftInstance(shift_type_id="day", period_index=1, date=date(2026, 2, 9), worker_id="W003"),
-                ShiftInstance(shift_type_id="night", period_index=1, date=date(2026, 2, 11), worker_id="W003"),
+                ShiftInstance(
+                    shift_type_id="day",
+                    period_index=1,
+                    date=date(2026, 2, 9),
+                    worker_id="W003",
+                ),
+                ShiftInstance(
+                    shift_type_id="night",
+                    period_index=1,
+                    date=date(2026, 2, 11),
+                    worker_id="W003",
+                ),
             ],
         },
     )

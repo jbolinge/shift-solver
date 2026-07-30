@@ -696,9 +696,7 @@ class TestShiftSolverShiftFrequencyIntegration:
         ]
 
         constraint_configs = {
-            "shift_frequency": ConstraintConfig(
-                enabled=True, is_hard=False, weight=500
-            )
+            "shift_frequency": ConstraintConfig(enabled=True, is_hard=False, weight=500)
         }
 
         solver = ShiftSolver(
@@ -937,7 +935,9 @@ class TestShiftSolverParameters:
             schedule_id="TEST-PARAMS",
         )
 
-    def test_solve_accepts_num_workers_parameter(self, simple_solver: ShiftSolver) -> None:
+    def test_solve_accepts_num_workers_parameter(
+        self, simple_solver: ShiftSolver
+    ) -> None:
         """num_workers parameter is accepted and solver still works."""
         result = simple_solver.solve(time_limit_seconds=10, num_workers=2)
         assert result.success
@@ -952,7 +952,9 @@ class TestShiftSolverParameters:
         assert simple_solver._solver is not None
         assert abs(simple_solver._solver.parameters.relative_gap_limit - 0.1) < 1e-6
 
-    def test_solve_accepts_log_search_progress(self, simple_solver: ShiftSolver) -> None:
+    def test_solve_accepts_log_search_progress(
+        self, simple_solver: ShiftSolver
+    ) -> None:
         """log_search_progress parameter is accepted and set."""
         result = simple_solver.solve(time_limit_seconds=10, log_search_progress=True)
         assert result.success
@@ -971,8 +973,6 @@ class TestShiftSolverParameters:
         from shift_solver.solver.progress_callback import SolverProgressCallback
 
         callback = SolverProgressCallback()
-        result = simple_solver.solve(
-            time_limit_seconds=10, solution_callback=callback
-        )
+        result = simple_solver.solve(time_limit_seconds=10, solution_callback=callback)
         assert result.success
         assert callback.solutions_found >= 1

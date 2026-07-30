@@ -239,4 +239,7 @@ shift_types:
         with pytest.raises(Exception) as exc_info:
             ShiftSolverConfig.load_from_yaml(config_file)
 
-        assert "unique" in str(exc_info.value).lower() or "duplicate" in str(exc_info.value).lower()
+        assert (
+            "unique" in str(exc_info.value).lower()
+            or "duplicate" in str(exc_info.value).lower()
+        )

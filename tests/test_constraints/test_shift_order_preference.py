@@ -65,8 +65,7 @@ def period_dates() -> list[tuple[date, date]]:
     from datetime import timedelta
 
     return [
-        (base + timedelta(weeks=i), base + timedelta(weeks=i, days=6))
-        for i in range(4)
+        (base + timedelta(weeks=i), base + timedelta(weeks=i, days=6)) for i in range(4)
     ]
 
 
@@ -466,9 +465,7 @@ class TestShiftOrderPreferenceSolve:
         assert status in (cp_model.OPTIMAL, cp_model.FEASIBLE)
 
         # W001 should be assigned night_shift in period 1 to satisfy preference
-        night_val = solver.value(
-            variables.get_assignment_var("W001", 1, "night_shift")
-        )
+        night_val = solver.value(variables.get_assignment_var("W001", 1, "night_shift"))
         assert night_val == 1
 
     def test_unavailability_trigger_solve(
@@ -541,9 +538,7 @@ class TestShiftOrderPreferenceSolve:
         assert status in (cp_model.OPTIMAL, cp_model.FEASIBLE)
 
         # W001 should work night_shift in period 1 (before vacation in period 2)
-        night_val = solver.value(
-            variables.get_assignment_var("W001", 1, "night_shift")
-        )
+        night_val = solver.value(variables.get_assignment_var("W001", 1, "night_shift"))
         assert night_val == 1
 
     def test_category_to_category_solve(
@@ -605,9 +600,7 @@ class TestShiftOrderPreferenceSolve:
         assert status in (cp_model.OPTIMAL, cp_model.FEASIBLE)
 
         # W001 should be assigned night_shift in period 1
-        night_val = solver.value(
-            variables.get_assignment_var("W001", 1, "night_shift")
-        )
+        night_val = solver.value(variables.get_assignment_var("W001", 1, "night_shift"))
         assert night_val == 1
 
 
@@ -794,9 +787,7 @@ class TestShiftOrderPreferenceEdgeCases:
         # W001 restricted from night_shift -> 0 violations for W001
         # W002 can work night_shift -> 3 violations for W002
         assert len(constraint.violation_variables) == 3
-        assert all(
-            "W002" in name for name in constraint.violation_variables
-        )
+        assert all("W002" in name for name in constraint.violation_variables)
 
     def test_worker_ids_filtering(
         self,
@@ -833,9 +824,7 @@ class TestShiftOrderPreferenceEdgeCases:
 
         # Only W001 -> 3 violations
         assert len(constraint.violation_variables) == 3
-        assert all(
-            "W001" in name for name in constraint.violation_variables
-        )
+        assert all("W001" in name for name in constraint.violation_variables)
 
     def test_multiple_rules(
         self,

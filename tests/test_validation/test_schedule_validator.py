@@ -206,9 +206,7 @@ class TestConstructorBackwardCompatibility:
                 },
             ),
         ]
-        schedule = make_schedule(
-            periods, [Worker(id="W1", name="Alice")], [bare_shift]
-        )
+        schedule = make_schedule(periods, [Worker(id="W1", name="Alice")], [bare_shift])
 
         result = ScheduleValidator(schedule=schedule).validate()
         assert not any(v["type"] == "skills" for v in result.violations)
@@ -244,9 +242,7 @@ class TestConstructorBackwardCompatibility:
                 },
             ),
         ]
-        schedule = make_schedule(
-            periods, [Worker(id="W1", name="Alice")], [bare_shift]
-        )
+        schedule = make_schedule(periods, [Worker(id="W1", name="Alice")], [bare_shift])
 
         rich_shift = ShiftType(
             id="icu",
@@ -299,9 +295,7 @@ class TestConstructorBackwardCompatibility:
         result = ScheduleValidator(schedule=schedule).validate()
         assert any(v["type"] == "skills" for v in result.violations)
 
-        qualified_worker = Worker(
-            id="W1", name="Alice", attributes={"license": "RN"}
-        )
+        qualified_worker = Worker(id="W1", name="Alice", attributes={"license": "RN"})
         result = ScheduleValidator(
             schedule=schedule, workers=[qualified_worker]
         ).validate()
@@ -631,9 +625,7 @@ class TestAvailabilityValidation:
             ),
         ]
 
-        validator = ScheduleValidator(
-            schedule=schedule, availabilities=availabilities
-        )
+        validator = ScheduleValidator(schedule=schedule, availabilities=availabilities)
         result = validator.validate()
         assert not result.is_valid
         assert any(v["type"] == "availability" for v in result.violations)
@@ -863,9 +855,7 @@ class TestWorkerShiftLimitValidation:
         schedule = make_schedule(periods, workers, shift_types)
 
         default_result = ScheduleValidator(schedule=schedule).validate()
-        assert any(
-            v["type"] == "worker_shift_limit" for v in default_result.violations
-        )
+        assert any(v["type"] == "worker_shift_limit" for v in default_result.violations)
 
         lenient_result = ScheduleValidator(
             schedule=schedule, max_shifts_per_period=2

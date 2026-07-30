@@ -66,7 +66,16 @@ class TestExcelLoader:
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "Requests"
-        ws.append(["worker_id", "start_date", "end_date", "request_type", "shift_type_id", "priority"])
+        ws.append(
+            [
+                "worker_id",
+                "start_date",
+                "end_date",
+                "request_type",
+                "shift_type_id",
+                "priority",
+            ]
+        )
         ws.append(["W001", date(2026, 1, 10), date(2026, 1, 10), "positive", "day", 2])
 
         excel_file = tmp_path / "input.xlsx"
@@ -97,7 +106,9 @@ class TestExcelLoader:
 
         # Requests sheet
         ws_req = wb.create_sheet("Requests")
-        ws_req.append(["worker_id", "start_date", "end_date", "request_type", "shift_type_id"])
+        ws_req.append(
+            ["worker_id", "start_date", "end_date", "request_type", "shift_type_id"]
+        )
         ws_req.append(["W001", date(2026, 1, 20), date(2026, 1, 20), "positive", "day"])
 
         excel_file = tmp_path / "input.xlsx"
@@ -149,7 +160,9 @@ class TestExcelLoaderErrorHandling:
         ws.title = "Availability"
         ws.append(["worker_id", "start_date", "end_date", "availability_type"])
         ws.append(["W001", date(2026, 1, 10), date(2026, 1, 15), "unavailable"])
-        ws.append(["W002", date(2026, 1, 10), date(2026, 1, 15), "invalid_type"])  # Invalid type
+        ws.append(
+            ["W002", date(2026, 1, 10), date(2026, 1, 15), "invalid_type"]
+        )  # Invalid type
 
         excel_file = tmp_path / "availability.xlsx"
         wb.save(excel_file)
@@ -167,9 +180,13 @@ class TestExcelLoaderErrorHandling:
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "Requests"
-        ws.append(["worker_id", "start_date", "end_date", "request_type", "shift_type_id"])
+        ws.append(
+            ["worker_id", "start_date", "end_date", "request_type", "shift_type_id"]
+        )
         ws.append(["W001", date(2026, 1, 10), date(2026, 1, 10), "positive", "day"])
-        ws.append(["W002", date(2026, 1, 10), date(2026, 1, 10), "invalid_type", "day"])  # Invalid type
+        ws.append(
+            ["W002", date(2026, 1, 10), date(2026, 1, 10), "invalid_type", "day"]
+        )  # Invalid type
 
         excel_file = tmp_path / "requests.xlsx"
         wb.save(excel_file)
@@ -310,12 +327,14 @@ class TestExcelRoundTrip:
         ws.title = "Workers"
         ws.append(["id", "name", "worker_type", "restricted_shifts"])
         for w in original_workers:
-            ws.append([
-                w.id,
-                w.name,
-                w.worker_type or "",
-                ",".join(w.restricted_shifts),
-            ])
+            ws.append(
+                [
+                    w.id,
+                    w.name,
+                    w.worker_type or "",
+                    ",".join(w.restricted_shifts),
+                ]
+            )
 
         excel_file = tmp_path / "workers.xlsx"
         wb.save(excel_file)
@@ -326,4 +345,6 @@ class TestExcelRoundTrip:
 
         assert len(loaded_workers) == 2
         assert loaded_workers[0].id == original_workers[0].id
-        assert loaded_workers[1].restricted_shifts == original_workers[1].restricted_shifts
+        assert (
+            loaded_workers[1].restricted_shifts == original_workers[1].restricted_shifts
+        )

@@ -253,14 +253,10 @@ def _load_shift_types(cfg: ShiftSolverConfig | None, verbose: int) -> list[Shift
         ]
 
 
-def _load_workers(
-    demo: bool, workers_path: Path | None, verbose: int
-) -> list[Worker]:
+def _load_workers(demo: bool, workers_path: Path | None, verbose: int) -> list[Worker]:
     """Load workers from --demo or a --workers CSV file (exactly one required)."""
     if demo and workers_path:
-        raise click.ClickException(
-            "Use either --demo or --workers, not both."
-        )
+        raise click.ClickException("Use either --demo or --workers, not both.")
     if demo:
         worker_list = [Worker(id=f"W{i:03d}", name=f"Worker {i}") for i in range(1, 11)]
         click.echo(f"Using {len(worker_list)} demo workers")
@@ -296,9 +292,7 @@ def _load_availability(
     return availabilities
 
 
-def _load_requests(
-    requests_path: Path | None, verbose: int
-) -> list[SchedulingRequest]:
+def _load_requests(requests_path: Path | None, verbose: int) -> list[SchedulingRequest]:
     """Load scheduling requests from a CSV file, if provided."""
     if not requests_path:
         return []
@@ -348,9 +342,7 @@ def _load_constraint_configs(
             parameters=dict(resolved.parameters),
         )
     if verbose:
-        click.echo(
-            f"Loaded {len(constraint_configs)} constraint configs from config"
-        )
+        click.echo(f"Loaded {len(constraint_configs)} constraint configs from config")
     return constraint_configs
 
 

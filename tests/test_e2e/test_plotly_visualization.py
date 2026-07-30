@@ -34,10 +34,20 @@ def _build_minimal_schedule() -> Schedule:
         period_end=date(2026, 2, 8),
         assignments={
             "W001": [
-                ShiftInstance(shift_type_id="day", period_index=0, date=date(2026, 2, 2), worker_id="W001"),
+                ShiftInstance(
+                    shift_type_id="day",
+                    period_index=0,
+                    date=date(2026, 2, 2),
+                    worker_id="W001",
+                ),
             ],
             "W002": [
-                ShiftInstance(shift_type_id="day", period_index=0, date=date(2026, 2, 3), worker_id="W002"),
+                ShiftInstance(
+                    shift_type_id="day",
+                    period_index=0,
+                    date=date(2026, 2, 3),
+                    worker_id="W002",
+                ),
             ],
         },
     )
@@ -47,10 +57,20 @@ def _build_minimal_schedule() -> Schedule:
         period_end=date(2026, 2, 15),
         assignments={
             "W001": [
-                ShiftInstance(shift_type_id="day", period_index=1, date=date(2026, 2, 9), worker_id="W001"),
+                ShiftInstance(
+                    shift_type_id="day",
+                    period_index=1,
+                    date=date(2026, 2, 9),
+                    worker_id="W001",
+                ),
             ],
             "W002": [
-                ShiftInstance(shift_type_id="day", period_index=1, date=date(2026, 2, 10), worker_id="W002"),
+                ShiftInstance(
+                    shift_type_id="day",
+                    period_index=1,
+                    date=date(2026, 2, 10),
+                    worker_id="W002",
+                ),
             ],
         },
     )
@@ -233,9 +253,7 @@ class TestPlotlyVisualizationE2E:
         assert "E2E-REALISTIC" in index_content
         assert "8" in index_content  # 8 workers
 
-    def test_e2e_chart_data_matches_schedule_statistics(
-        self, tmp_path: Path
-    ) -> None:
+    def test_e2e_chart_data_matches_schedule_statistics(self, tmp_path: Path) -> None:
         """Chart data is mathematically consistent with schedule data."""
         schedule = _build_minimal_schedule()
         visualizer = PlotlyVisualizer()
@@ -261,7 +279,8 @@ class TestPlotlyVisualizationE2E:
         # (Each period has both W001 and W002 each with 1 day shift = 2 total)
         coverage_fig = create_coverage_chart(schedule)
         scatter_traces = [
-            t for t in coverage_fig.data
+            t
+            for t in coverage_fig.data
             if hasattr(t, "mode") and t.mode and "lines" in t.mode
         ]
         assert len(scatter_traces) == 1  # 1 shift type

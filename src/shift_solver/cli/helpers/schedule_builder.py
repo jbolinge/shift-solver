@@ -78,9 +78,7 @@ def infer_shift_types(schedule_data: dict[str, Any]) -> list[ShiftType]:
     Returns:
         List of ShiftType objects with minimal (approximate) metadata
     """
-    counts_per_period: dict[str, dict[int, int]] = defaultdict(
-        lambda: defaultdict(int)
-    )
+    counts_per_period: dict[str, dict[int, int]] = defaultdict(lambda: defaultdict(int))
     for period in schedule_data.get("periods", []):
         period_index = period.get("period_index")
         for shift_list in period.get("assignments", {}).values():

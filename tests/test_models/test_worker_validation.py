@@ -36,7 +36,9 @@ class TestRestrictionPreferenceConflict:
 
     def test_partial_overlap_raises_error(self) -> None:
         """Partial overlap between sets should raise error."""
-        with pytest.raises(ValueError, match="cannot be both restricted and preferred.*day"):
+        with pytest.raises(
+            ValueError, match="cannot be both restricted and preferred.*day"
+        ):
             Worker(
                 id="W001",
                 name="Test Worker",

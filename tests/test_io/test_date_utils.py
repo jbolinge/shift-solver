@@ -92,9 +92,7 @@ class TestParseDateWithFormat:
         """Test that using wrong format raises error."""
         # ISO date with US format should fail
         with pytest.raises(ExampleError, match="Invalid date"):
-            parse_date(
-                "2026-01-15", "test_field", 1, ExampleError, date_format="us"
-            )
+            parse_date("2026-01-15", "test_field", 1, ExampleError, date_format="us")
 
     def test_auto_format_parses_all(self) -> None:
         """Test that auto format tries all formats."""
@@ -124,7 +122,9 @@ class TestAmbiguousDateWarning:
         """Clear warned dates cache before each test."""
         _warned_dates.clear()
 
-    def test_ambiguous_date_logs_warning(self, caplog: pytest.LogCaptureFixture) -> None:
+    def test_ambiguous_date_logs_warning(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """Test that ambiguous dates log a warning in auto mode."""
         with caplog.at_level(logging.WARNING):
             result = parse_date(
@@ -142,12 +142,8 @@ class TestAmbiguousDateWarning:
     ) -> None:
         """Test that same ambiguous date only warns once."""
         with caplog.at_level(logging.WARNING):
-            parse_date(
-                "03/04/2026", "field1", 1, ExampleError, date_format="auto"
-            )
-            parse_date(
-                "03/04/2026", "field2", 2, ExampleError, date_format="auto"
-            )
+            parse_date("03/04/2026", "field1", 1, ExampleError, date_format="auto")
+            parse_date("03/04/2026", "field2", 2, ExampleError, date_format="auto")
 
         # Count warnings for this specific date
         warning_count = caplog.text.count("Ambiguous date '03/04/2026'")
@@ -158,12 +154,8 @@ class TestAmbiguousDateWarning:
     ) -> None:
         """Test that unambiguous dates don't log warnings."""
         with caplog.at_level(logging.WARNING):
-            parse_date(
-                "15/01/2026", "test_field", 1, ExampleError, date_format="auto"
-            )
-            parse_date(
-                "2026-01-15", "test_field", 2, ExampleError, date_format="auto"
-            )
+            parse_date("15/01/2026", "test_field", 1, ExampleError, date_format="auto")
+            parse_date("2026-01-15", "test_field", 2, ExampleError, date_format="auto")
 
         assert "Ambiguous" not in caplog.text
 
@@ -172,12 +164,8 @@ class TestAmbiguousDateWarning:
     ) -> None:
         """Test that explicit format doesn't log warnings."""
         with caplog.at_level(logging.WARNING):
-            parse_date(
-                "01/02/2026", "test_field", 1, ExampleError, date_format="us"
-            )
-            parse_date(
-                "01/02/2026", "test_field", 2, ExampleError, date_format="eu"
-            )
+            parse_date("01/02/2026", "test_field", 1, ExampleError, date_format="us")
+            parse_date("01/02/2026", "test_field", 2, ExampleError, date_format="eu")
 
         assert "Ambiguous" not in caplog.text
 

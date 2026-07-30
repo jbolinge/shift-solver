@@ -403,8 +403,7 @@ class TestSkillsConstraintEdgeCases:
         for period in range(2):
             for w in workers:
                 assert (
-                    solver.Value(variables.get_assignment_var(w.id, period, "icu"))
-                    == 0
+                    solver.Value(variables.get_assignment_var(w.id, period, "icu")) == 0
                 )
 
     def test_init_default_config(self) -> None:

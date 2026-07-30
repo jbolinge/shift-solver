@@ -26,7 +26,9 @@ class TestRetailSchedule:
 
         period_dates = create_period_dates(start_date=start_date, num_periods=4)
         availability = generator.generate_availability(workers, start_date, end_date)
-        requests = generator.generate_requests(workers, shift_types, start_date, end_date)
+        requests = generator.generate_requests(
+            workers, shift_types, start_date, end_date
+        )
 
         solver = ShiftSolver(
             workers=workers,
@@ -111,7 +113,9 @@ class TestHealthcareSchedule:
         period_dates = create_period_dates(start_date=start_date, num_periods=3)
 
         availability = generator.generate_availability(workers, start_date, end_date)
-        requests = generator.generate_requests(workers, shift_types, start_date, end_date)
+        requests = generator.generate_requests(
+            workers, shift_types, start_date, end_date
+        )
 
         solver = ShiftSolver(
             workers=workers,
@@ -190,7 +194,9 @@ class TestWarehouseSchedule:
         period_dates = create_period_dates(start_date=start_date, num_periods=4)
 
         availability = generator.generate_availability(workers, start_date, end_date)
-        requests = generator.generate_requests(workers, shift_types, start_date, end_date)
+        requests = generator.generate_requests(
+            workers, shift_types, start_date, end_date
+        )
 
         solver = ShiftSolver(
             workers=workers,
@@ -244,7 +250,9 @@ class TestLargeScaleScenarios:
         period_dates = create_period_dates(start_date=start_date, num_periods=8)
 
         availability = generator.generate_availability(workers, start_date, end_date)
-        requests = generator.generate_requests(workers, shift_types, start_date, end_date)
+        requests = generator.generate_requests(
+            workers, shift_types, start_date, end_date
+        )
 
         solver = ShiftSolver(
             workers=workers,

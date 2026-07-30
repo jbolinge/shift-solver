@@ -410,10 +410,7 @@ class TestVariableConstraintCounts:
 
             # Count assignment variables
             assignment_count = sum(
-                1
-                for w in workers
-                for p in range(num_periods)
-                for st in shift_types
+                1 for w in workers for p in range(num_periods) for st in shift_types
             )
             var_counts.append(assignment_count)
 

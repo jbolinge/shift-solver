@@ -136,9 +136,7 @@ class TestBarelyFeasibleWithRestrictions:
 
         assert result.success
 
-    def test_one_unrestricted_short_becomes_infeasible(
-        self, worker_factory
-    ) -> None:
+    def test_one_unrestricted_short_becomes_infeasible(self, worker_factory) -> None:
         """N-1 unrestricted workers for shift requiring N."""
         workers = [
             worker_factory(restricted_shifts=frozenset(["night"])),

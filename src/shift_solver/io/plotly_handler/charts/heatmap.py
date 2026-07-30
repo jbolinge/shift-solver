@@ -17,9 +17,7 @@ def create_heatmap(schedule: Schedule) -> go.Figure:
     worker_ids = [w.id for w in schedule.workers]
 
     # Build period labels (X-axis)
-    period_labels = [
-        f"P{p.period_index}: {p.period_start}" for p in schedule.periods
-    ]
+    period_labels = [f"P{p.period_index}: {p.period_start}" for p in schedule.periods]
 
     # Build z-matrix (shift counts) and text matrix (abbreviations)
     z: list[list[int]] = []

@@ -63,9 +63,12 @@ class TestGenerateCommandIntegration:
             cli,
             [
                 "generate",
-                "--start-date", "2026-02-02",
-                "--end-date", "2026-02-08",
-                "--output", str(output_file),
+                "--start-date",
+                "2026-02-02",
+                "--end-date",
+                "2026-02-08",
+                "--output",
+                str(output_file),
                 "--demo",
                 "--quick-solve",
             ],
@@ -78,6 +81,7 @@ class TestGenerateCommandIntegration:
 
         # Verify JSON structure
         import json
+
         with open(output_file) as f:
             data = json.load(f)
 
@@ -97,11 +101,15 @@ class TestGenerateCommandIntegration:
         result = runner.invoke(
             cli,
             [
-                "--config", str(config_file),
+                "--config",
+                str(config_file),
                 "generate",
-                "--start-date", "2026-02-02",
-                "--end-date", "2026-02-08",
-                "--output", str(output_file),
+                "--start-date",
+                "2026-02-02",
+                "--end-date",
+                "2026-02-08",
+                "--output",
+                str(output_file),
                 "--demo",
                 "--quick-solve",
             ],
@@ -120,9 +128,12 @@ class TestGenerateCommandIntegration:
             cli,
             [
                 "generate",
-                "--start-date", "2026-02-02",
-                "--end-date", "2026-02-28",  # 4 weeks
-                "--output", str(output_file),
+                "--start-date",
+                "2026-02-02",
+                "--end-date",
+                "2026-02-28",  # 4 weeks
+                "--output",
+                str(output_file),
                 "--demo",
                 "--quick-solve",
             ],
@@ -131,15 +142,14 @@ class TestGenerateCommandIntegration:
         assert result.exit_code == 0, f"Failed: {result.output}"
 
         import json
+
         with open(output_file) as f:
             data = json.load(f)
 
         # Should have multiple periods
         assert len(data["periods"]) >= 3
 
-    def test_generate_verbose_output(
-        self, runner: CliRunner, tmp_path: Path
-    ) -> None:
+    def test_generate_verbose_output(self, runner: CliRunner, tmp_path: Path) -> None:
         """Test generate command with verbose output."""
         output_file = tmp_path / "schedule.json"
 
@@ -148,9 +158,12 @@ class TestGenerateCommandIntegration:
             [
                 "-v",  # Verbose flag
                 "generate",
-                "--start-date", "2026-02-02",
-                "--end-date", "2026-02-08",
-                "--output", str(output_file),
+                "--start-date",
+                "2026-02-02",
+                "--end-date",
+                "2026-02-08",
+                "--output",
+                str(output_file),
                 "--demo",
                 "--quick-solve",
             ],
@@ -158,7 +171,10 @@ class TestGenerateCommandIntegration:
 
         assert result.exit_code == 0, f"Failed: {result.output}"
         # Verbose mode should show more details
-        assert "Worker Statistics" in result.output or "shift types" in result.output.lower()
+        assert (
+            "Worker Statistics" in result.output
+            or "shift types" in result.output.lower()
+        )
 
     def test_generate_custom_time_limit(
         self, runner: CliRunner, tmp_path: Path
@@ -170,11 +186,15 @@ class TestGenerateCommandIntegration:
             cli,
             [
                 "generate",
-                "--start-date", "2026-02-02",
-                "--end-date", "2026-02-08",
-                "--output", str(output_file),
+                "--start-date",
+                "2026-02-02",
+                "--end-date",
+                "2026-02-08",
+                "--output",
+                str(output_file),
                 "--demo",
-                "--time-limit", "30",
+                "--time-limit",
+                "30",
             ],
         )
 
@@ -191,9 +211,12 @@ class TestGenerateCommandIntegration:
             cli,
             [
                 "generate",
-                "--start-date", "2026-02-28",  # Start after end
-                "--end-date", "2026-02-02",
-                "--output", str(output_file),
+                "--start-date",
+                "2026-02-28",  # Start after end
+                "--end-date",
+                "2026-02-02",
+                "--output",
+                str(output_file),
                 "--demo",
             ],
         )
@@ -209,8 +232,10 @@ class TestGenerateCommandIntegration:
             cli,
             [
                 "generate",
-                "--start-date", "2026-02-02",
-                "--end-date", "2026-02-08",
+                "--start-date",
+                "2026-02-02",
+                "--end-date",
+                "2026-02-08",
                 "--demo",
                 # Missing --output
             ],
@@ -225,9 +250,7 @@ class TestGenerateRealDataIngestion:
     """Tests that `generate` can ingest real CSV data (defect A)."""
 
     @pytest.fixture(autouse=True)
-    def _isolated_cwd(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def _isolated_cwd(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Run from a clean tmp_path cwd (no `-c` passed at all) so the
         group's own default ("config/config.yaml", a relative path) can't
         resolve against this repo's real config file when tests run from
@@ -280,10 +303,14 @@ class TestGenerateRealDataIngestion:
             cli,
             [
                 "generate",
-                "--start-date", "2026-02-02",
-                "--end-date", "2026-02-08",
-                "--output", str(output_file),
-                "--workers", str(workers_csv),
+                "--start-date",
+                "2026-02-02",
+                "--end-date",
+                "2026-02-08",
+                "--output",
+                str(output_file),
+                "--workers",
+                str(workers_csv),
                 "--quick-solve",
             ],
         )
@@ -297,9 +324,7 @@ class TestGenerateRealDataIngestion:
         with open(output_file) as f:
             data = json.load(f)
         worker_ids = {
-            wid
-            for period in data["periods"]
-            for wid in period["assignments"]
+            wid for period in data["periods"] for wid in period["assignments"]
         }
         assert worker_ids <= {"W1", "W2", "W3", "W4", "W5"}
 
@@ -318,12 +343,18 @@ class TestGenerateRealDataIngestion:
             [
                 "-v",
                 "generate",
-                "--start-date", "2026-02-02",
-                "--end-date", "2026-02-08",
-                "--output", str(output_file),
-                "--workers", str(workers_csv),
-                "--availability", str(availability_csv),
-                "--requests", str(requests_csv),
+                "--start-date",
+                "2026-02-02",
+                "--end-date",
+                "2026-02-08",
+                "--output",
+                str(output_file),
+                "--workers",
+                str(workers_csv),
+                "--availability",
+                str(availability_csv),
+                "--requests",
+                str(requests_csv),
                 "--quick-solve",
             ],
         )
@@ -340,9 +371,12 @@ class TestGenerateRealDataIngestion:
             cli,
             [
                 "generate",
-                "--start-date", "2026-02-02",
-                "--end-date", "2026-02-08",
-                "--output", str(tmp_path / "schedule.json"),
+                "--start-date",
+                "2026-02-02",
+                "--end-date",
+                "2026-02-08",
+                "--output",
+                str(tmp_path / "schedule.json"),
             ],
         )
 
@@ -357,11 +391,15 @@ class TestGenerateRealDataIngestion:
             cli,
             [
                 "generate",
-                "--start-date", "2026-02-02",
-                "--end-date", "2026-02-08",
-                "--output", str(tmp_path / "schedule.json"),
+                "--start-date",
+                "2026-02-02",
+                "--end-date",
+                "2026-02-08",
+                "--output",
+                str(tmp_path / "schedule.json"),
                 "--demo",
-                "--workers", str(workers_csv),
+                "--workers",
+                str(workers_csv),
             ],
         )
 
@@ -379,10 +417,14 @@ class TestGenerateRealDataIngestion:
             cli,
             [
                 "generate",
-                "--start-date", "2026-02-02",
-                "--end-date", "2026-02-08",
-                "--output", str(tmp_path / "schedule.json"),
-                "--workers", str(bad_csv),
+                "--start-date",
+                "2026-02-02",
+                "--end-date",
+                "2026-02-08",
+                "--output",
+                str(tmp_path / "schedule.json"),
+                "--workers",
+                str(bad_csv),
             ],
         )
 
@@ -415,19 +457,21 @@ shift_types:
         )
         return cfg
 
-    def test_time_limit_zero_rejected(
-        self, runner: CliRunner, tmp_path: Path
-    ) -> None:
+    def test_time_limit_zero_rejected(self, runner: CliRunner, tmp_path: Path) -> None:
         """--time-limit 0 is rejected rather than silently using a default."""
         result = runner.invoke(
             cli,
             [
                 "generate",
-                "--start-date", "2026-02-02",
-                "--end-date", "2026-02-08",
-                "--output", str(tmp_path / "schedule.json"),
+                "--start-date",
+                "2026-02-02",
+                "--end-date",
+                "2026-02-08",
+                "--output",
+                str(tmp_path / "schedule.json"),
                 "--demo",
-                "--time-limit", "0",
+                "--time-limit",
+                "0",
             ],
         )
 
@@ -444,11 +488,15 @@ shift_types:
         result = runner.invoke(
             cli,
             [
-                "--config", str(config_file),
+                "--config",
+                str(config_file),
                 "generate",
-                "--start-date", "2026-02-02",
-                "--end-date", "2026-02-08",
-                "--output", str(tmp_path / "schedule.json"),
+                "--start-date",
+                "2026-02-02",
+                "--end-date",
+                "2026-02-08",
+                "--output",
+                str(tmp_path / "schedule.json"),
                 "--demo",
             ],
         )
@@ -467,11 +515,15 @@ shift_types:
         result = runner.invoke(
             cli,
             [
-                "--config", str(config_file),
+                "--config",
+                str(config_file),
                 "generate",
-                "--start-date", "2026-02-02",
-                "--end-date", "2026-02-08",
-                "--output", str(tmp_path / "schedule.json"),
+                "--start-date",
+                "2026-02-02",
+                "--end-date",
+                "2026-02-08",
+                "--output",
+                str(tmp_path / "schedule.json"),
                 "--demo",
                 "--quick-solve",
             ],
@@ -490,13 +542,18 @@ shift_types:
         result = runner.invoke(
             cli,
             [
-                "--config", str(config_file),
+                "--config",
+                str(config_file),
                 "generate",
-                "--start-date", "2026-02-02",
-                "--end-date", "2026-02-08",
-                "--output", str(tmp_path / "schedule.json"),
+                "--start-date",
+                "2026-02-02",
+                "--end-date",
+                "2026-02-08",
+                "--output",
+                str(tmp_path / "schedule.json"),
                 "--demo",
-                "--time-limit", "5",
+                "--time-limit",
+                "5",
             ],
         )
 
@@ -515,9 +572,7 @@ shift_types:
         # shadowing the submodule of the same name. importlib.import_module
         # goes through sys.modules directly, bypassing that shadowing, to
         # get the actual module (and its ShiftSolver import) to patch.
-        generate_module = importlib.import_module(
-            "shift_solver.cli.commands.generate"
-        )
+        generate_module = importlib.import_module("shift_solver.cli.commands.generate")
 
         captured: dict[str, object] = {}
         original_solve = generate_module.ShiftSolver.solve
@@ -528,17 +583,19 @@ shift_types:
 
         monkeypatch.setattr(generate_module.ShiftSolver, "solve", spy_solve)
 
-        config_file = self._config(
-            tmp_path, extra="\nsolver:\n  num_workers: 3\n"
-        )
+        config_file = self._config(tmp_path, extra="\nsolver:\n  num_workers: 3\n")
         result = runner.invoke(
             cli,
             [
-                "--config", str(config_file),
+                "--config",
+                str(config_file),
                 "generate",
-                "--start-date", "2026-02-02",
-                "--end-date", "2026-02-08",
-                "--output", str(tmp_path / "schedule.json"),
+                "--start-date",
+                "2026-02-02",
+                "--end-date",
+                "2026-02-08",
+                "--output",
+                str(tmp_path / "schedule.json"),
                 "--demo",
                 "--quick-solve",
             ],
@@ -555,11 +612,15 @@ shift_types:
         result = runner.invoke(
             cli,
             [
-                "--config", str(config_file),
+                "--config",
+                str(config_file),
                 "generate",
-                "--start-date", "2026-02-02",
-                "--end-date", "2026-02-08",
-                "--output", str(tmp_path / "schedule.json"),
+                "--start-date",
+                "2026-02-02",
+                "--end-date",
+                "2026-02-08",
+                "--output",
+                str(tmp_path / "schedule.json"),
                 "--demo",
                 "--quick-solve",
             ],
@@ -568,19 +629,21 @@ shift_types:
         assert result.exit_code != 0
         assert "not yet supported" in result.output.lower()
 
-    def test_week_period_type_accepted(
-        self, runner: CliRunner, tmp_path: Path
-    ) -> None:
+    def test_week_period_type_accepted(self, runner: CliRunner, tmp_path: Path) -> None:
         """schedule.period_type: week (the only supported value) still works."""
         config_file = self._config(tmp_path, period_type="week")
         result = runner.invoke(
             cli,
             [
-                "--config", str(config_file),
+                "--config",
+                str(config_file),
                 "generate",
-                "--start-date", "2026-02-02",
-                "--end-date", "2026-02-08",
-                "--output", str(tmp_path / "schedule.json"),
+                "--start-date",
+                "2026-02-02",
+                "--end-date",
+                "2026-02-08",
+                "--output",
+                str(tmp_path / "schedule.json"),
                 "--demo",
                 "--quick-solve",
             ],
@@ -610,11 +673,16 @@ shift_types:
             cli,
             [
                 "generate",
-                "--start-date", "2026-02-02",
-                "--end-date", "2026-02-08",
-                "--output", str(tmp_path / "schedule.json"),
-                "--workers", str(workers_csv),
-                "--availability", str(availability_csv),
+                "--start-date",
+                "2026-02-02",
+                "--end-date",
+                "2026-02-08",
+                "--output",
+                str(tmp_path / "schedule.json"),
+                "--workers",
+                str(workers_csv),
+                "--availability",
+                str(availability_csv),
                 "--quick-solve",
             ],
         )
@@ -732,9 +800,7 @@ class TestValidateCommandIntegration:
 class TestWorkflowIntegration:
     """Integration tests for complete workflows."""
 
-    def test_generate_export_workflow(
-        self, runner: CliRunner, tmp_path: Path
-    ) -> None:
+    def test_generate_export_workflow(self, runner: CliRunner, tmp_path: Path) -> None:
         """Test complete generate -> export workflow."""
         schedule_json = tmp_path / "schedule.json"
         excel_output = tmp_path / "schedule.xlsx"
@@ -744,9 +810,12 @@ class TestWorkflowIntegration:
             cli,
             [
                 "generate",
-                "--start-date", "2026-02-02",
-                "--end-date", "2026-02-08",
-                "--output", str(schedule_json),
+                "--start-date",
+                "2026-02-02",
+                "--end-date",
+                "2026-02-08",
+                "--output",
+                str(schedule_json),
                 "--demo",
                 "--quick-solve",
             ],
@@ -758,9 +827,12 @@ class TestWorkflowIntegration:
             cli,
             [
                 "export",
-                "--schedule", str(schedule_json),
-                "--output", str(excel_output),
-                "--format", "excel",
+                "--schedule",
+                str(schedule_json),
+                "--output",
+                str(excel_output),
+                "--format",
+                "excel",
             ],
         )
         assert export_result.exit_code == 0, f"Export failed: {export_result.output}"
@@ -777,9 +849,12 @@ class TestWorkflowIntegration:
             cli,
             [
                 "generate",
-                "--start-date", "2026-02-02",
-                "--end-date", "2026-02-08",
-                "--output", str(schedule_json),
+                "--start-date",
+                "2026-02-02",
+                "--end-date",
+                "2026-02-08",
+                "--output",
+                str(schedule_json),
                 "--demo",
                 "--quick-solve",
             ],
@@ -793,9 +868,7 @@ class TestWorkflowIntegration:
         )
         assert val_result.exit_code == 0
 
-    def test_samples_import_workflow(
-        self, runner: CliRunner, tmp_path: Path
-    ) -> None:
+    def test_samples_import_workflow(self, runner: CliRunner, tmp_path: Path) -> None:
         """Test complete generate-samples -> import-data workflow."""
         samples_dir = tmp_path / "samples"
 
@@ -804,21 +877,29 @@ class TestWorkflowIntegration:
             cli,
             [
                 "generate-samples",
-                "--output-dir", str(samples_dir),
-                "--industry", "retail",
-                "--num-workers", "5",
-                "--months", "1",
-                "--format", "csv",
+                "--output-dir",
+                str(samples_dir),
+                "--industry",
+                "retail",
+                "--num-workers",
+                "5",
+                "--months",
+                "1",
+                "--format",
+                "csv",
             ],
         )
-        assert gen_result.exit_code == 0, f"Generate samples failed: {gen_result.output}"
+        assert gen_result.exit_code == 0, (
+            f"Generate samples failed: {gen_result.output}"
+        )
 
         # Step 2: Import the generated workers
         import_result = runner.invoke(
             cli,
             [
                 "import-data",
-                "--workers", str(samples_dir / "workers.csv"),
+                "--workers",
+                str(samples_dir / "workers.csv"),
             ],
         )
         assert import_result.exit_code == 0, f"Import failed: {import_result.output}"
@@ -833,7 +914,10 @@ class TestErrorHandling:
         result = runner.invoke(cli, ["unknown-command"])
 
         assert result.exit_code != 0
-        assert "no such command" in result.output.lower() or "usage" in result.output.lower()
+        assert (
+            "no such command" in result.output.lower()
+            or "usage" in result.output.lower()
+        )
 
     def test_missing_required_option(self, runner: CliRunner) -> None:
         """Test handling of missing required option."""
@@ -841,7 +925,8 @@ class TestErrorHandling:
             cli,
             [
                 "generate",
-                "--start-date", "2026-02-02",
+                "--start-date",
+                "2026-02-02",
                 # Missing --end-date and --output
                 "--demo",
             ],
@@ -857,18 +942,19 @@ class TestErrorHandling:
             cli,
             [
                 "generate",
-                "--start-date", "02-02-2026",  # Wrong format
-                "--end-date", "2026-02-08",
-                "--output", str(output_file),
+                "--start-date",
+                "02-02-2026",  # Wrong format
+                "--end-date",
+                "2026-02-08",
+                "--output",
+                str(output_file),
                 "--demo",
             ],
         )
 
         assert result.exit_code != 0
 
-    def test_config_validation_error(
-        self, runner: CliRunner, tmp_path: Path
-    ) -> None:
+    def test_config_validation_error(self, runner: CliRunner, tmp_path: Path) -> None:
         """Test error reporting for invalid config."""
         bad_config = tmp_path / "bad_config.yaml"
         bad_config.write_text("""
@@ -895,9 +981,12 @@ class TestVerbosityLevels:
             cli,
             [
                 "generate",
-                "--start-date", "2026-02-02",
-                "--end-date", "2026-02-08",
-                "--output", str(output_file),
+                "--start-date",
+                "2026-02-02",
+                "--end-date",
+                "2026-02-08",
+                "--output",
+                str(output_file),
                 "--demo",
                 "--quick-solve",
             ],
@@ -916,9 +1005,12 @@ class TestVerbosityLevels:
             [
                 "-v",
                 "generate",
-                "--start-date", "2026-02-02",
-                "--end-date", "2026-02-08",
-                "--output", str(output_file),
+                "--start-date",
+                "2026-02-02",
+                "--end-date",
+                "2026-02-08",
+                "--output",
+                str(output_file),
                 "--demo",
                 "--quick-solve",
             ],

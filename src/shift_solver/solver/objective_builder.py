@@ -74,7 +74,9 @@ class ObjectiveBuilder:
 
             for var_name, var in constraint.violation_variables.items():
                 # Get variable type from metadata (defaults to "violation")
-                var_type = constraint.violation_variable_types.get(var_name, "violation")
+                var_type = constraint.violation_variable_types.get(
+                    var_name, "violation"
+                )
 
                 # Skip auxiliary variables (helper variables not for objective)
                 if var_type == "auxiliary":

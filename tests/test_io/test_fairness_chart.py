@@ -32,9 +32,7 @@ class TestFairnessChart:
         for trace in box_traces:
             assert len(trace.y) == 3  # 3 workers
 
-    def test_fairness_hover_shows_worker_names(
-        self, sample_schedule: Schedule
-    ) -> None:
+    def test_fairness_hover_shows_worker_names(self, sample_schedule: Schedule) -> None:
         """Hover text on points includes worker names."""
         fig = create_fairness_chart(sample_schedule)
         box_traces = [t for t in fig.data if isinstance(t, go.Box)]

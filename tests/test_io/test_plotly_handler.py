@@ -45,9 +45,7 @@ class TestPlotlyHandlerSkeleton:
         assert output_dir.exists()
         assert output_dir.is_dir()
 
-    def test_plotly_visualizer_creates_parent_directories(
-        self, tmp_path: Path
-    ) -> None:
+    def test_plotly_visualizer_creates_parent_directories(self, tmp_path: Path) -> None:
         """export_all creates nested parent directories."""
         from datetime import date
 

@@ -248,9 +248,7 @@ shift_types:
                             "period_start": "2026-03-02",
                             "period_end": "2026-03-08",
                             "assignments": {
-                                "W1": [
-                                    {"shift_type_id": "day", "date": "2026-03-02"}
-                                ],
+                                "W1": [{"shift_type_id": "day", "date": "2026-03-02"}],
                             },
                         }
                     ],
@@ -310,9 +308,7 @@ shift_types:
                             "period_start": "2026-03-02",
                             "period_end": "2026-03-08",
                             "assignments": {
-                                "W1": [
-                                    {"shift_type_id": "icu", "date": "2026-03-02"}
-                                ],
+                                "W1": [{"shift_type_id": "icu", "date": "2026-03-02"}],
                             },
                         }
                     ],
