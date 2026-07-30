@@ -68,7 +68,7 @@ solver:
   quick_solution_seconds: 120
 
 schedule:
-  period_type: biweek
+  period_type: day
   num_periods: 8
 
 constraints:
@@ -129,7 +129,7 @@ logging:
 
         assert cfg.solver.max_time_seconds == 7200
         assert cfg.solver.num_workers == 16
-        assert cfg.schedule.period_type == "biweek"
+        assert cfg.schedule.period_type == "day"
         assert cfg.schedule.num_periods == 8
         assert len(cfg.shift_types) == 3
         assert cfg.logging.level == "DEBUG"
@@ -138,6 +138,26 @@ logging:
         assert cfg.constraints["fairness"].weight == 200
         assert cfg.constraints["fairness"].parameters.get("categories") == ["night"]
         assert cfg.constraints["frequency"].enabled is False
+
+    def test_unsupported_period_type_rejected_at_load(self, tmp_path: Path) -> None:
+        """period_type values generate can't honor fail at config load."""
+        config_content = """
+schedule:
+  period_type: biweek
+
+shift_types:
+  - id: morning
+    name: Morning Shift
+    category: day
+    start_time: "06:00"
+    end_time: "14:00"
+    duration_hours: 8.0
+"""
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text(config_content)
+
+        with pytest.raises(ValidationError, match="period_type"):
+            ShiftSolverConfig.load_from_yaml(config_file)
 
 
 class TestDefaultApplication:

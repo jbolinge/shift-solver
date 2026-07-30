@@ -13,7 +13,7 @@ from shift_solver.cli.helpers import (
     shift_type_from_config,
 )
 from shift_solver.config import ShiftSolverConfig
-from shift_solver.io import CSVLoader
+from shift_solver.io import make_loader
 from shift_solver.models import ShiftType, Worker
 from shift_solver.validation import ScheduleValidator, ValidationResult
 from shift_solver.validation.schedule_validator.validator import (
@@ -92,12 +92,17 @@ def validate(
     # Load shift types from config or infer from schedule
     shift_types = _load_shift_types(cfg, schedule_data, verbose)
 
+    # Date format for CSV/Excel cells (schedule.date_format in config,
+    # defaulting to "auto" like the loaders themselves when no config is
+    # present).
+    date_format = cfg.schedule.date_format.value if cfg is not None else "auto"
+
     # Load workers
-    worker_list = _load_workers(workers, schedule_data, verbose)
+    worker_list = _load_workers(workers, schedule_data, verbose, date_format)
 
     # Load availability and requests
-    availabilities = _load_availability(availability, verbose)
-    request_list = _load_requests(requests, verbose)
+    availabilities = _load_availability(availability, verbose, date_format)
+    request_list = _load_requests(requests, verbose, date_format)
 
     max_shifts_per_period = _resolve_max_shifts_per_period(cfg)
 
@@ -205,12 +210,14 @@ def _load_workers(
     workers_path: Path | None,
     schedule_data: dict,
     verbose: int,
+    date_format: str,
 ) -> list[Worker]:
     """Load workers from file or infer from schedule."""
     if workers_path:
         try:
-            csv_loader = CSVLoader()
-            worker_list = csv_loader.load_workers(workers_path)
+            worker_list = make_loader(workers_path, date_format).load_workers(
+                workers_path
+            )
             if verbose:
                 click.echo(f"Loaded {len(worker_list)} workers")
             return worker_list
@@ -228,14 +235,17 @@ def _load_workers(
         return worker_list
 
 
-def _load_availability(availability_path: Path | None, verbose: int) -> list:
+def _load_availability(
+    availability_path: Path | None, verbose: int, date_format: str
+) -> list:
     """Load availability from file."""
     if not availability_path:
         return []
 
     try:
-        csv_loader = CSVLoader()
-        availabilities = csv_loader.load_availability(availability_path)
+        availabilities = make_loader(availability_path, date_format).load_availability(
+            availability_path
+        )
         if verbose:
             click.echo(f"Loaded {len(availabilities)} availability records")
         return availabilities
@@ -243,14 +253,15 @@ def _load_availability(availability_path: Path | None, verbose: int) -> list:
         raise click.ClickException(f"Error loading availability: {e}") from e
 
 
-def _load_requests(requests_path: Path | None, verbose: int) -> list:
+def _load_requests(requests_path: Path | None, verbose: int, date_format: str) -> list:
     """Load requests from file."""
     if not requests_path:
         return []
 
     try:
-        csv_loader = CSVLoader()
-        request_list = csv_loader.load_requests(requests_path)
+        request_list = make_loader(requests_path, date_format).load_requests(
+            requests_path
+        )
         if verbose:
             click.echo(f"Loaded {len(request_list)} requests")
         return request_list

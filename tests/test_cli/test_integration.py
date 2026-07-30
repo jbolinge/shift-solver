@@ -4,6 +4,7 @@ Tests complete CLI workflows to verify end-to-end functionality,
 error handling, and user experience.
 """
 
+import json
 from pathlib import Path
 
 import pytest
@@ -431,6 +432,42 @@ class TestGenerateRealDataIngestion:
         assert result.exit_code != 0
         assert "error loading workers" in result.output.lower()
 
+    def test_generate_with_workers_xlsx(
+        self, runner: CliRunner, tmp_path: Path
+    ) -> None:
+        """--workers accepts an .xlsx file (U10): previously any .xlsx path
+        died with a CSVLoaderError since generate always used CSVLoader."""
+        import openpyxl
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Workers"
+        ws.append(["id", "name", "worker_type"])
+        for i in range(1, 6):
+            ws.append([f"W{i}", f"Worker {i}", "full_time"])
+        workers_xlsx = tmp_path / "workers.xlsx"
+        wb.save(workers_xlsx)
+
+        output_file = tmp_path / "schedule.json"
+        result = runner.invoke(
+            cli,
+            [
+                "generate",
+                "--start-date",
+                "2026-02-02",
+                "--end-date",
+                "2026-02-08",
+                "--output",
+                str(output_file),
+                "--workers",
+                str(workers_xlsx),
+                "--quick-solve",
+            ],
+        )
+
+        assert result.exit_code == 0, f"Failed: {result.output}"
+        assert "5 workers" in result.output
+
 
 @pytest.mark.integration
 class TestGenerateConfigHonored:
@@ -607,7 +644,7 @@ shift_types:
     def test_month_period_type_rejected(
         self, runner: CliRunner, tmp_path: Path
     ) -> None:
-        """schedule.period_type values other than 'week' are rejected clearly."""
+        """Unsupported schedule.period_type values fail at config load."""
         config_file = self._config(tmp_path, period_type="month")
         result = runner.invoke(
             cli,
@@ -627,10 +664,10 @@ shift_types:
         )
 
         assert result.exit_code != 0
-        assert "not yet supported" in result.output.lower()
+        assert "period_type" in result.output
 
     def test_week_period_type_accepted(self, runner: CliRunner, tmp_path: Path) -> None:
-        """schedule.period_type: week (the only supported value) still works."""
+        """schedule.period_type: week still works."""
         config_file = self._config(tmp_path, period_type="week")
         result = runner.invoke(
             cli,
@@ -650,6 +687,91 @@ shift_types:
         )
 
         assert result.exit_code == 0, result.output
+
+    def test_day_period_type_generates_daily_periods(
+        self, runner: CliRunner, tmp_path: Path
+    ) -> None:
+        """schedule.period_type: day gives one period per calendar day."""
+        config_file = self._config(tmp_path, period_type="day")
+        output = tmp_path / "schedule.json"
+        result = runner.invoke(
+            cli,
+            [
+                "--config",
+                str(config_file),
+                "generate",
+                "--start-date",
+                "2026-02-02",
+                "--end-date",
+                "2026-02-08",
+                "--output",
+                str(output),
+                "--demo",
+                "--quick-solve",
+            ],
+        )
+
+        assert result.exit_code == 0, result.output
+        assert "7 day periods" in result.output
+        data = json.loads(output.read_text())
+        assert len(data["periods"]) == 7
+        first = data["periods"][0]
+        assert first["period_start"] == first["period_end"] == "2026-02-02"
+
+    def test_num_periods_replaces_end_date(
+        self, runner: CliRunner, tmp_path: Path
+    ) -> None:
+        """--end-date may be omitted when schedule.num_periods is configured."""
+        config_file = self._config(tmp_path, period_type="day")
+        # Add schedule.num_periods under the schedule: block.
+        config_file.write_text(
+            config_file.read_text().replace(
+                'period_type: "day"', 'period_type: "day"\n  num_periods: 5'
+            )
+        )
+        output = tmp_path / "schedule.json"
+        result = runner.invoke(
+            cli,
+            [
+                "--config",
+                str(config_file),
+                "generate",
+                "--start-date",
+                "2026-02-02",
+                "--output",
+                str(output),
+                "--demo",
+                "--quick-solve",
+            ],
+        )
+
+        assert result.exit_code == 0, result.output
+        data = json.loads(output.read_text())
+        assert len(data["periods"]) == 5
+        assert data["end_date"] == "2026-02-06"
+
+    def test_no_end_date_and_no_num_periods_is_an_error(
+        self, runner: CliRunner, tmp_path: Path
+    ) -> None:
+        """Neither --end-date nor schedule.num_periods -> clear error."""
+        config_file = self._config(tmp_path)
+        result = runner.invoke(
+            cli,
+            [
+                "--config",
+                str(config_file),
+                "generate",
+                "--start-date",
+                "2026-02-02",
+                "--output",
+                str(tmp_path / "schedule.json"),
+                "--demo",
+                "--quick-solve",
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert "num_periods" in result.output
 
     def test_feasibility_warnings_are_printed(
         self,
@@ -701,6 +823,118 @@ shift_types:
             "W3,Worker Three,full_time,,\n"
         )
         return path
+
+
+@pytest.mark.integration
+class TestGenerateDateFormatHonored:
+    """Tests that `generate` honors schedule.date_format from config (B4).
+
+    Previously schedule.date_format was validated by the config schema but
+    never reached the loaders -- they always used "auto", which can
+    misinterpret an ambiguous MM/DD vs DD/MM date. These tests use an
+    ambiguous availability date that lands *on* the single-day schedule
+    under the US interpretation but *not* under the EU interpretation, so
+    the two configs produce observably different solver outcomes.
+    """
+
+    def _shift_config(self, tmp_path: Path, *, date_format: str | None) -> Path:
+        date_format_line = (
+            f'  date_format: "{date_format}"\n' if date_format is not None else ""
+        )
+        cfg = tmp_path / "config.yaml"
+        cfg.write_text(
+            f"""
+schedule:
+  period_type: "week"
+{date_format_line}
+shift_types:
+  - id: day
+    name: Day Shift
+    category: day
+    start_time: "09:00"
+    end_time: "17:00"
+    duration_hours: 8.0
+    workers_required: 2
+"""
+        )
+        return cfg
+
+    def _workers_csv(self, tmp_path: Path) -> Path:
+        path = tmp_path / "workers.csv"
+        path.write_text("id,name\nW1,Worker One\nW2,Worker Two\n")
+        return path
+
+    def _availability_csv(self, tmp_path: Path) -> Path:
+        """W1 unavailable on an ambiguous date: 02/03/2026.
+
+        US (default "auto"/unset): February 3rd -- lands on the schedule day.
+        EU: March 2nd -- does not.
+        """
+        path = tmp_path / "availability.csv"
+        path.write_text(
+            "worker_id,start_date,end_date,availability_type\n"
+            "W1,02/03/2026,02/03/2026,unavailable\n"
+        )
+        return path
+
+    def test_default_auto_interprets_as_us_and_is_infeasible(
+        self, runner: CliRunner, tmp_path: Path
+    ) -> None:
+        """With no date_format override, the ambiguous date is US (Feb 3):
+        W1 is unavailable that day, leaving only 1 of 2 required workers."""
+        config_file = self._shift_config(tmp_path, date_format=None)
+        result = runner.invoke(
+            cli,
+            [
+                "--config",
+                str(config_file),
+                "generate",
+                "--start-date",
+                "2026-02-03",
+                "--end-date",
+                "2026-02-03",
+                "--output",
+                str(tmp_path / "schedule.json"),
+                "--workers",
+                str(self._workers_csv(tmp_path)),
+                "--availability",
+                str(self._availability_csv(tmp_path)),
+                "--quick-solve",
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert "No solution found" in result.output
+
+    def test_eu_date_format_from_config_avoids_the_conflict(
+        self, runner: CliRunner, tmp_path: Path
+    ) -> None:
+        """With schedule.date_format: eu, the same ambiguous string parses as
+        March 2nd -- outside the schedule day -- so both workers are
+        available and the solve succeeds."""
+        config_file = self._shift_config(tmp_path, date_format="eu")
+        result = runner.invoke(
+            cli,
+            [
+                "--config",
+                str(config_file),
+                "generate",
+                "--start-date",
+                "2026-02-03",
+                "--end-date",
+                "2026-02-03",
+                "--output",
+                str(tmp_path / "schedule.json"),
+                "--workers",
+                str(self._workers_csv(tmp_path)),
+                "--availability",
+                str(self._availability_csv(tmp_path)),
+                "--quick-solve",
+            ],
+        )
+
+        assert result.exit_code == 0, result.output
+        assert "Solution found!" in result.output
 
 
 @pytest.mark.integration

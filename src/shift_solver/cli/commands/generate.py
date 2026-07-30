@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import json
+import signal
+import threading
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import click
 
@@ -13,19 +15,25 @@ from shift_solver.cli.helpers import shift_type_from_config
 from shift_solver.config import ShiftSolverConfig
 from shift_solver.config.schema import SolverConfig
 from shift_solver.constraints.base import ConstraintConfig
-from shift_solver.io import CSVLoader, CSVLoaderError
+from shift_solver.io import CSVLoaderError, ExcelHandlerError, make_loader
 from shift_solver.models import Availability, SchedulingRequest, ShiftType, Worker
 from shift_solver.solver import ShiftSolver
 
 if TYPE_CHECKING:
-    from shift_solver.models import Schedule
+    from collections.abc import Callable
 
-# Shift-length limitation on the `schedule:` config section: period
-# computation below is entirely week-based (see _calculate_period_dates).
-# num_periods and date_format are similarly not consulted anywhere in this
-# command. Rather than silently ignoring an unsupported period_type, reject
-# it clearly - see _check_period_type_supported.
-SUPPORTED_PERIOD_TYPES = frozenset({"week"})
+    from shift_solver.models import Schedule
+    from shift_solver.solver import SolverProgressCallback
+
+# Period types this command can compute date ranges for. The config schema
+# (ScheduleConfig.period_type) validates against the same set at load time,
+# but _check_period_type_supported keeps a defensive check here so a schema/
+# CLI drift fails loudly rather than producing wrong period math. "day" gives
+# each calendar day its own period, which is what day-granular constraints
+# (min_rest, weekend, max_consecutive, ...) need to be meaningful.
+SUPPORTED_PERIOD_TYPES = frozenset({"day", "week"})
+
+_PERIOD_LENGTH_DAYS = {"day": 1, "week": 7}
 
 
 @click.command()
@@ -38,8 +46,11 @@ SUPPORTED_PERIOD_TYPES = frozenset({"week"})
 @click.option(
     "--end-date",
     type=click.DateTime(formats=["%Y-%m-%d"]),
-    required=True,
-    help="Schedule end date (YYYY-MM-DD)",
+    default=None,
+    help=(
+        "Schedule end date (YYYY-MM-DD). Optional when the config sets "
+        "schedule.num_periods, which then determines the horizon."
+    ),
 )
 @click.option(
     "--output",
@@ -82,11 +93,32 @@ SUPPORTED_PERIOD_TYPES = frozenset({"week"})
     default=None,
     help="Requests CSV file",
 )
+@click.option(
+    "--gap",
+    type=click.FloatRange(min=0.0),
+    default=None,
+    help="Relative optimality gap to stop at (0.0 = prove optimal)",
+)
+@click.option(
+    "--log-search",
+    is_flag=True,
+    help="Log CP-SAT search progress to stderr",
+)
+@click.option(
+    "--progress",
+    is_flag=True,
+    help="Print solution progress while solving; Ctrl-C keeps the best so far",
+)
+@click.option(
+    "--explain",
+    is_flag=True,
+    help="Print a per-constraint objective penalty breakdown after solving",
+)
 @click.pass_context
 def generate(
     ctx: click.Context,
     start_date: datetime,
-    end_date: datetime,
+    end_date: datetime | None,
     output: Path,
     quick_solve: bool,
     time_limit: int | None,
@@ -94,31 +126,41 @@ def generate(
     workers: Path | None,
     availability: Path | None,
     requests: Path | None,
+    gap: float | None,
+    log_search: bool,
+    progress: bool,
+    explain: bool,
 ) -> None:
     """Generate an optimized schedule for the specified date range."""
     config_path = ctx.obj.get("config_path")
     config_explicit = bool(ctx.obj.get("config_explicit", False))
     verbose = ctx.obj.get("verbose", 0)
 
-    click.echo(f"Generating schedule from {start_date.date()} to {end_date.date()}")
-
     # Load configuration
     cfg = _load_config(config_path, config_explicit, verbose)
     shift_types = _load_shift_types(cfg, verbose)
     constraint_configs = _load_constraint_configs(config_path, verbose)
     _check_period_type_supported(cfg)
+    period_type = cfg.schedule.period_type if cfg is not None else "week"
+
+    # Resolve the horizon: an explicit --end-date wins; otherwise
+    # schedule.num_periods from config determines it.
+    start = _to_date(start_date)
+    end = _resolve_end_date(start, end_date, cfg, period_type)
+    click.echo(f"Generating schedule from {start} to {end}")
+
+    # Date format for CSV/Excel cells (schedule.date_format in config,
+    # defaulting to "auto" like the loaders themselves when no config is
+    # present).
+    date_format = cfg.schedule.date_format.value if cfg is not None else "auto"
 
     # Get workers - exactly one of --demo or --workers is required.
-    worker_list = _load_workers(demo, workers, verbose)
-    availabilities = _load_availability(availability, verbose)
-    request_list = _load_requests(requests, verbose)
+    worker_list = _load_workers(demo, workers, verbose, date_format)
+    availabilities = _load_availability(availability, verbose, date_format)
+    request_list = _load_requests(requests, verbose, date_format)
 
-    # Calculate period dates (weekly periods)
-    start = _to_date(start_date)
-    end = _to_date(end_date)
-
-    period_dates = _calculate_period_dates(start, end)
-    click.echo(f"Schedule covers {len(period_dates)} periods")
+    period_dates = _calculate_period_dates(start, end, period_type)
+    click.echo(f"Schedule covers {len(period_dates)} {period_type} periods")
 
     # Determine time limit and worker count, honoring solver: config with
     # explicit CLI flags taking priority.
@@ -138,10 +180,17 @@ def generate(
         constraint_configs=constraint_configs,
     )
 
-    result = solver.solve(
-        time_limit_seconds=solve_time,
-        num_workers=solver_config.num_workers,
-    )
+    callback, restore_sigint = _make_progress_callback(progress)
+    try:
+        result = solver.solve(
+            time_limit_seconds=solve_time,
+            num_workers=solver_config.num_workers,
+            relative_gap_limit=gap,
+            log_search_progress=log_search or None,
+            solution_callback=callback,
+        )
+    finally:
+        restore_sigint()
 
     for warning in result.warnings:
         click.echo(f"Warning: {warning}")
@@ -160,6 +209,9 @@ def generate(
             json.dump(output_data, f, indent=2)
 
         click.echo(f"Schedule written to: {output}")
+
+        if explain or verbose:
+            _print_objective_breakdown(result.objective_breakdown)
 
         # Print summary
         if verbose:
@@ -205,10 +257,9 @@ def _load_config(
 def _check_period_type_supported(cfg: ShiftSolverConfig | None) -> None:
     """Reject a schedule.period_type this command can't actually honor.
 
-    Period computation below (_calculate_period_dates) is hardcoded to
-    weekly periods; num_periods and date_format are likewise not consulted
-    anywhere in this command. Rather than silently ignoring a
-    schedule.period_type of anything else, fail clearly.
+    ScheduleConfig.period_type is already schema-validated against the same
+    set, so this only fires if the schema and this command drift apart -
+    better a clear error than silently wrong period math.
     """
     if cfg is None:
         return
@@ -218,6 +269,31 @@ def _check_period_type_supported(cfg: ShiftSolverConfig | None) -> None:
             f"supported by 'generate' (only {sorted(SUPPORTED_PERIOD_TYPES)} "
             "periods are implemented)."
         )
+
+
+def _resolve_end_date(
+    start: date,
+    end_date: datetime | None,
+    cfg: ShiftSolverConfig | None,
+    period_type: str,
+) -> date:
+    """Resolve the schedule end date from --end-date or schedule.num_periods.
+
+    An explicit --end-date always wins. Without one, schedule.num_periods
+    from config determines the horizon (num_periods whole periods starting
+    at start). Neither -> error.
+    """
+    if end_date is not None:
+        return _to_date(end_date)
+
+    num_periods = cfg.schedule.num_periods if cfg is not None else None
+    if num_periods is None:
+        raise click.ClickException(
+            "No schedule horizon: pass --end-date or set schedule.num_periods "
+            "in the config file."
+        )
+    period_length = _PERIOD_LENGTH_DAYS[period_type]
+    return start + timedelta(days=num_periods * period_length - 1)
 
 
 def _load_shift_types(cfg: ShiftSolverConfig | None, verbose: int) -> list[ShiftType]:
@@ -253,8 +329,10 @@ def _load_shift_types(cfg: ShiftSolverConfig | None, verbose: int) -> list[Shift
         ]
 
 
-def _load_workers(demo: bool, workers_path: Path | None, verbose: int) -> list[Worker]:
-    """Load workers from --demo or a --workers CSV file (exactly one required)."""
+def _load_workers(
+    demo: bool, workers_path: Path | None, verbose: int, date_format: str
+) -> list[Worker]:
+    """Load workers from --demo or a --workers CSV/Excel file (exactly one required)."""
     if demo and workers_path:
         raise click.ClickException("Use either --demo or --workers, not both.")
     if demo:
@@ -263,8 +341,10 @@ def _load_workers(demo: bool, workers_path: Path | None, verbose: int) -> list[W
         return worker_list
     if workers_path:
         try:
-            worker_list = CSVLoader().load_workers(workers_path)
-        except CSVLoaderError as e:
+            worker_list = make_loader(workers_path, date_format).load_workers(
+                workers_path
+            )
+        except (CSVLoaderError, ExcelHandlerError) as e:
             raise click.ClickException(f"Error loading workers: {e}") from e
         click.echo(f"Using {len(worker_list)} workers from {workers_path}")
         if verbose:
@@ -278,27 +358,33 @@ def _load_workers(demo: bool, workers_path: Path | None, verbose: int) -> list[W
 
 
 def _load_availability(
-    availability_path: Path | None, verbose: int
+    availability_path: Path | None, verbose: int, date_format: str
 ) -> list[Availability]:
-    """Load availability records from a CSV file, if provided."""
+    """Load availability records from a CSV/Excel file, if provided."""
     if not availability_path:
         return []
     try:
-        availabilities = CSVLoader().load_availability(availability_path)
-    except CSVLoaderError as e:
+        availabilities = make_loader(availability_path, date_format).load_availability(
+            availability_path
+        )
+    except (CSVLoaderError, ExcelHandlerError) as e:
         raise click.ClickException(f"Error loading availability: {e}") from e
     if verbose:
         click.echo(f"Loaded {len(availabilities)} availability records")
     return availabilities
 
 
-def _load_requests(requests_path: Path | None, verbose: int) -> list[SchedulingRequest]:
-    """Load scheduling requests from a CSV file, if provided."""
+def _load_requests(
+    requests_path: Path | None, verbose: int, date_format: str
+) -> list[SchedulingRequest]:
+    """Load scheduling requests from a CSV/Excel file, if provided."""
     if not requests_path:
         return []
     try:
-        request_list = CSVLoader().load_requests(requests_path)
-    except CSVLoaderError as e:
+        request_list = make_loader(requests_path, date_format).load_requests(
+            requests_path
+        )
+    except (CSVLoaderError, ExcelHandlerError) as e:
         raise click.ClickException(f"Error loading requests: {e}") from e
     if verbose:
         click.echo(f"Loaded {len(request_list)} requests")
@@ -353,15 +439,81 @@ def _to_date(dt: datetime) -> date:
     return date.fromisoformat(str(dt)[:10])
 
 
-def _calculate_period_dates(start: date, end: date) -> list[tuple[date, date]]:
-    """Calculate weekly period dates."""
+def _calculate_period_dates(
+    start: date, end: date, period_type: str = "week"
+) -> list[tuple[date, date]]:
+    """Calculate period dates for the given period type.
+
+    "day" makes each calendar day its own period; "week" chunks the range
+    into 7-day periods (the final period is truncated at end when the range
+    is not a whole number of weeks).
+    """
+    period_length = _PERIOD_LENGTH_DAYS[period_type]
     period_dates: list[tuple[date, date]] = []
     current = start
     while current <= end:
-        period_end = min(current + timedelta(days=6), end)
+        period_end = min(current + timedelta(days=period_length - 1), end)
         period_dates.append((current, period_end))
         current = period_end + timedelta(days=1)
     return period_dates
+
+
+def _make_progress_callback(
+    progress: bool,
+) -> tuple[SolverProgressCallback | None, Callable[[], None]]:
+    """Build the --progress solution callback and a SIGINT restorer.
+
+    With --progress, solution improvements are echoed as they are found and
+    the first Ctrl-C sets a cancel event so CP-SAT stops gracefully and
+    returns the best solution found so far (instead of killing the process).
+    Returns (callback_or_None, restore_fn); callers must invoke restore_fn
+    when solving finishes to reinstate the previous SIGINT handler.
+    """
+    if not progress:
+        return None, lambda: None
+
+    from shift_solver.solver import SolverProgressCallback
+
+    cancel_event = threading.Event()
+
+    def _on_progress(data: dict[str, Any]) -> None:
+        click.echo(
+            f"  [{data['wall_time']}s] solutions={data['solutions_found']} "
+            f"objective={data['objective_value']:.0f} "
+            f"bound={data['best_bound']:.0f} gap={data['gap_percent']}%"
+        )
+
+    def _on_sigint(signum: int, frame: Any) -> None:  # noqa: ARG001
+        click.echo("Cancellation requested - returning best solution found...")
+        cancel_event.set()
+
+    previous_handler = signal.signal(signal.SIGINT, _on_sigint)
+
+    def _restore() -> None:
+        signal.signal(signal.SIGINT, previous_handler)
+
+    callback = SolverProgressCallback(
+        cancel_event=cancel_event, on_progress=_on_progress
+    )
+    return callback, _restore
+
+
+def _print_objective_breakdown(
+    breakdown: dict[str, dict[str, float]] | None,
+) -> None:
+    """Print the per-constraint objective penalty table (--explain)."""
+    if not breakdown:
+        click.echo("\nObjective breakdown: no soft constraint penalties recorded.")
+        return
+
+    click.echo("\nObjective breakdown (penalty = violations x weight):")
+    width = max(len(cid) for cid in breakdown)
+    for constraint_id in sorted(breakdown, key=lambda c: -breakdown[c]["penalty"]):
+        entry = breakdown[constraint_id]
+        click.echo(
+            f"  {constraint_id:<{width}}  violations={entry['violations']:.0f}  "
+            f"total={entry['violation_total']:.0f}  penalty={entry['penalty']:.0f}"
+        )
 
 
 def _determine_time_limit(

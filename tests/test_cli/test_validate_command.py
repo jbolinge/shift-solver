@@ -208,6 +208,41 @@ class TestValidateWithWorkers:
         # Should run validation
         assert "validation" in result.output.lower() or result.exit_code in [0, 1]
 
+    def test_validate_with_workers_xlsx(
+        self,
+        runner: CliRunner,
+        valid_schedule_file: Path,
+        sample_config_file: Path,
+        tmp_path: Path,
+    ) -> None:
+        """--workers accepts an .xlsx file (U10): previously any .xlsx path
+        died with a CSVLoaderError since validate always used CSVLoader."""
+        import openpyxl
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Workers"
+        ws.append(["id", "name", "worker_type"])
+        ws.append(["W1", "Worker One", "full_time"])
+        ws.append(["W2", "Worker Two", "full_time"])
+        workers_xlsx = tmp_path / "workers.xlsx"
+        wb.save(workers_xlsx)
+
+        result = runner.invoke(
+            cli,
+            [
+                "validate",
+                "--schedule",
+                str(valid_schedule_file),
+                "--config",
+                str(sample_config_file),
+                "--workers",
+                str(workers_xlsx),
+            ],
+        )
+        assert "error loading workers" not in result.output.lower()
+        assert result.exit_code in [0, 1]
+
 
 class TestValidateConfigFallback:
     """validate honors the group-level -c/--config (defect D)."""

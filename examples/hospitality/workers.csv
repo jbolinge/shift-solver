@@ -1,0 +1,9 @@
+id,name,worker_type,restricted_shifts,preferred_shifts,attributes
+worker_1,Worker One,front_desk,,shift_early,
+worker_2,Worker Two,front_desk,,,
+worker_3,Worker Three,front_desk,,,
+worker_4,Worker Four,front_desk,,,
+worker_5,Worker Five,front_desk,,,
+worker_6,Worker Six,front_desk,,,
+worker_7,Worker Seven,front_desk,,,
+worker_8,Worker Eight,front_desk,shift_night,,

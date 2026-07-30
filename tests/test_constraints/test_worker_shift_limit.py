@@ -1,6 +1,6 @@
 """Tests for worker shift limit constraint."""
 
-from datetime import time
+from datetime import date, time
 
 import pytest
 from ortools.sat.python import cp_model
@@ -363,3 +363,112 @@ class TestWorkerShiftLimitConstraintEdgeCases:
 
         assert status in [cp_model.OPTIMAL, cp_model.FEASIBLE]
         assert solver.Value(variables.get_assignment_var("W001", 0, "shift")) == 0
+
+
+class TestWorkerShiftLimitDayAware:
+    """Day-aware limits: shift types only compete on days they share."""
+
+    @staticmethod
+    def _shift(shift_id: str, days: list[int] | None) -> ShiftType:
+        return ShiftType(
+            id=shift_id,
+            name=shift_id,
+            category="cat_a",
+            start_time=time(9, 0),
+            end_time=time(17, 0),
+            duration_hours=8.0,
+            workers_required=1,
+            applicable_days=days,
+        )
+
+    def test_disjoint_applicable_days_do_not_compete(self) -> None:
+        """A weekday shift and a weekend shift can share one worker-period.
+
+        Regression for the applicable_days infeasibility: coverage demands
+        both shifts filled each period, worker_shift_limit (1) previously
+        summed across ALL shift types making a single worker impossible even
+        though the shifts never occur on the same day.
+        """
+        model = cp_model.CpModel()
+        workers = [Worker(id="worker_1", name="Worker One")]
+        shift_types = [
+            self._shift("shift_weekday", [0, 1, 2, 3, 4]),
+            self._shift("shift_weekend", [5, 6]),
+        ]
+        # One full week: Monday 2026-01-05 .. Sunday 2026-01-11.
+        period_dates = [(date(2026, 1, 5), date(2026, 1, 11))]
+
+        builder = VariableBuilder(model, workers, shift_types, num_periods=1)
+        variables = builder.build()
+
+        constraint = WorkerShiftLimitConstraint(
+            model, variables, ConstraintConfig(enabled=True, is_hard=True)
+        )
+        constraint.apply(
+            workers=workers,
+            shift_types=shift_types,
+            num_periods=1,
+            period_dates=period_dates,
+        )
+
+        # Demand both shifts be worked by the single worker.
+        model.add(variables.get_assignment_var("worker_1", 0, "shift_weekday") == 1)
+        model.add(variables.get_assignment_var("worker_1", 0, "shift_weekend") == 1)
+
+        solver = cp_model.CpSolver()
+        status = solver.Solve(model)
+        assert status in [cp_model.OPTIMAL, cp_model.FEASIBLE]
+
+    def test_overlapping_applicable_days_still_compete(self) -> None:
+        """Shifts sharing any day still exclude each other on that day."""
+        model = cp_model.CpModel()
+        workers = [Worker(id="worker_1", name="Worker One")]
+        shift_types = [
+            self._shift("shift_weekday", [0, 1, 2, 3, 4]),
+            self._shift("shift_friday_sat", [4, 5]),  # shares Friday
+        ]
+        period_dates = [(date(2026, 1, 5), date(2026, 1, 11))]
+
+        builder = VariableBuilder(model, workers, shift_types, num_periods=1)
+        variables = builder.build()
+
+        constraint = WorkerShiftLimitConstraint(
+            model, variables, ConstraintConfig(enabled=True, is_hard=True)
+        )
+        constraint.apply(
+            workers=workers,
+            shift_types=shift_types,
+            num_periods=1,
+            period_dates=period_dates,
+        )
+
+        model.add(variables.get_assignment_var("worker_1", 0, "shift_weekday") == 1)
+        model.add(variables.get_assignment_var("worker_1", 0, "shift_friday_sat") == 1)
+
+        solver = cp_model.CpSolver()
+        status = solver.Solve(model)
+        assert status == cp_model.INFEASIBLE
+
+    def test_without_period_dates_all_types_compete(self) -> None:
+        """No period_dates in context -> pre-day-aware behavior preserved."""
+        model = cp_model.CpModel()
+        workers = [Worker(id="worker_1", name="Worker One")]
+        shift_types = [
+            self._shift("shift_weekday", [0, 1, 2, 3, 4]),
+            self._shift("shift_weekend", [5, 6]),
+        ]
+
+        builder = VariableBuilder(model, workers, shift_types, num_periods=1)
+        variables = builder.build()
+
+        constraint = WorkerShiftLimitConstraint(
+            model, variables, ConstraintConfig(enabled=True, is_hard=True)
+        )
+        constraint.apply(workers=workers, shift_types=shift_types, num_periods=1)
+
+        model.add(variables.get_assignment_var("worker_1", 0, "shift_weekday") == 1)
+        model.add(variables.get_assignment_var("worker_1", 0, "shift_weekend") == 1)
+
+        solver = cp_model.CpSolver()
+        status = solver.Solve(model)
+        assert status == cp_model.INFEASIBLE

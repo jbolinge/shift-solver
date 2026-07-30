@@ -789,6 +789,77 @@ class TestShiftOrderPreferenceEdgeCases:
         assert len(constraint.violation_variables) == 3
         assert all("W002" in name for name in constraint.violation_variables)
 
+    def test_skill_ineligible_worker_skipped_for_preferred(
+        self,
+        period_dates: list[tuple[date, date]],
+    ) -> None:
+        """
+        Regression (B5): a worker who isn't restricted but is missing a
+        required attribute for the preferred shift must not generate a
+        violation variable -- SkillsConstraint would force their assignment
+        var to 0 for that shift type, so a violation indicator for them
+        could never be satisfied and would be a permanent, unavoidable
+        priority-weighted penalty distorting the objective.
+        """
+        shift_types = [
+            ShiftType(
+                id="day_shift",
+                name="Day Shift",
+                category="day",
+                start_time=time(7, 0),
+                end_time=time(15, 0),
+                duration_hours=8.0,
+                workers_required=1,
+            ),
+            ShiftType(
+                id="night_shift",
+                name="Night Shift",
+                category="night",
+                start_time=time(23, 0),
+                end_time=time(7, 0),
+                duration_hours=8.0,
+                workers_required=1,
+                required_attributes={"skill": "acls"},
+            ),
+        ]
+        workers = [
+            # Not restricted from night_shift, but missing the required skill.
+            Worker(id="W001", name="Worker 1", attributes={}),
+            # Has the required skill -> eligible.
+            Worker(id="W002", name="Worker 2", attributes={"skill": "acls"}),
+        ]
+        model = cp_model.CpModel()
+        builder = VariableBuilder(model, workers, shift_types, num_periods=4)
+        variables = builder.build()
+
+        config = ConstraintConfig(enabled=True, is_hard=False, weight=200)
+        constraint = ShiftOrderPreferenceConstraint(model, variables, config)
+
+        preferences = [
+            ShiftOrderPreference(
+                rule_id="day_then_night",
+                trigger_type="shift_type",
+                trigger_value="day_shift",
+                direction="after",
+                preferred_type="shift_type",
+                preferred_value="night_shift",
+            )
+        ]
+
+        constraint.apply(
+            workers=workers,
+            shift_types=shift_types,
+            num_periods=4,
+            period_dates=period_dates,
+            availabilities=[],
+            shift_order_preferences=preferences,
+        )
+
+        # W001 skill-ineligible for night_shift -> 0 violations for W001
+        # W002 skill-eligible for night_shift -> 3 violations for W002
+        assert len(constraint.violation_variables) == 3
+        assert all("W002" in name for name in constraint.violation_variables)
+
     def test_worker_ids_filtering(
         self,
         model_and_variables: tuple[cp_model.CpModel, SolverVariables],

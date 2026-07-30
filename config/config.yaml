@@ -9,7 +9,7 @@ solver:
 
 # Schedule definition
 schedule:
-  period_type: "week"           # day, week, or month
+  period_type: "week"           # day or week ("day" enables day-granular constraints)
 
 # Constraint configuration
 # Each constraint can be:

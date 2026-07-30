@@ -961,6 +961,68 @@ class TestShiftOrderPreferenceFeasibility:
             for w in result.warnings
         )
 
+    def test_all_workers_skill_ineligible_for_preferred(
+        self,
+        period_dates: list[tuple[date, date]],
+    ) -> None:
+        """
+        Regression (B5): warning when all applicable workers are unrestricted
+        but missing a required attribute for the preferred shift -- not just
+        when they're restricted.
+        """
+        from shift_solver.models import ShiftOrderPreference
+
+        workers = [
+            Worker(id="W1", name="Alice", attributes={}),
+            Worker(id="W2", name="Bob", attributes={}),
+            Worker(id="W3", name="Charlie", attributes={"skill": "acls"}),
+        ]
+        shift_types = [
+            ShiftType(
+                id="day",
+                name="Day Shift",
+                category="day",
+                start_time=time(7, 0),
+                end_time=time(15, 0),
+                duration_hours=8.0,
+                workers_required=1,
+            ),
+            ShiftType(
+                id="night",
+                name="Night Shift",
+                category="night",
+                start_time=time(23, 0),
+                end_time=time(7, 0),
+                duration_hours=8.0,
+                workers_required=1,
+                required_attributes={"skill": "acls"},
+            ),
+        ]
+        prefs = [
+            ShiftOrderPreference(
+                rule_id="test",
+                trigger_type="shift_type",
+                trigger_value="day",
+                direction="after",
+                preferred_type="shift_type",
+                preferred_value="night",
+                worker_ids=frozenset(["W1", "W2"]),  # Neither has the skill
+            )
+        ]
+        checker = FeasibilityChecker(
+            workers=workers,
+            shift_types=shift_types,
+            period_dates=period_dates,
+            shift_order_preferences=prefs,
+        )
+        result = checker.check()
+        assert result.is_feasible
+        assert any(
+            w["type"] == "shift_order_preference"
+            and "missing required attributes" in w["message"]
+            for w in result.warnings
+        )
+
 
 class TestAvailabilityShiftTypeScoping:
     """

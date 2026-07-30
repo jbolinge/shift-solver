@@ -225,6 +225,7 @@ class ShiftSolver:
                 solve_time_seconds=solve_time,
                 objective_value=self._solver.ObjectiveValue(),
                 warnings=feasibility_warnings,
+                objective_breakdown=self._build_objective_breakdown(),
             )
         else:
             return SolverResult(
@@ -333,6 +334,33 @@ class ShiftSolver:
                 self._enforce_hard_mode(constraint)
 
             self._objective_builder.add_constraint(constraint)
+
+    def _build_objective_breakdown(self) -> dict[str, dict[str, float]] | None:
+        """
+        Aggregate solved objective terms per constraint id.
+
+        Reads each ObjectiveTerm's solved value from the solver and sums the
+        weighted contributions, so users can see which constraints the
+        objective actually traded away instead of tuning weights blind.
+        """
+        if self._objective_builder is None or self._solver is None:
+            return None
+        terms = self._objective_builder.objective_terms
+        if not terms:
+            return None
+
+        breakdown: dict[str, dict[str, float]] = {}
+        for term in terms:
+            value = self._solver.Value(term.variable)
+            entry = breakdown.setdefault(
+                term.constraint_id,
+                {"violations": 0, "violation_total": 0, "penalty": 0},
+            )
+            if value > 0:
+                entry["violations"] += 1
+            entry["violation_total"] += value
+            entry["penalty"] += value * term.effective_weight
+        return breakdown
 
     def _enforce_hard_mode(self, constraint: BaseConstraint) -> None:
         """

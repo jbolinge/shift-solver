@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import click
+import yaml
 
 from shift_solver import __version__
 from shift_solver.cli.commands import (
@@ -13,6 +14,43 @@ from shift_solver.cli.commands import (
     validate,
 )
 from shift_solver.config import ShiftSolverConfig
+from shift_solver.utils import setup_logging
+
+
+def _configure_logging(config_path: Path | None, verbose: int) -> None:
+    """Wire the logging: config section and -v flags into setup_logging.
+
+    Verbosity flags override the configured level (-v = INFO, -vv+ = DEBUG);
+    without them the config's logging.level (default WARNING on the console
+    so constraint no-op warnings surface without log spam) applies. The
+    logging section is read with a plain yaml load rather than full config
+    validation - logging must come up even for commands whose job is to
+    report that the config is invalid.
+    """
+    level = "WARNING"
+    log_file: Path | None = None
+    if config_path is not None and config_path.exists():
+        try:
+            with open(config_path) as f:
+                data = yaml.safe_load(f) or {}
+            logging_section = data.get("logging") or {}
+            level = str(logging_section.get("level", level))
+            if logging_section.get("file"):
+                log_file = Path(str(logging_section["file"]))
+        except Exception:  # noqa: BLE001 - malformed configs are reported later
+            pass
+
+    if verbose == 1:
+        level = "INFO"
+    elif verbose >= 2:
+        level = "DEBUG"
+
+    try:
+        setup_logging(level=level, log_file=log_file)
+    except (AttributeError, ValueError):
+        # An invalid logging.level in config must not mask the real command;
+        # config validation will report it properly.
+        setup_logging(level="WARNING", log_file=log_file)
 
 
 @click.group()
@@ -42,6 +80,7 @@ def cli(ctx: click.Context, config: Path, verbose: int) -> None:
         ctx.get_parameter_source("config") != click.core.ParameterSource.DEFAULT
     )
     ctx.obj["verbose"] = verbose
+    _configure_logging(config if config and config.exists() else None, verbose)
 
 
 @cli.command()

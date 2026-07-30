@@ -7,8 +7,24 @@ import openpyxl
 
 from shift_solver.io.date_utils import parse_date
 from shift_solver.io.excel_handler.exceptions import ExcelHandlerError
+from shift_solver.io.parsing import parse_attributes, parse_is_hard
 from shift_solver.models import Availability, SchedulingRequest, Worker
 from shift_solver.models.data_models import AVAILABILITY_TYPES, REQUEST_TYPES
+
+
+def _reject_legacy_xls(file_path: Path) -> None:
+    """Fail fast on legacy binary .xls workbooks with an actionable message.
+
+    openpyxl only reads OOXML (.xlsx) workbooks; without this guard a .xls
+    file surfaces openpyxl's own error recommending xlrd - a library this
+    loader doesn't use and the project doesn't ship - or, on code paths
+    without a try/except, an uncaught traceback.
+    """
+    if file_path.suffix.lower() == ".xls":
+        raise ExcelHandlerError(
+            f"Legacy .xls format is not supported: {file_path}. "
+            f"Open the file in Excel/LibreOffice and save it as .xlsx."
+        )
 
 
 class ExcelLoader:
@@ -22,6 +38,20 @@ class ExcelLoader:
 
     Can also load from single-sheet files.
     """
+
+    def __init__(self, date_format: str = "auto") -> None:
+        """
+        Args:
+            date_format: One of "iso", "us", "eu", "auto". Applied to every
+                start_date/end_date cell this loader parses (see
+                date_utils.parse_date). Defaults to "auto", which tries
+                ISO/US/EU in turn and warns on ambiguous dates.
+        """
+        self._date_format = date_format
+        # Per-instance so that ambiguity warnings from one ExcelLoader aren't
+        # swallowed because a *different* loader instance already warned
+        # about the same date string (see date_utils.parse_date).
+        self._warned_dates: set[str] = set()
 
     def load_workers(
         self, file_path: Path, sheet_name: str | None = None
@@ -127,8 +157,12 @@ class ExcelLoader:
         """
         if not file_path.exists():
             raise ExcelHandlerError(f"File not found: {file_path}")
+        _reject_legacy_xls(file_path)
 
-        wb = openpyxl.load_workbook(file_path, data_only=True)
+        try:
+            wb = openpyxl.load_workbook(file_path, data_only=True)
+        except Exception as e:
+            raise ExcelHandlerError(f"Error reading Excel file: {e}") from e
 
         result: dict[str, Any] = {
             "workers": [],
@@ -151,6 +185,7 @@ class ExcelLoader:
         """Read a sheet and return list of row dicts."""
         if not file_path.exists():
             raise ExcelHandlerError(f"File not found: {file_path}")
+        _reject_legacy_xls(file_path)
 
         try:
             wb = openpyxl.load_workbook(file_path, data_only=True)
@@ -205,12 +240,18 @@ class ExcelLoader:
             s.strip() for s in preferred_str.split(",") if s.strip()
         )
 
+        # Parse attributes (semicolon-separated key=value pairs)
+        attributes = parse_attributes(
+            row.get("attributes", ""), line_num, ExcelHandlerError
+        )
+
         return Worker(
             id=worker_id,
             name=name,
             worker_type=worker_type,
             restricted_shifts=restricted_shifts,
             preferred_shifts=preferred_shifts,
+            attributes=attributes,
         )
 
     def _parse_availability_row(
@@ -222,10 +263,20 @@ class ExcelLoader:
             raise ExcelHandlerError(f"empty 'worker_id' on line {line_num}")
 
         start_date = parse_date(
-            row.get("start_date"), "start_date", line_num, ExcelHandlerError
+            row.get("start_date"),
+            "start_date",
+            line_num,
+            ExcelHandlerError,
+            date_format=self._date_format,
+            warned_dates=self._warned_dates,
         )
         end_date = parse_date(
-            row.get("end_date"), "end_date", line_num, ExcelHandlerError
+            row.get("end_date"),
+            "end_date",
+            line_num,
+            ExcelHandlerError,
+            date_format=self._date_format,
+            warned_dates=self._warned_dates,
         )
 
         availability_type = str(row.get("availability_type") or "").strip()
@@ -300,10 +351,20 @@ class ExcelLoader:
             raise ExcelHandlerError(f"empty 'worker_id' on line {line_num}")
 
         start_date = parse_date(
-            row.get("start_date"), "start_date", line_num, ExcelHandlerError
+            row.get("start_date"),
+            "start_date",
+            line_num,
+            ExcelHandlerError,
+            date_format=self._date_format,
+            warned_dates=self._warned_dates,
         )
         end_date = parse_date(
-            row.get("end_date"), "end_date", line_num, ExcelHandlerError
+            row.get("end_date"),
+            "end_date",
+            line_num,
+            ExcelHandlerError,
+            date_format=self._date_format,
+            warned_dates=self._warned_dates,
         )
 
         request_type = str(row.get("request_type") or "").strip()
@@ -318,6 +379,8 @@ class ExcelLoader:
 
         priority = self._parse_priority(row.get("priority"), line_num)
 
+        is_hard = parse_is_hard(row.get("is_hard"), line_num, ExcelHandlerError)
+
         return SchedulingRequest(
             worker_id=worker_id,
             start_date=start_date,
@@ -325,4 +388,5 @@ class ExcelLoader:
             request_type=request_type,  # type: ignore
             shift_type_id=shift_type_id,
             priority=priority,
+            is_hard=is_hard,
         )

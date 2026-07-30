@@ -19,6 +19,12 @@ def _derive_period_type(period_dates: list[tuple[date, date]]) -> str:
     """
     Derive period type from the duration of periods.
 
+    All periods must share the first period's length for its duration to be
+    trusted; a shorter FINAL period is tolerated (a horizon that isn't a
+    whole number of periods gets truncated by the CLI's period calculation).
+    Any other length mix means the caller supplied irregular periods, which
+    is reported as "custom" rather than mislabeled from period_dates[0].
+
     Args:
         period_dates: List of (start_date, end_date) tuples for each period
 
@@ -28,9 +34,12 @@ def _derive_period_type(period_dates: list[tuple[date, date]]) -> str:
     if not period_dates:
         return "week"  # Default fallback
 
-    # Calculate the duration of the first period
-    start, end = period_dates[0]
-    duration = (end - start).days + 1  # +1 to include both start and end
+    durations = [(end - start).days + 1 for start, end in period_dates]
+    duration = durations[0]
+    for i, d in enumerate(durations[1:], start=1):
+        is_truncated_final = i == len(durations) - 1 and d < duration
+        if d != duration and not is_truncated_final:
+            return "custom"
 
     # Map duration to period type
     if duration == 1:

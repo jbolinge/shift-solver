@@ -314,6 +314,18 @@ class TestTypedConstraintParameters:
                 )
             )
 
+    def test_fairness_tolerance_accepts_non_negative(self) -> None:
+        cfg = ShiftSolverConfig.model_validate(
+            _config(constraints={"fairness": {"parameters": {"tolerance": 2}}})
+        )
+        assert cfg.constraints["fairness"].parameters["tolerance"] == 2
+
+    def test_fairness_tolerance_must_be_ge_zero(self) -> None:
+        with pytest.raises(ValidationError):
+            ShiftSolverConfig.model_validate(
+                _config(constraints={"fairness": {"parameters": {"tolerance": -1}}})
+            )
+
     def test_workload_min_greater_than_max_rejected(self) -> None:
         with pytest.raises(ValidationError, match="min_total_shifts"):
             ShiftSolverConfig.model_validate(

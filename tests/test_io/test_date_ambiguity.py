@@ -252,6 +252,84 @@ class TestExcelLoaderDateAmbiguity:
         assert avails[0].end_date == date(2026, 1, 3)
 
 
+class TestPerLoaderWarningDeduplication:
+    """Tests that ambiguity-warning dedup state is per-loader-instance.
+
+    date_utils._warned_dates used to be a bare module global shared by every
+    caller. Two independent loaders parsing the same ambiguous date string
+    would only warn once between them -- the second loader/run's warning was
+    silently swallowed just because some earlier, unrelated loader already
+    warned about that exact string. Each CSVLoader/ExcelLoader instance now
+    carries its own dedup set (parse_date's `warned_dates` parameter).
+    """
+
+    def setup_method(self) -> None:
+        """Clear the module-level cache too, so it can't mask a bug."""
+        _warned_dates.clear()
+
+    def test_two_csv_loader_instances_each_warn(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """A second CSVLoader instance warns even if a prior one already did."""
+        csv_file = tmp_path / "availability.csv"
+        csv_file.write_text(
+            "worker_id,start_date,end_date,availability_type\n"
+            "W001,01/02/2026,01/02/2026,unavailable\n"
+        )
+
+        with caplog.at_level(logging.WARNING):
+            CSVLoader().load_availability(csv_file)
+            caplog.clear()
+            # A brand new loader instance, parsing the exact same ambiguous
+            # date string, must warn again -- not be silenced by the first
+            # loader's already-populated dedup state.
+            CSVLoader().load_availability(csv_file)
+
+        assert "Ambiguous date '01/02/2026'" in caplog.text
+
+    def test_same_loader_instance_still_dedupes(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Within a single loader instance, the same date still warns once."""
+        csv_file = tmp_path / "availability.csv"
+        csv_file.write_text(
+            "worker_id,start_date,end_date,availability_type\n"
+            "W001,01/02/2026,01/02/2026,unavailable\n"
+        )
+
+        loader = CSVLoader()
+        with caplog.at_level(logging.WARNING):
+            loader.load_availability(csv_file)
+
+        warning_count = caplog.text.count("Ambiguous date '01/02/2026'")
+        assert warning_count == 1
+
+    def test_csv_and_excel_loader_each_warn_independently(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """A CSVLoader warning about a date doesn't silence an ExcelLoader's."""
+        csv_file = tmp_path / "availability.csv"
+        csv_file.write_text(
+            "worker_id,start_date,end_date,availability_type\n"
+            "W001,03/04/2026,03/04/2026,unavailable\n"
+        )
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Availability"
+        ws.append(["worker_id", "start_date", "end_date", "availability_type"])
+        ws.append(["W001", "03/04/2026", "03/04/2026", "unavailable"])
+        excel_file = tmp_path / "availability.xlsx"
+        wb.save(excel_file)
+
+        with caplog.at_level(logging.WARNING):
+            CSVLoader().load_availability(csv_file)
+            caplog.clear()
+            ExcelLoader().load_availability(excel_file)
+
+        assert "Ambiguous date '03/04/2026'" in caplog.text
+
+
 class TestDateEdgeCases:
     """Tests for edge cases in date parsing."""
 

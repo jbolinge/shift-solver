@@ -66,8 +66,15 @@ class ObjectiveBuilder:
         self.objective_terms.clear()
 
         for constraint in self.constraints:
-            if constraint.is_hard:
-                # Hard constraints don't contribute to objective
+            if constraint.is_hard and not constraint.handles_hard_mode:
+                # Hard constraints don't contribute to objective - unless
+                # they implement their own per-record hard/soft semantics
+                # (handles_hard_mode=True, e.g. RequestConstraint), in which
+                # case the constraint-level is_hard flag doesn't mean every
+                # violation var is hard-enforced (ShiftSolver._enforce_hard_mode
+                # skips those constraints for the same reason), so any
+                # per-record soft violations they produced must still be
+                # priced here or they'd float free at zero cost.
                 continue
 
             base_weight = constraint.weight

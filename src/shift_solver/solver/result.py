@@ -18,3 +18,9 @@ class SolverResult:
     objective_value: float | None = None
     feasibility_issues: list[dict[str, Any]] | None = field(default=None)
     warnings: list[str] = field(default_factory=list)
+    # Per-constraint objective accounting for a successful solve:
+    # constraint_id -> {"violations": <count of nonzero violation vars>,
+    #                   "violation_total": <sum of violation var values>,
+    #                   "penalty": <weighted contribution to the objective>}.
+    # None when no solve succeeded or no soft constraints contributed.
+    objective_breakdown: dict[str, dict[str, float]] | None = None

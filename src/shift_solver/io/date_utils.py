@@ -2,7 +2,7 @@
 
 import logging
 from datetime import date, datetime
-from typing import Any, Literal
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +52,8 @@ def parse_date[E: Exception](
     field_name: str,
     line_num: int,
     error_class: type[E],
-    date_format: Literal["iso", "us", "eu", "auto"] = "auto",
+    date_format: str = "auto",
+    warned_dates: set[str] | None = None,
 ) -> date:
     """
     Parse a date from various input formats.
@@ -72,6 +73,13 @@ def parse_date[E: Exception](
             - "us": Use MM/DD/YYYY only
             - "eu": Use DD/MM/YYYY only
             - "auto": Try all formats, warn on ambiguous dates (default)
+        warned_dates: Set used to dedupe ambiguous-date warnings, mutated
+            in place. Defaults to a shared module-level set (this module's
+            historical behavior) for callers that parse a handful of dates
+            directly; CSVLoader/ExcelLoader instead pass their own
+            per-instance set (see their `_warned_dates`) so that ambiguity
+            warnings from one loader/run aren't silently swallowed because
+            an unrelated loader already warned about the same date string.
 
     Returns:
         Parsed date object
@@ -79,6 +87,8 @@ def parse_date[E: Exception](
     Raises:
         error_class: If value is empty or cannot be parsed
     """
+    if warned_dates is None:
+        warned_dates = _warned_dates
     if value is None:
         raise error_class(f"empty '{field_name}' on line {line_num}")
 
@@ -99,8 +109,8 @@ def parse_date[E: Exception](
     if date_format == "auto":
         formats_to_try = ALL_FORMATS
         # Warn about ambiguous dates in auto mode
-        if _is_ambiguous_date(date_str) and date_str not in _warned_dates:
-            _warned_dates.add(date_str)
+        if _is_ambiguous_date(date_str) and date_str not in warned_dates:
+            warned_dates.add(date_str)
             logger.warning(
                 f"Ambiguous date '{date_str}' in {field_name} on line {line_num}. "
                 f"Interpreting as US format (MM/DD/YYYY). "
