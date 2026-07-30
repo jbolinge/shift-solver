@@ -4,6 +4,7 @@ Tests complete CLI workflows to verify end-to-end functionality,
 error handling, and user experience.
 """
 
+import json
 from pathlib import Path
 
 import pytest
@@ -643,7 +644,7 @@ shift_types:
     def test_month_period_type_rejected(
         self, runner: CliRunner, tmp_path: Path
     ) -> None:
-        """schedule.period_type values other than 'week' are rejected clearly."""
+        """Unsupported schedule.period_type values fail at config load."""
         config_file = self._config(tmp_path, period_type="month")
         result = runner.invoke(
             cli,
@@ -663,10 +664,10 @@ shift_types:
         )
 
         assert result.exit_code != 0
-        assert "not yet supported" in result.output.lower()
+        assert "period_type" in result.output
 
     def test_week_period_type_accepted(self, runner: CliRunner, tmp_path: Path) -> None:
-        """schedule.period_type: week (the only supported value) still works."""
+        """schedule.period_type: week still works."""
         config_file = self._config(tmp_path, period_type="week")
         result = runner.invoke(
             cli,
@@ -686,6 +687,91 @@ shift_types:
         )
 
         assert result.exit_code == 0, result.output
+
+    def test_day_period_type_generates_daily_periods(
+        self, runner: CliRunner, tmp_path: Path
+    ) -> None:
+        """schedule.period_type: day gives one period per calendar day."""
+        config_file = self._config(tmp_path, period_type="day")
+        output = tmp_path / "schedule.json"
+        result = runner.invoke(
+            cli,
+            [
+                "--config",
+                str(config_file),
+                "generate",
+                "--start-date",
+                "2026-02-02",
+                "--end-date",
+                "2026-02-08",
+                "--output",
+                str(output),
+                "--demo",
+                "--quick-solve",
+            ],
+        )
+
+        assert result.exit_code == 0, result.output
+        assert "7 day periods" in result.output
+        data = json.loads(output.read_text())
+        assert len(data["periods"]) == 7
+        first = data["periods"][0]
+        assert first["period_start"] == first["period_end"] == "2026-02-02"
+
+    def test_num_periods_replaces_end_date(
+        self, runner: CliRunner, tmp_path: Path
+    ) -> None:
+        """--end-date may be omitted when schedule.num_periods is configured."""
+        config_file = self._config(tmp_path, period_type="day")
+        # Add schedule.num_periods under the schedule: block.
+        config_file.write_text(
+            config_file.read_text().replace(
+                'period_type: "day"', 'period_type: "day"\n  num_periods: 5'
+            )
+        )
+        output = tmp_path / "schedule.json"
+        result = runner.invoke(
+            cli,
+            [
+                "--config",
+                str(config_file),
+                "generate",
+                "--start-date",
+                "2026-02-02",
+                "--output",
+                str(output),
+                "--demo",
+                "--quick-solve",
+            ],
+        )
+
+        assert result.exit_code == 0, result.output
+        data = json.loads(output.read_text())
+        assert len(data["periods"]) == 5
+        assert data["end_date"] == "2026-02-06"
+
+    def test_no_end_date_and_no_num_periods_is_an_error(
+        self, runner: CliRunner, tmp_path: Path
+    ) -> None:
+        """Neither --end-date nor schedule.num_periods -> clear error."""
+        config_file = self._config(tmp_path)
+        result = runner.invoke(
+            cli,
+            [
+                "--config",
+                str(config_file),
+                "generate",
+                "--start-date",
+                "2026-02-02",
+                "--output",
+                str(tmp_path / "schedule.json"),
+                "--demo",
+                "--quick-solve",
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert "num_periods" in result.output
 
     def test_feasibility_warnings_are_printed(
         self,

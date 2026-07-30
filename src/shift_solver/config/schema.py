@@ -3,7 +3,7 @@
 from datetime import time
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import yaml
 from pydantic import (
@@ -44,7 +44,11 @@ class ScheduleConfig(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    period_type: str = Field(default="week")
+    # Validated at load time so an unsupported period_type fails in
+    # check-config / config load rather than mid-generate. "day" gives each
+    # calendar day its own period (required for day-granular constraints
+    # like min_rest and weekend rules); "week" gives 7-day periods.
+    period_type: Literal["day", "week"] = Field(default="week")
     num_periods: int | None = Field(default=None, ge=1)
     date_format: DateFormat = Field(default=DateFormat.AUTO)
 

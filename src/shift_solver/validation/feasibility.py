@@ -509,30 +509,38 @@ class FeasibilityChecker:
         max_shifts_per_period = config.get_param("max_shifts_per_period", 1)
         capacity = len(self.workers) * max_shifts_per_period
 
+        # The limit is day-aware (mirroring WorkerShiftLimitConstraint): shift
+        # types only compete for the same worker-slots on days where they both
+        # apply, so demand is aggregated per calendar day, not per period.
         for period_idx, (period_start, period_end) in enumerate(self.period_dates):
-            total_required = 0
-            for shift_type in self.shift_types:
-                if shift_type.applicable_days is not None:
-                    applicable_count = self._count_applicable_days(
-                        shift_type, period_start, period_end
-                    )
-                    if applicable_count == 0:
-                        # No applicable days - no coverage required this period.
-                        continue
-                total_required += shift_type.workers_required
+            worst_day: date | None = None
+            worst_required = 0
+            current = period_start
+            while current <= period_end:
+                weekday = current.weekday()
+                day_required = sum(
+                    st.workers_required
+                    for st in self.shift_types
+                    if st.applicable_days is None or weekday in st.applicable_days
+                )
+                if day_required > worst_required:
+                    worst_required = day_required
+                    worst_day = current
+                current += timedelta(days=1)
 
-            if total_required > capacity:
+            if worst_required > capacity:
                 result.add_issue(
                     "worker_shift_limit",
-                    f"Period {period_idx}: total shift demand ({total_required}) "
-                    f"exceeds worker capacity ({len(self.workers)} workers x "
-                    f"{max_shifts_per_period} shift(s) per period = {capacity}); "
-                    f"short by {total_required - capacity}",
+                    f"Period {period_idx}: total shift demand on {worst_day} "
+                    f"({worst_required}) exceeds worker capacity "
+                    f"({len(self.workers)} workers x {max_shifts_per_period} "
+                    f"shift(s) = {capacity}); short by "
+                    f"{worst_required - capacity}",
                     period_index=period_idx,
-                    total_required=total_required,
+                    total_required=worst_required,
                     capacity=capacity,
                     max_shifts_per_period=max_shifts_per_period,
-                    shortfall=total_required - capacity,
+                    shortfall=worst_required - capacity,
                 )
 
     def _check_unknown_availability_references(self, result: FeasibilityResult) -> None:
