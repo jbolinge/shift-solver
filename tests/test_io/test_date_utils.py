@@ -170,6 +170,50 @@ class TestAmbiguousDateWarning:
         assert "Ambiguous" not in caplog.text
 
 
+class TestWarnedDatesParameter:
+    """Tests for parse_date's explicit `warned_dates` parameter.
+
+    Loaders pass their own per-instance set here instead of relying on the
+    module-level `_warned_dates` global, so that warnings from independent
+    loader instances/runs aren't swallowed by each other. Callers that don't
+    pass one (like the tests above) keep using the shared module-level set,
+    for backwards compatibility.
+    """
+
+    def setup_method(self) -> None:
+        _warned_dates.clear()
+
+    def test_explicit_set_is_used_instead_of_module_global(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        my_set: set[str] = set()
+        with caplog.at_level(logging.WARNING):
+            parse_date("01/02/2026", "field", 1, ExampleError, warned_dates=my_set)
+        assert "01/02/2026" in my_set
+        # The module-level global is untouched by an explicit warned_dates.
+        assert "01/02/2026" not in _warned_dates
+
+    def test_two_explicit_sets_each_warn_independently(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        set_a: set[str] = set()
+        set_b: set[str] = set()
+
+        with caplog.at_level(logging.WARNING):
+            parse_date("01/02/2026", "field", 1, ExampleError, warned_dates=set_a)
+            caplog.clear()
+            parse_date("01/02/2026", "field", 2, ExampleError, warned_dates=set_b)
+
+        assert "Ambiguous date '01/02/2026'" in caplog.text
+
+    def test_omitting_warned_dates_falls_back_to_module_global(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        with caplog.at_level(logging.WARNING):
+            parse_date("01/02/2026", "field", 1, ExampleError)
+        assert "01/02/2026" in _warned_dates
+
+
 class TestDateFormatErrorMessages:
     """Tests for error messages with different date formats."""
 

@@ -74,6 +74,7 @@ class FairnessParametersConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     categories: list[str] | None = Field(default=None)
+    tolerance: int = Field(default=0, ge=0)
 
 
 class FrequencyParametersConfig(BaseModel):

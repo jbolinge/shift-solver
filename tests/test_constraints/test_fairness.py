@@ -319,3 +319,160 @@ class TestFairnessVariableTypeMetadata:
         ]
         assert len(fairness_terms) == 1
         assert fairness_terms[0].variable_name == "spread"
+
+
+@pytest.fixture
+def tolerance_workers() -> list[Worker]:
+    """Two workers - just enough to force an odd, unsplittable total."""
+    return [
+        Worker(id="worker_1", name="Worker 1"),
+        Worker(id="worker_2", name="Worker 2"),
+    ]
+
+
+@pytest.fixture
+def tolerance_shift_types() -> list[ShiftType]:
+    """A single undesirable shift type."""
+    return [
+        ShiftType(
+            id="night",
+            name="Night Shift",
+            category="night",
+            start_time=time(23, 0),
+            end_time=time(7, 0),
+            duration_hours=8.0,
+            workers_required=1,
+            is_undesirable=True,
+        ),
+    ]
+
+
+class TestFairnessTolerance:
+    """
+    Tests for the `tolerance` parameter.
+
+    Scenario: 2 workers, 3 periods, 1 undesirable shift required every
+    period (3 total undesirable assignments). 3 cannot be split evenly
+    between 2 workers, so the minimum achievable spread is 1 (e.g. totals
+    of 2 and 1) - an exact tolerance=0 split is infeasible, but
+    tolerance=1 is satisfiable.
+    """
+
+    def _build_model(
+        self, workers: list[Worker], shift_types: list[ShiftType], num_periods: int
+    ) -> tuple[cp_model.CpModel, SolverVariables]:
+        model = cp_model.CpModel()
+        builder = VariableBuilder(model, workers, shift_types, num_periods=num_periods)
+        variables = builder.build()
+        for period in range(num_periods):
+            vars_for_shift = [
+                variables.get_assignment_var(w.id, period, "night") for w in workers
+            ]
+            model.add(sum(vars_for_shift) == 1)
+        return model, variables
+
+    @staticmethod
+    def _pin_hard(model: cp_model.CpModel, constraint: FairnessConstraint) -> None:
+        """
+        Replicate ShiftSolver._enforce_hard_mode: pin every non-auxiliary
+        violation var to 0. FairnessConstraint does not self-enforce hard
+        mode (handles_hard_mode=False) -- that's ShiftSolver's job, so unit
+        tests exercising hard mode in isolation must do it themselves.
+        """
+        for name, var in constraint.violation_variables.items():
+            if constraint.violation_variable_types.get(name) == "auxiliary":
+                continue
+            model.add(var == 0)
+
+    def test_hard_mode_tolerance_zero_is_infeasible(
+        self, tolerance_workers: list[Worker], tolerance_shift_types: list[ShiftType]
+    ) -> None:
+        """An exact equal split (tolerance=0, the default) is infeasible."""
+        model, variables = self._build_model(
+            tolerance_workers, tolerance_shift_types, num_periods=3
+        )
+        config = ConstraintConfig(enabled=True, is_hard=True, parameters={})
+        constraint = FairnessConstraint(model, variables, config)
+        constraint.apply(
+            workers=tolerance_workers, shift_types=tolerance_shift_types, num_periods=3
+        )
+        self._pin_hard(model, constraint)
+
+        solver = cp_model.CpSolver()
+        status = solver.solve(model)
+
+        assert status == cp_model.INFEASIBLE
+
+    def test_hard_mode_tolerance_within_range_is_feasible(
+        self, tolerance_workers: list[Worker], tolerance_shift_types: list[ShiftType]
+    ) -> None:
+        """tolerance=1 allows the achievable minimum spread of 1."""
+        model, variables = self._build_model(
+            tolerance_workers, tolerance_shift_types, num_periods=3
+        )
+        config = ConstraintConfig(
+            enabled=True, is_hard=True, parameters={"tolerance": 1}
+        )
+        constraint = FairnessConstraint(model, variables, config)
+        constraint.apply(
+            workers=tolerance_workers, shift_types=tolerance_shift_types, num_periods=3
+        )
+        self._pin_hard(model, constraint)
+
+        solver = cp_model.CpSolver()
+        status = solver.solve(model)
+
+        assert status in (cp_model.OPTIMAL, cp_model.FEASIBLE)
+        totals = [
+            solver.value(variables.get_undesirable_total_var(w.id))
+            for w in tolerance_workers
+        ]
+        assert max(totals) - min(totals) <= 1
+
+    def test_soft_mode_penalizes_only_excess_above_tolerance(
+        self, tolerance_workers: list[Worker], tolerance_shift_types: list[ShiftType]
+    ) -> None:
+        """
+        With tolerance=1, the achievable spread of 1 is fully covered by
+        the tolerance, so the objective_target `spread` var should settle
+        at 0 (no penalty) rather than 1.
+        """
+        model, variables = self._build_model(
+            tolerance_workers, tolerance_shift_types, num_periods=3
+        )
+        config = ConstraintConfig(
+            enabled=True, is_hard=False, weight=1000, parameters={"tolerance": 1}
+        )
+        constraint = FairnessConstraint(model, variables, config)
+        constraint.apply(
+            workers=tolerance_workers, shift_types=tolerance_shift_types, num_periods=3
+        )
+        spread_var = constraint.violation_variables["spread"]
+        model.minimize(spread_var * constraint.weight)
+
+        solver = cp_model.CpSolver()
+        status = solver.solve(model)
+
+        assert status in (cp_model.OPTIMAL, cp_model.FEASIBLE)
+        assert solver.value(spread_var) == 0
+
+    def test_soft_mode_tolerance_zero_matches_prior_behavior(
+        self, tolerance_workers: list[Worker], tolerance_shift_types: list[ShiftType]
+    ) -> None:
+        """With tolerance=0 (default), spread settles at the raw min-max spread."""
+        model, variables = self._build_model(
+            tolerance_workers, tolerance_shift_types, num_periods=3
+        )
+        config = ConstraintConfig(enabled=True, is_hard=False, weight=1000)
+        constraint = FairnessConstraint(model, variables, config)
+        constraint.apply(
+            workers=tolerance_workers, shift_types=tolerance_shift_types, num_periods=3
+        )
+        spread_var = constraint.violation_variables["spread"]
+        model.minimize(spread_var * constraint.weight)
+
+        solver = cp_model.CpSolver()
+        status = solver.solve(model)
+
+        assert status in (cp_model.OPTIMAL, cp_model.FEASIBLE)
+        assert solver.value(spread_var) == 1

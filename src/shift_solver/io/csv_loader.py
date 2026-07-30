@@ -4,6 +4,7 @@ import csv
 from pathlib import Path
 
 from shift_solver.io.date_utils import parse_date
+from shift_solver.io.parsing import parse_attributes, parse_is_hard
 from shift_solver.models import Availability, SchedulingRequest, Worker
 from shift_solver.models.data_models import AVAILABILITY_TYPES, REQUEST_TYPES
 
@@ -28,6 +29,20 @@ class CSVLoader:
     - MM/DD/YYYY (US format)
     - DD/MM/YYYY (EU format, if day > 12)
     """
+
+    def __init__(self, date_format: str = "auto") -> None:
+        """
+        Args:
+            date_format: One of "iso", "us", "eu", "auto". Applied to every
+                start_date/end_date cell this loader parses (see
+                date_utils.parse_date). Defaults to "auto", which tries
+                ISO/US/EU in turn and warns on ambiguous dates.
+        """
+        self._date_format = date_format
+        # Per-instance so that ambiguity warnings from one CSVLoader aren't
+        # swallowed because a *different* loader instance already warned
+        # about the same date string (see date_utils.parse_date).
+        self._warned_dates: set[str] = set()
 
     def load_workers(self, file_path: Path) -> list[Worker]:
         """
@@ -172,21 +187,6 @@ class CSVLoader:
 
         return priority
 
-    def _parse_is_hard(self, value: str, line_num: int) -> bool | None:
-        """Parse optional is_hard value."""
-        if not value:
-            return None
-
-        if value.lower() in ("true", "yes", "1"):
-            return True
-        if value.lower() in ("false", "no", "0"):
-            return False
-
-        raise CSVLoaderError(
-            f"Invalid is_hard value '{value}' on line {line_num}. "
-            f"Must be true/false/yes/no/1/0 or empty."
-        )
-
     def _parse_worker_row(self, row: dict[str, str], line_num: int) -> Worker:
         """Parse a single worker row."""
         worker_id = row.get("id", "").strip()
@@ -212,7 +212,9 @@ class CSVLoader:
         )
 
         # Parse attributes (semicolon-separated key=value pairs)
-        attributes = self._parse_attributes(row.get("attributes", ""), line_num)
+        attributes = parse_attributes(
+            row.get("attributes", ""), line_num, CSVLoaderError
+        )
 
         return Worker(
             id=worker_id,
@@ -223,55 +225,6 @@ class CSVLoader:
             attributes=attributes,
         )
 
-    def _parse_attributes(self, value: str, line_num: int) -> dict[str, str]:
-        """Parse the optional 'attributes' column into a Worker.attributes dict.
-
-        Format: semicolon-separated `key=value` pairs, e.g.
-        ``"certification=icu;seniority=senior"``. Whitespace around each
-        entry, key, and value is stripped. This is what makes
-        ShiftType.required_attributes / the `skills` constraint reachable
-        from CSV-loaded workers at all -- previously there was no column
-        that populated Worker.attributes.
-
-        Args:
-            value: Raw 'attributes' cell value (may be missing/empty).
-            line_num: Line number, for error messages.
-
-        Returns:
-            dict of parsed key/value pairs (empty if the column is blank).
-
-        Raises:
-            CSVLoaderError: If an entry isn't a well-formed 'key=value' pair
-                (missing '=', or an empty key).
-        """
-        raw = value.strip()
-        if not raw:
-            return {}
-
-        attributes: dict[str, str] = {}
-        for entry in raw.split(";"):
-            entry = entry.strip()
-            if not entry:
-                continue
-            if "=" not in entry:
-                raise CSVLoaderError(
-                    f"Invalid attributes entry '{entry}' on line {line_num}. "
-                    "Expected semicolon-separated 'key=value' pairs, e.g. "
-                    "'certification=icu;seniority=senior'."
-                )
-            key, _, val = entry.partition("=")
-            key = key.strip()
-            val = val.strip()
-            if not key:
-                raise CSVLoaderError(
-                    f"Invalid attributes entry '{entry}' on line {line_num}: "
-                    "empty key. Expected semicolon-separated 'key=value' "
-                    "pairs, e.g. 'certification=icu;seniority=senior'."
-                )
-            attributes[key] = val
-
-        return attributes
-
     def _parse_availability_row(
         self, row: dict[str, str], line_num: int
     ) -> Availability:
@@ -281,10 +234,20 @@ class CSVLoader:
             raise CSVLoaderError(f"empty 'worker_id' on line {line_num}")
 
         start_date = parse_date(
-            row.get("start_date", ""), "start_date", line_num, CSVLoaderError
+            row.get("start_date", ""),
+            "start_date",
+            line_num,
+            CSVLoaderError,
+            date_format=self._date_format,
+            warned_dates=self._warned_dates,
         )
         end_date = parse_date(
-            row.get("end_date", ""), "end_date", line_num, CSVLoaderError
+            row.get("end_date", ""),
+            "end_date",
+            line_num,
+            CSVLoaderError,
+            date_format=self._date_format,
+            warned_dates=self._warned_dates,
         )
 
         availability_type = row.get("availability_type", "").strip()
@@ -313,10 +276,20 @@ class CSVLoader:
             raise CSVLoaderError(f"empty 'worker_id' on line {line_num}")
 
         start_date = parse_date(
-            row.get("start_date", ""), "start_date", line_num, CSVLoaderError
+            row.get("start_date", ""),
+            "start_date",
+            line_num,
+            CSVLoaderError,
+            date_format=self._date_format,
+            warned_dates=self._warned_dates,
         )
         end_date = parse_date(
-            row.get("end_date", ""), "end_date", line_num, CSVLoaderError
+            row.get("end_date", ""),
+            "end_date",
+            line_num,
+            CSVLoaderError,
+            date_format=self._date_format,
+            warned_dates=self._warned_dates,
         )
 
         request_type = row.get("request_type", "").strip()
@@ -333,7 +306,9 @@ class CSVLoader:
         priority_str = row.get("priority", "").strip()
         priority = self._parse_priority(priority_str, line_num)
 
-        is_hard = self._parse_is_hard(row.get("is_hard", "").strip(), line_num)
+        is_hard = parse_is_hard(
+            row.get("is_hard", "").strip(), line_num, CSVLoaderError
+        )
 
         return SchedulingRequest(
             worker_id=worker_id,

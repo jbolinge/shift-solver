@@ -8,16 +8,23 @@ import click
 from shift_solver.cli.helpers import build_schedule_from_json, shift_type_from_config
 from shift_solver.config import ShiftSolverConfig
 from shift_solver.io import (
-    CSVLoader,
     CSVLoaderError,
     ExcelExporter,
     ExcelHandlerError,
     ExcelLoader,
+    make_loader,
 )
 from shift_solver.models import ShiftType, Worker
 
 
 @click.command("import-data")
+@click.option(
+    "--config",
+    "-c",
+    type=click.Path(exists=True, path_type=Path),
+    default=None,
+    help="Configuration file (used for schedule.date_format)",
+)
 @click.option(
     "--workers",
     type=click.Path(exists=True, path_type=Path),
@@ -41,6 +48,7 @@ from shift_solver.models import ShiftType, Worker
 @click.pass_context
 def import_data(
     ctx: click.Context,
+    config: Path | None,
     workers: Path | None,
     availability: Path | None,
     requests: Path | None,
@@ -49,10 +57,17 @@ def import_data(
     """Import worker and scheduling data from files."""
     verbose = ctx.obj.get("verbose", 0)
 
+    # Fall back to the group-level -c/--config when --config isn't given to
+    # this subcommand directly (same pattern as list-shifts/export_schedule).
+    config_path = config or ctx.obj.get("config_path")
+    date_format = _resolve_date_format(config_path)
+
     if excel:
-        _import_from_excel(excel, verbose)
+        _import_from_excel(excel, verbose, date_format)
     else:
-        _import_from_separate_files(workers, availability, requests, verbose)
+        _import_from_separate_files(
+            workers, availability, requests, verbose, date_format
+        )
 
     # shift-solver has no database: this command validates that the given
     # files parse cleanly, it does not persist anything. Pass the same files
@@ -66,11 +81,28 @@ def import_data(
     )
 
 
-def _import_from_excel(excel: Path, verbose: int) -> None:
+def _resolve_date_format(config_path: Path | None) -> str:
+    """Resolve schedule.date_format from --config, defaulting to "auto".
+
+    Mirrors generate/validate's date_format resolution: a config that
+    doesn't exist (e.g. the group's unmodified default path) is silently
+    treated as "no config", not an error -- import-data is a validate-only
+    convenience command, not the strict entry point for config errors.
+    """
+    if not (config_path and config_path.exists()):
+        return "auto"
+    try:
+        cfg = ShiftSolverConfig.load_from_yaml(config_path)
+    except Exception as e:
+        raise click.ClickException(f"Error loading config: {e}") from e
+    return cfg.schedule.date_format.value
+
+
+def _import_from_excel(excel: Path, verbose: int, date_format: str) -> None:
     """Import from a single Excel workbook."""
     click.echo(f"Importing from Excel workbook: {excel}")
     try:
-        loader = ExcelLoader()
+        loader = ExcelLoader(date_format=date_format)
         data = loader.load_all(excel)
         click.echo(f"  Workers: {len(data['workers'])}")
         click.echo(f"  Availability records: {len(data['availability'])}")
@@ -90,19 +122,17 @@ def _import_from_separate_files(
     availability: Path | None,
     requests: Path | None,
     verbose: int,
+    date_format: str,
 ) -> None:
     """Import from individual CSV/Excel files."""
-    csv_loader = CSVLoader()
-    excel_loader = ExcelLoader()
-
     if workers:
-        _import_workers(workers, csv_loader, excel_loader, verbose)
+        _import_workers(workers, verbose, date_format)
 
     if availability:
-        _import_availability(availability, csv_loader, excel_loader, verbose)
+        _import_availability(availability, verbose, date_format)
 
     if requests:
-        _import_requests(requests, csv_loader, excel_loader, verbose)
+        _import_requests(requests, verbose, date_format)
 
     if not workers and not availability and not requests:
         click.echo(
@@ -111,19 +141,11 @@ def _import_from_separate_files(
         raise click.ClickException("No input files specified")
 
 
-def _import_workers(
-    file_path: Path,
-    csv_loader: CSVLoader,
-    excel_loader: ExcelLoader,
-    verbose: int,
-) -> None:
+def _import_workers(file_path: Path, verbose: int, date_format: str) -> None:
     """Import workers from a file."""
     click.echo(f"Importing workers from: {file_path}")
     try:
-        if file_path.suffix == ".xlsx":
-            worker_list = excel_loader.load_workers(file_path)
-        else:
-            worker_list = csv_loader.load_workers(file_path)
+        worker_list = make_loader(file_path, date_format).load_workers(file_path)
         click.echo(f"  Loaded {len(worker_list)} workers")
 
         if verbose:
@@ -136,17 +158,13 @@ def _import_workers(
 
 def _import_availability(
     file_path: Path,
-    csv_loader: CSVLoader,
-    excel_loader: ExcelLoader,
     verbose: int,  # noqa: ARG001
+    date_format: str,
 ) -> None:
     """Import availability from a file."""
     click.echo(f"Importing availability from: {file_path}")
     try:
-        if file_path.suffix == ".xlsx":
-            avail_list = excel_loader.load_availability(file_path)
-        else:
-            avail_list = csv_loader.load_availability(file_path)
+        avail_list = make_loader(file_path, date_format).load_availability(file_path)
         click.echo(f"  Loaded {len(avail_list)} availability records")
 
     except (CSVLoaderError, ExcelHandlerError) as e:
@@ -155,17 +173,13 @@ def _import_availability(
 
 def _import_requests(
     file_path: Path,
-    csv_loader: CSVLoader,
-    excel_loader: ExcelLoader,
     verbose: int,  # noqa: ARG001
+    date_format: str,
 ) -> None:
     """Import requests from a file."""
     click.echo(f"Importing requests from: {file_path}")
     try:
-        if file_path.suffix == ".xlsx":
-            req_list = excel_loader.load_requests(file_path)
-        else:
-            req_list = csv_loader.load_requests(file_path)
+        req_list = make_loader(file_path, date_format).load_requests(file_path)
         click.echo(f"  Loaded {len(req_list)} requests")
 
     except (CSVLoaderError, ExcelHandlerError) as e:

@@ -6,7 +6,13 @@ from typing import TYPE_CHECKING, Any
 from ortools.sat.python import cp_model
 
 from shift_solver.constraints.base import BaseConstraint, ConstraintConfig
-from shift_solver.models import Availability, ShiftOrderPreference, ShiftType, Worker
+from shift_solver.models import (
+    Availability,
+    ShiftOrderPreference,
+    ShiftType,
+    Worker,
+    is_eligible,
+)
 
 if TYPE_CHECKING:
     from shift_solver.solver.types import SolverVariables
@@ -136,6 +142,7 @@ class ShiftOrderPreferenceConstraint(BaseConstraint):
             self._apply_rule_for_worker(
                 rule=rule,
                 worker=worker,
+                shift_type_map=shift_type_map,
                 shifts_by_category=shifts_by_category,
                 unavail_index=unavail_index,
                 num_periods=num_periods,
@@ -145,6 +152,7 @@ class ShiftOrderPreferenceConstraint(BaseConstraint):
         self,
         rule: ShiftOrderPreference,
         worker: Worker,
+        shift_type_map: dict[str, ShiftType],
         shifts_by_category: dict[str, list[ShiftType]],
         unavail_index: dict[str, set[int]],
         num_periods: int,
@@ -163,6 +171,7 @@ class ShiftOrderPreferenceConstraint(BaseConstraint):
                 worker=worker,
                 trigger_period=trigger_period,
                 preferred_period=preferred_period,
+                shift_type_map=shift_type_map,
                 shifts_by_category=shifts_by_category,
                 unavail_index=unavail_index,
             )
@@ -173,6 +182,7 @@ class ShiftOrderPreferenceConstraint(BaseConstraint):
         worker: Worker,
         trigger_period: int,
         preferred_period: int,
+        shift_type_map: dict[str, ShiftType],
         shifts_by_category: dict[str, list[ShiftType]],
         unavail_index: dict[str, set[int]],
     ) -> None:
@@ -194,6 +204,7 @@ class ShiftOrderPreferenceConstraint(BaseConstraint):
             rule=rule,
             worker=worker,
             period=preferred_period,
+            shift_type_map=shift_type_map,
             shifts_by_category=shifts_by_category,
         )
 
@@ -283,17 +294,27 @@ class ShiftOrderPreferenceConstraint(BaseConstraint):
         rule: ShiftOrderPreference,
         worker: Worker,
         period: int,
+        shift_type_map: dict[str, ShiftType],
         shifts_by_category: dict[str, list[ShiftType]],
     ) -> cp_model.IntVar | None:
         """
         Get the preferred indicator for a rule/worker/period.
+
+        Uses is_eligible() (restriction AND skill/attribute match) rather
+        than worker.can_work_shift() alone, so a worker who is unrestricted
+        but missing a required attribute doesn't get a preference indicator
+        that can never be satisfied -- that would generate an unavoidable,
+        priority-weighted violation distorting the objective.
 
         Returns:
             - IntVar: a boolean variable indicating preferred shift is assigned
             - None: worker can't work any preferred shifts (skip this pair)
         """
         if rule.preferred_type == "shift_type":
-            if not worker.can_work_shift(rule.preferred_value):
+            preferred_shift_type = shift_type_map.get(rule.preferred_value)
+            if preferred_shift_type is None or not is_eligible(
+                worker, preferred_shift_type
+            ):
                 return None
             try:
                 return self.variables.get_assignment_var(
@@ -309,7 +330,7 @@ class ShiftOrderPreferenceConstraint(BaseConstraint):
 
             cat_vars: list[cp_model.IntVar] = []
             for st in category_shifts:
-                if not worker.can_work_shift(st.id):
+                if not is_eligible(worker, st):
                     continue
                 try:
                     var = self.variables.get_assignment_var(worker.id, period, st.id)

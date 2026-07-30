@@ -13,7 +13,7 @@ from shift_solver.cli.helpers import shift_type_from_config
 from shift_solver.config import ShiftSolverConfig
 from shift_solver.config.schema import SolverConfig
 from shift_solver.constraints.base import ConstraintConfig
-from shift_solver.io import CSVLoader, CSVLoaderError
+from shift_solver.io import CSVLoaderError, ExcelHandlerError, make_loader
 from shift_solver.models import Availability, SchedulingRequest, ShiftType, Worker
 from shift_solver.solver import ShiftSolver
 
@@ -22,8 +22,9 @@ if TYPE_CHECKING:
 
 # Shift-length limitation on the `schedule:` config section: period
 # computation below is entirely week-based (see _calculate_period_dates).
-# num_periods and date_format are similarly not consulted anywhere in this
-# command. Rather than silently ignoring an unsupported period_type, reject
+# num_periods is similarly not consulted anywhere in this command (though
+# date_format now is, via cfg.schedule.date_format - see make_loader calls
+# below). Rather than silently ignoring an unsupported period_type, reject
 # it clearly - see _check_period_type_supported.
 SUPPORTED_PERIOD_TYPES = frozenset({"week"})
 
@@ -108,10 +109,15 @@ def generate(
     constraint_configs = _load_constraint_configs(config_path, verbose)
     _check_period_type_supported(cfg)
 
+    # Date format for CSV/Excel cells (schedule.date_format in config,
+    # defaulting to "auto" like the loaders themselves when no config is
+    # present).
+    date_format = cfg.schedule.date_format.value if cfg is not None else "auto"
+
     # Get workers - exactly one of --demo or --workers is required.
-    worker_list = _load_workers(demo, workers, verbose)
-    availabilities = _load_availability(availability, verbose)
-    request_list = _load_requests(requests, verbose)
+    worker_list = _load_workers(demo, workers, verbose, date_format)
+    availabilities = _load_availability(availability, verbose, date_format)
+    request_list = _load_requests(requests, verbose, date_format)
 
     # Calculate period dates (weekly periods)
     start = _to_date(start_date)
@@ -253,8 +259,10 @@ def _load_shift_types(cfg: ShiftSolverConfig | None, verbose: int) -> list[Shift
         ]
 
 
-def _load_workers(demo: bool, workers_path: Path | None, verbose: int) -> list[Worker]:
-    """Load workers from --demo or a --workers CSV file (exactly one required)."""
+def _load_workers(
+    demo: bool, workers_path: Path | None, verbose: int, date_format: str
+) -> list[Worker]:
+    """Load workers from --demo or a --workers CSV/Excel file (exactly one required)."""
     if demo and workers_path:
         raise click.ClickException("Use either --demo or --workers, not both.")
     if demo:
@@ -263,8 +271,10 @@ def _load_workers(demo: bool, workers_path: Path | None, verbose: int) -> list[W
         return worker_list
     if workers_path:
         try:
-            worker_list = CSVLoader().load_workers(workers_path)
-        except CSVLoaderError as e:
+            worker_list = make_loader(workers_path, date_format).load_workers(
+                workers_path
+            )
+        except (CSVLoaderError, ExcelHandlerError) as e:
             raise click.ClickException(f"Error loading workers: {e}") from e
         click.echo(f"Using {len(worker_list)} workers from {workers_path}")
         if verbose:
@@ -278,27 +288,33 @@ def _load_workers(demo: bool, workers_path: Path | None, verbose: int) -> list[W
 
 
 def _load_availability(
-    availability_path: Path | None, verbose: int
+    availability_path: Path | None, verbose: int, date_format: str
 ) -> list[Availability]:
-    """Load availability records from a CSV file, if provided."""
+    """Load availability records from a CSV/Excel file, if provided."""
     if not availability_path:
         return []
     try:
-        availabilities = CSVLoader().load_availability(availability_path)
-    except CSVLoaderError as e:
+        availabilities = make_loader(availability_path, date_format).load_availability(
+            availability_path
+        )
+    except (CSVLoaderError, ExcelHandlerError) as e:
         raise click.ClickException(f"Error loading availability: {e}") from e
     if verbose:
         click.echo(f"Loaded {len(availabilities)} availability records")
     return availabilities
 
 
-def _load_requests(requests_path: Path | None, verbose: int) -> list[SchedulingRequest]:
-    """Load scheduling requests from a CSV file, if provided."""
+def _load_requests(
+    requests_path: Path | None, verbose: int, date_format: str
+) -> list[SchedulingRequest]:
+    """Load scheduling requests from a CSV/Excel file, if provided."""
     if not requests_path:
         return []
     try:
-        request_list = CSVLoader().load_requests(requests_path)
-    except CSVLoaderError as e:
+        request_list = make_loader(requests_path, date_format).load_requests(
+            requests_path
+        )
+    except (CSVLoaderError, ExcelHandlerError) as e:
         raise click.ClickException(f"Error loading requests: {e}") from e
     if verbose:
         click.echo(f"Loaded {len(request_list)} requests")

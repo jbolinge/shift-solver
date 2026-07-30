@@ -6,9 +6,12 @@ from ortools.sat.python import cp_model
 
 from shift_solver.constraints.base import BaseConstraint, ConstraintConfig
 from shift_solver.models import ShiftType, Worker
+from shift_solver.utils import get_logger
 
 if TYPE_CHECKING:
     from shift_solver.solver.types import SolverVariables
+
+logger = get_logger("constraints.fairness")
 
 
 class FairnessConstraint(BaseConstraint):
@@ -27,6 +30,10 @@ class FairnessConstraint(BaseConstraint):
     Config parameters:
         - categories: list[str] - if set, only count shifts in these categories
             (default: use is_undesirable flag on shift types)
+        - tolerance: int (default 0) - allowed spread before it counts against
+            the constraint. Hard mode enforces spread <= tolerance (an exact
+            equal split, tolerance=0, is rarely satisfiable). Soft mode only
+            penalizes the portion of the spread that exceeds tolerance.
     """
 
     constraint_id = "fairness"
@@ -62,6 +69,11 @@ class FairnessConstraint(BaseConstraint):
 
         if len(workers) < 2:
             # No fairness to balance with 0 or 1 workers
+            logger.warning(
+                "fairness constraint: only %d worker(s) provided; nothing to "
+                "balance (need at least 2)",
+                len(workers),
+            )
             return
 
         # Get configured categories (if any)
@@ -77,6 +89,18 @@ class FairnessConstraint(BaseConstraint):
 
         if not undesirable_shift_ids:
             # No undesirable shifts to balance
+            if categories:
+                logger.warning(
+                    "fairness constraint: no shift types match configured "
+                    "categories %s; nothing to balance",
+                    categories,
+                )
+            else:
+                logger.warning(
+                    "fairness constraint: no shift types are marked "
+                    "is_undesirable and no categories filter is configured; "
+                    "nothing to balance"
+                )
             return
 
         # Calculate the total number of undesirable shifts per worker
@@ -115,6 +139,11 @@ class FairnessConstraint(BaseConstraint):
                     continue
 
         if len(worker_totals) < 2:
+            logger.warning(
+                "fairness constraint: fewer than 2 workers have a countable "
+                "undesirable-shift total (%d); nothing to balance",
+                len(worker_totals),
+            )
             return
 
         # Calculate maximum possible undesirable shifts per worker
@@ -138,9 +167,18 @@ class FairnessConstraint(BaseConstraint):
         self.model.add_min_equality(min_undesirable, worker_totals)
         self._constraint_count += 1
 
-        # Create spread variable (max - min)
+        # Create spread variable: the excess of (max - min) above the
+        # configured tolerance, clamped at 0. `spread >= raw_spread -
+        # tolerance` (plus the domain's implicit `spread >= 0`) is a lower
+        # bound rather than an equality; since spread is always either
+        # pinned to 0 (hard mode, via the generic soft->hard enforcement)
+        # or minimized in the objective (soft mode), the solver drives it
+        # down to its tightest feasible value: max(0, raw_spread - tolerance).
+        # With the default tolerance=0 this is numerically identical to the
+        # raw max - min spread, preserving prior behavior.
+        tolerance: int = self.config.get_param("tolerance", 0)
         spread = self.model.new_int_var(0, max_possible, "fairness_spread")
-        self.model.add(spread == max_undesirable - min_undesirable)
+        self.model.add(spread >= max_undesirable - min_undesirable - tolerance)
         self._constraint_count += 1
 
         # Store spread as the violation variable for objective building

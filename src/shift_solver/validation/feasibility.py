@@ -13,6 +13,7 @@ from shift_solver.models import (
     ShiftOrderPreference,
     ShiftType,
     Worker,
+    is_eligible,
 )
 from shift_solver.utils import get_logger
 
@@ -630,7 +631,8 @@ class FeasibilityChecker:
             return
 
         worker_map = {w.id: w for w in self.workers}
-        shift_type_ids = {st.id for st in self.shift_types}
+        shift_type_map = {st.id: st for st in self.shift_types}
+        shift_type_ids = set(shift_type_map)
         categories = {st.category for st in self.shift_types}
         num_periods = len(self.period_dates)
 
@@ -699,7 +701,10 @@ class FeasibilityChecker:
                         rule_id=pref.rule_id,
                     )
 
-            # Check if applicable workers are restricted from all preferred shifts
+            # Check if applicable workers are ineligible for all preferred
+            # shifts, whether restricted (can_work_shift) or simply missing
+            # a required skill/attribute (SkillsConstraint) -- either way
+            # the constraint's preference indicator can never be satisfied.
             applicable_workers = (
                 [worker_map[wid] for wid in pref.worker_ids if wid in worker_map]
                 if pref.worker_ids
@@ -709,15 +714,17 @@ class FeasibilityChecker:
                 pref.preferred_type == "shift_type"
                 and pref.preferred_value in shift_type_ids
             ):
-                all_restricted = all(
-                    not w.can_work_shift(pref.preferred_value)
-                    for w in applicable_workers
+                preferred_shift_type = shift_type_map[pref.preferred_value]
+                all_ineligible = all(
+                    not is_eligible(w, preferred_shift_type) for w in applicable_workers
                 )
-                if applicable_workers and all_restricted:
+                if applicable_workers and all_ineligible:
                     result.add_warning(
                         "shift_order_preference",
                         f"Rule '{pref.rule_id}': all applicable workers are "
-                        f"restricted from preferred shift '{pref.preferred_value}'",
+                        f"ineligible (restricted or missing required "
+                        f"attributes) for preferred shift "
+                        f"'{pref.preferred_value}'",
                         rule_id=pref.rule_id,
                     )
 

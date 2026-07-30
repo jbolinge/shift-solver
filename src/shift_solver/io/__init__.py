@@ -2,6 +2,7 @@
 
 from shift_solver.io.csv_loader import CSVLoader, CSVLoaderError
 from shift_solver.io.excel_handler import ExcelExporter, ExcelHandlerError, ExcelLoader
+from shift_solver.io.parsing import is_excel_path, make_loader
 from shift_solver.io.plotly_handler import PlotlyHandlerError, PlotlyVisualizer
 from shift_solver.io.sample_generator import IndustryPreset, SampleGenerator
 
@@ -15,6 +16,8 @@ __all__ = [
     "PlotlyHandlerError",
     "SampleGenerator",
     "IndustryPreset",
+    "is_excel_path",
+    "make_loader",
 ]
 
 # Backwards compatibility: date_utils can be imported from io

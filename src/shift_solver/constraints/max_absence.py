@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from ortools.sat.python import cp_model
 
+from shift_solver.constraints import _windows
 from shift_solver.constraints.base import BaseConstraint, ConstraintConfig
 from shift_solver.models import ShiftType, Worker
 from shift_solver.utils import get_logger
@@ -75,6 +76,14 @@ class MaxAbsenceConstraint(BaseConstraint):
         # assignment, so window_size == max_periods_absent.
         window_size = max_periods_absent
 
+        # NOTE: this constraint is pinned by tests to "skip entirely" when
+        # window_size > num_periods (zero windows, zero violation
+        # variables), which is stricter than _windows.iter_windows's
+        # default "clamp to the full horizon" policy. That guard is
+        # therefore performed here, before delegating to iter_windows,
+        # which as a result never sees an oversized window from this
+        # caller. See _windows.py's module docstring for the full
+        # rationale.
         if window_size > num_periods:
             logger.warning(
                 "max_absence constraint: max_periods_absent=%d (window_size=%d) "
@@ -99,9 +108,9 @@ class MaxAbsenceConstraint(BaseConstraint):
 
         for worker in workers:
             # Check each sliding window
-            for window_start in range(num_periods - window_size + 1):
-                window_end = window_start + window_size
-
+            for window_start, window_end in _windows.iter_windows(
+                num_periods, window_size
+            ):
                 # Collect assignments across all filtered shift types in
                 # this window (union across shift types, not one set of
                 # violations per shift type).
@@ -116,27 +125,21 @@ class MaxAbsenceConstraint(BaseConstraint):
                         except KeyError:
                             continue
 
-                if not window_assignments:
-                    continue
-
-                # Violation if no assignment in window
+                # Violation if no assignment in window. Empty
+                # window_assignments (e.g. worker restricted from every
+                # candidate shift type) is logged and skipped by the
+                # shared helper.
                 violation_name = f"abs_viol_{worker.id}_w{window_start}"
-                violation_var = self.model.new_bool_var(violation_name)
-
-                # Create indicator: has_assignment = (sum >= 1)
-                has_assignment = self.model.new_bool_var(
-                    f"abs_has_{worker.id}_w{window_start}"
+                violation_var = _windows.build_absence_violation(
+                    self.model,
+                    window_assignments,
+                    violation_name,
+                    f"abs_has_{worker.id}_w{window_start}",
+                    logger=logger,
+                    context="max_absence constraint",
                 )
-
-                self.model.add(sum(window_assignments) >= 1).only_enforce_if(
-                    has_assignment
-                )
-                self.model.add(sum(window_assignments) == 0).only_enforce_if(
-                    has_assignment.negated()
-                )
-
-                # violation = NOT has_assignment
-                self.model.add(violation_var == has_assignment.negated())
+                if violation_var is None:
+                    continue
 
                 self._violation_variables[violation_name] = violation_var
                 violation_count += 1

@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from ortools.sat.python import cp_model
 
+from shift_solver.constraints import _windows
 from shift_solver.constraints.base import BaseConstraint, ConstraintConfig
 from shift_solver.models import ShiftType, Worker
 from shift_solver.utils import get_logger
@@ -74,6 +75,14 @@ class FrequencyConstraint(BaseConstraint):
         # assignment, so window_size == max_periods_between.
         window_size = max_periods_between
 
+        # NOTE: this constraint is pinned by tests to "skip entirely" when
+        # window_size > num_periods (zero windows, zero violation
+        # variables), which is stricter than _windows.iter_windows's
+        # default "clamp to the full horizon" policy. That guard is
+        # therefore performed here, before delegating to iter_windows,
+        # which as a result never sees an oversized window from this
+        # caller. See _windows.py's module docstring for the full
+        # rationale.
         if window_size > num_periods:
             # Window larger than schedule, nothing to constrain
             logger.warning(
@@ -99,9 +108,9 @@ class FrequencyConstraint(BaseConstraint):
 
         for worker in workers:
             # Check each sliding window
-            for window_start in range(num_periods - window_size + 1):
-                window_end = window_start + window_size
-
+            for window_start, window_end in _windows.iter_windows(
+                num_periods, window_size
+            ):
                 # Collect all assignments across all filtered shift types
                 # in this window (union across shift types, not one set
                 # of violations per shift type).
@@ -116,38 +125,25 @@ class FrequencyConstraint(BaseConstraint):
                         except KeyError:
                             continue
 
-                if not window_assignments:
+                # Create violation variable for this window: violation =
+                # 1 iff no assignment anywhere in the window, 0 otherwise.
+                # Empty window_assignments (e.g. worker restricted from
+                # every candidate shift type) is logged and skipped by
+                # the shared helper.
+                violation_var = _windows.build_absence_violation(
+                    self.model,
+                    window_assignments,
+                    f"freq_viol_{worker.id}_w{window_start}",
+                    f"freq_has_{worker.id}_w{window_start}",
+                    logger=logger,
+                    context="frequency constraint",
+                )
+                if violation_var is None:
                     continue
 
-                # Create violation variable for this window
-                # violation = 1 if no assignment in window, 0 otherwise
-                violation_name = f"freq_viol_{worker.id}_w{window_start}"
-                violation_var = self.model.new_bool_var(violation_name)
-
-                # at_least_one = sum(assignments) >= 1
-                # violation = (sum(assignments) == 0)
-                # We use: sum(assignments) >= 1 - violation
-                # If violation=0, sum >= 1 (must have assignment)
-                # If violation=1, sum >= 0 (no requirement)
-                # And we want to minimize violations
-
-                # Create indicator: has_assignment = (sum >= 1)
-                has_assignment = self.model.new_bool_var(
-                    f"freq_has_{worker.id}_w{window_start}"
+                self._violation_variables[f"freq_viol_{worker.id}_w{window_start}"] = (
+                    violation_var
                 )
-
-                # has_assignment is true iff sum(window_assignments) >= 1
-                self.model.add(sum(window_assignments) >= 1).only_enforce_if(
-                    has_assignment
-                )
-                self.model.add(sum(window_assignments) == 0).only_enforce_if(
-                    has_assignment.negated()
-                )
-
-                # violation = NOT has_assignment
-                self.model.add(violation_var == has_assignment.negated())
-
-                self._violation_variables[violation_name] = violation_var
                 violation_count += 1
                 self._constraint_count += 3  # 3 constraints per window
 

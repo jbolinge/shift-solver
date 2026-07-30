@@ -218,6 +218,68 @@ class TestImportDataCommand:
         assert "Workers: 2" in result.output
         assert "Availability records: 1" in result.output
 
+    def test_import_workers_xlsx_via_workers_flag(self, tmp_path: Path) -> None:
+        """--workers dispatches to ExcelLoader for a bare .xlsx file too (not
+        just --excel), via the shared suffix dispatch (U10)."""
+        import openpyxl
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Workers"
+        ws.append(["id", "name"])
+        ws.append(["W001", "Worker One"])
+        workers_xlsx = tmp_path / "workers.xlsx"
+        wb.save(workers_xlsx)
+
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            ["import-data", "--workers", str(workers_xlsx)],
+        )
+
+        assert result.exit_code == 0, result.output
+        assert "Loaded 1 workers" in result.output
+
+    def test_import_availability_honors_config_date_format(
+        self, tmp_path: Path
+    ) -> None:
+        """--config's schedule.date_format reaches the loader (B4): an
+        ambiguous date is rejected under "iso" (it isn't ISO), where it
+        would otherwise silently parse under the default "auto"."""
+        avail_csv = tmp_path / "availability.csv"
+        avail_csv.write_text(
+            "worker_id,start_date,end_date,availability_type\n"
+            "W001,01/02/2026,01/02/2026,unavailable\n"
+        )
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text(
+            "schedule:\n"
+            '  date_format: "iso"\n'
+            "shift_types:\n"
+            "  - id: day\n"
+            "    name: Day Shift\n"
+            "    category: day\n"
+            '    start_time: "09:00"\n'
+            '    end_time: "17:00"\n'
+            "    duration_hours: 8.0\n"
+            "    workers_required: 1\n"
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            [
+                "import-data",
+                "--config",
+                str(config_file),
+                "--availability",
+                str(avail_csv),
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert "availability import error" in result.output.lower()
+
     def test_import_no_files_error(self) -> None:
         """Test error when no files specified."""
         runner = CliRunner()

@@ -909,6 +909,115 @@ class TestSoftConstraintHardModeEnforcement:
         assert w2_nights == 1
 
 
+class TestSoftRecordViolationNotDroppedByHardConstraintConfig:
+    """
+    Regression test for objective_builder bug B2: a soft-registered
+    constraint whose *constraint-level* config is is_hard=True, but which
+    implements its own per-record hard/soft semantics
+    (handles_hard_mode=True, e.g. RequestConstraint), must still have its
+    per-record soft violation variables priced in the objective.
+
+    The old ObjectiveBuilder guard ``if constraint.is_hard: continue``
+    dropped ALL of a handles_hard_mode constraint's violation vars from the
+    objective whenever the constraint-level config was is_hard=True - even
+    for individual records explicitly marked is_hard=False. Those records
+    are also not force-enforced hard (ShiftSolver._enforce_hard_mode skips
+    handles_hard_mode constraints on purpose), so they floated free at zero
+    cost: neither hard-enforced nor priced.
+    """
+
+    def test_soft_record_violation_is_priced_under_hard_constraint_config(
+        self,
+    ) -> None:
+        """A request record explicitly marked is_hard=False, under a
+        request constraint configured is_hard=True at the constraint
+        level, must still be able to outweigh a competing (much
+        lower-weighted) soft fairness constraint - proving its violation
+        actually carries its weight in the objective instead of floating
+        free at zero cost."""
+        from shift_solver.constraints.base import ConstraintConfig
+        from shift_solver.models import SchedulingRequest
+
+        workers = [
+            Worker(id="W1", name="Worker One"),
+            Worker(id="W2", name="Worker Two"),
+        ]
+        shift_types = [
+            ShiftType(
+                id="night",
+                name="Night Shift",
+                category="night",
+                start_time=time(23, 0),
+                end_time=time(7, 0),
+                duration_hours=8.0,
+                workers_required=1,
+                is_undesirable=True,
+            ),
+        ]
+        base = date(2026, 1, 5)
+        period_dates = [
+            (base + timedelta(weeks=i), base + timedelta(weeks=i, days=6))
+            for i in range(2)
+        ]
+
+        # W1 explicitly requests (record-level is_hard=False) both nights.
+        # Satisfying both means an uneven 2-0 split, costing the soft
+        # fairness constraint some spread. If these violations are priced
+        # at their real weight (1000 each), satisfying them beats the
+        # fairness cost; if they float free at zero cost (the bug),
+        # fairness (weight 1) wins instead and the solver produces an
+        # even 1-1 split.
+        requests = [
+            SchedulingRequest(
+                worker_id="W1",
+                start_date=period_dates[0][0],
+                end_date=period_dates[0][1],
+                request_type="positive",
+                shift_type_id="night",
+                priority=1,
+                is_hard=False,
+            ),
+            SchedulingRequest(
+                worker_id="W1",
+                start_date=period_dates[1][0],
+                end_date=period_dates[1][1],
+                request_type="positive",
+                shift_type_id="night",
+                priority=1,
+                is_hard=False,
+            ),
+        ]
+
+        constraint_configs = {
+            # Constraint-level is_hard=True: RequestConstraint implements
+            # its own per-record hard/soft semantics (handles_hard_mode),
+            # so this must NOT force every request to hard - the
+            # explicit per-record is_hard=False above must still produce
+            # violation vars priced heavily in the objective.
+            "request": ConstraintConfig(enabled=True, is_hard=True, weight=1000),
+            "fairness": ConstraintConfig(enabled=True, is_hard=False, weight=1),
+        }
+
+        solver = ShiftSolver(
+            workers=workers,
+            shift_types=shift_types,
+            period_dates=period_dates,
+            schedule_id="TEST-SOFT-RECORD-PRICING",
+            requests=requests,
+            constraint_configs=constraint_configs,
+        )
+
+        result = solver.solve(time_limit_seconds=30)
+
+        assert result.success
+        assert result.schedule is not None
+
+        w1_nights = result.schedule.statistics["W1"].get("night", 0)
+        w2_nights = result.schedule.statistics["W2"].get("night", 0)
+        assert w1_nights == 2
+        assert w2_nights == 0
+
+
 class TestShiftSolverParameters:
     """Tests for additional solver parameters (num_workers, relative_gap_limit, log_search_progress)."""
 
