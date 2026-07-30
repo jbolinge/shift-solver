@@ -125,16 +125,24 @@ def register_builtin_constraints() -> None:
     # The imports themselves cause the decorators to run
     from shift_solver.constraints import (
         AvailabilityConstraint,
+        ConsecutiveShiftTypeConstraint,
         CoverageConstraint,
         FairnessConstraint,
         FrequencyConstraint,
         MaxAbsenceConstraint,
+        MaxConsecutiveConstraint,
+        MinRestConstraint,
+        PinnedAssignmentConstraint,
+        PreferenceConstraint,
         RequestConstraint,
         RestrictionConstraint,
         SequenceConstraint,
         ShiftFrequencyConstraint,
         ShiftOrderPreferenceConstraint,
+        ShiftSuccessionConstraint,
         SkillsConstraint,
+        WeekendConstraint,
+        WorkerPairingConstraint,
         WorkerShiftLimitConstraint,
         WorkloadConstraint,
     )
@@ -184,6 +192,18 @@ def register_builtin_constraints() -> None:
             constraint_class=SkillsConstraint,
             is_hard=True,
             default_config=ConstraintConfig(enabled=True, is_hard=True),
+        )
+
+    if "pinned" not in ConstraintRegistry._hard_constraints:
+        ConstraintRegistry._hard_constraints["pinned"] = ConstraintRegistration(
+            constraint_id="pinned",
+            constraint_class=PinnedAssignmentConstraint,
+            is_hard=True,
+            default_config=ConstraintConfig(
+                enabled=False,
+                is_hard=True,
+                parameters={"assignments": []},
+            ),
         )
 
     # Register soft constraints if not already registered by decorators
@@ -262,4 +282,101 @@ def register_builtin_constraints() -> None:
                 weight=100,
                 parameters={"min_total_shifts": 0, "max_total_shifts": None},
             ),
+        )
+
+    # -- Commercial-parity constraints (all opt-in: enabling a new
+    # constraint by default would silently change existing deployments'
+    # schedules, so each must be turned on explicitly in config). --
+
+    if "min_rest" not in ConstraintRegistry._soft_constraints:
+        ConstraintRegistry._soft_constraints["min_rest"] = ConstraintRegistration(
+            constraint_id="min_rest",
+            constraint_class=MinRestConstraint,
+            is_hard=False,
+            default_config=ConstraintConfig(
+                enabled=False,
+                is_hard=True,
+                weight=1000,
+                parameters={"min_rest_hours": 11.0},
+            ),
+        )
+
+    if "max_consecutive" not in ConstraintRegistry._soft_constraints:
+        ConstraintRegistry._soft_constraints["max_consecutive"] = (
+            ConstraintRegistration(
+                constraint_id="max_consecutive",
+                constraint_class=MaxConsecutiveConstraint,
+                is_hard=False,
+                default_config=ConstraintConfig(
+                    enabled=False, is_hard=True, weight=100
+                ),
+            )
+        )
+
+    if "shift_succession" not in ConstraintRegistry._soft_constraints:
+        ConstraintRegistry._soft_constraints["shift_succession"] = (
+            ConstraintRegistration(
+                constraint_id="shift_succession",
+                constraint_class=ShiftSuccessionConstraint,
+                is_hard=False,
+                default_config=ConstraintConfig(
+                    enabled=False,
+                    is_hard=False,
+                    weight=100,
+                    parameters={"rules": []},
+                ),
+            )
+        )
+
+    if "consecutive_shift_type" not in ConstraintRegistry._soft_constraints:
+        ConstraintRegistry._soft_constraints["consecutive_shift_type"] = (
+            ConstraintRegistration(
+                constraint_id="consecutive_shift_type",
+                constraint_class=ConsecutiveShiftTypeConstraint,
+                is_hard=False,
+                default_config=ConstraintConfig(
+                    enabled=False,
+                    is_hard=True,
+                    weight=100,
+                    parameters={"rules": []},
+                ),
+            )
+        )
+
+    if "weekend" not in ConstraintRegistry._soft_constraints:
+        ConstraintRegistry._soft_constraints["weekend"] = ConstraintRegistration(
+            constraint_id="weekend",
+            constraint_class=WeekendConstraint,
+            is_hard=False,
+            default_config=ConstraintConfig(
+                enabled=False,
+                is_hard=False,
+                weight=150,
+                parameters={"weekend_days": [5, 6]},
+            ),
+        )
+
+    if "preference" not in ConstraintRegistry._soft_constraints:
+        ConstraintRegistry._soft_constraints["preference"] = ConstraintRegistration(
+            constraint_id="preference",
+            constraint_class=PreferenceConstraint,
+            is_hard=False,
+            default_config=ConstraintConfig(
+                enabled=False, is_hard=False, weight=100
+            ),
+        )
+
+    if "worker_pairing" not in ConstraintRegistry._soft_constraints:
+        ConstraintRegistry._soft_constraints["worker_pairing"] = (
+            ConstraintRegistration(
+                constraint_id="worker_pairing",
+                constraint_class=WorkerPairingConstraint,
+                is_hard=False,
+                default_config=ConstraintConfig(
+                    enabled=False,
+                    is_hard=False,
+                    weight=200,
+                    parameters={"rules": []},
+                ),
+            )
         )

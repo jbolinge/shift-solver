@@ -120,11 +120,18 @@ class WorkloadParametersConfig(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    unit: Literal["shifts", "hours"] = "shifts"
+    window_periods: int | None = Field(default=None, ge=1)
+    shift_types: list[str] | None = Field(default=None)
+    categories: list[str] | None = Field(default=None)
+
     min_total_shifts: int = Field(default=0, ge=0)
     max_total_shifts: int | None = Field(default=None, ge=1)
+    min_total_hours: float | None = Field(default=None, ge=0)
+    max_total_hours: float | None = Field(default=None, gt=0)
 
     @model_validator(mode="after")
-    def validate_min_le_max(self) -> "WorkloadParametersConfig":
+    def validate_min_le_max_shifts(self) -> "WorkloadParametersConfig":
         """Ensure min_total_shifts does not exceed max_total_shifts."""
         if (
             self.max_total_shifts is not None
@@ -135,6 +142,212 @@ class WorkloadParametersConfig(BaseModel):
                 f"max_total_shifts ({self.max_total_shifts})"
             )
         return self
+
+    @model_validator(mode="after")
+    def validate_min_le_max_hours(self) -> "WorkloadParametersConfig":
+        """Ensure min_total_hours does not exceed max_total_hours."""
+        if (
+            self.min_total_hours is not None
+            and self.max_total_hours is not None
+            and self.min_total_hours > self.max_total_hours
+        ):
+            raise ValueError(
+                f"min_total_hours ({self.min_total_hours}) must be <= "
+                f"max_total_hours ({self.max_total_hours})"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def validate_unit_matches_params(self) -> "WorkloadParametersConfig":
+        """Cross-field: hours params require unit='hours' and vice versa."""
+        if self.unit == "shifts":
+            if self.min_total_hours is not None or self.max_total_hours is not None:
+                raise ValueError(
+                    "min_total_hours/max_total_hours require unit='hours' "
+                    f"(got unit={self.unit!r})"
+                )
+        else:  # unit == "hours"
+            if self.min_total_shifts != 0 or self.max_total_shifts is not None:
+                raise ValueError(
+                    "min_total_shifts/max_total_shifts require unit='shifts' "
+                    f"(got unit={self.unit!r})"
+                )
+        return self
+
+
+class MinRestParametersConfig(BaseModel):
+    """Typed parameters for the min_rest constraint."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    min_rest_hours: float = Field(default=11.0, gt=0)
+    shift_types: list[str] | None = Field(default=None)
+    per_worker_overrides: dict[str, float] | None = Field(default=None)
+
+
+class MaxConsecutiveParametersConfig(BaseModel):
+    """Typed parameters for the max_consecutive constraint."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    max_consecutive_periods: int | None = Field(default=None, ge=1)
+    min_consecutive_periods: int | None = Field(default=None, ge=1)
+    shift_types: list[str] | None = Field(default=None)
+    categories: list[str] | None = Field(default=None)
+
+    @model_validator(mode="after")
+    def validate_min_le_max(self) -> "MaxConsecutiveParametersConfig":
+        """min > max is unsatisfiable in hard mode; reject at load time."""
+        if (
+            self.max_consecutive_periods is not None
+            and self.min_consecutive_periods is not None
+            and self.min_consecutive_periods > self.max_consecutive_periods
+        ):
+            raise ValueError(
+                f"min_consecutive_periods ({self.min_consecutive_periods}) "
+                f"must be <= max_consecutive_periods "
+                f"({self.max_consecutive_periods})"
+            )
+        return self
+
+
+class ShiftSuccessionRuleConfig(BaseModel):
+    """Configuration for a single shift succession rule."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    rule_id: str = Field(min_length=1)
+    from_type: str = Field(pattern=r"^(shift_type|category)$")
+    from_value: str = Field(min_length=1)
+    to_type: str = Field(pattern=r"^(shift_type|category)$")
+    to_value: str = Field(min_length=1)
+    is_hard: bool | None = Field(default=None)
+    priority: int = Field(default=1, ge=1)
+    gap_periods: int = Field(default=1, ge=1)
+
+
+class ShiftSuccessionParametersConfig(BaseModel):
+    """Typed parameters for the shift_succession constraint."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    rules: list[ShiftSuccessionRuleConfig] = Field(default_factory=list)
+
+
+class ConsecutiveShiftTypeRuleConfig(BaseModel):
+    """A single consecutive-run rule for the consecutive_shift_type constraint."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    rule_id: str = Field(min_length=1)
+    shift_types: list[str] | None = Field(default=None)
+    categories: list[str] | None = Field(default=None)
+    min_consecutive: int | None = Field(default=None, ge=1)
+    max_consecutive: int | None = Field(default=None, ge=1)
+    rest_after_run: int = Field(default=0, ge=0)
+
+    @model_validator(mode="after")
+    def validate_has_filter(self) -> "ConsecutiveShiftTypeRuleConfig":
+        """Each rule needs at least one of shift_types/categories."""
+        if not self.shift_types and not self.categories:
+            raise ValueError(
+                f"consecutive_shift_type rule '{self.rule_id}': at least one "
+                f"of shift_types/categories must be set"
+            )
+        return self
+
+
+class ConsecutiveShiftTypeParametersConfig(BaseModel):
+    """Typed parameters for the consecutive_shift_type constraint."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    rules: list[ConsecutiveShiftTypeRuleConfig] = Field(default_factory=list)
+
+
+class WeekendParametersConfig(BaseModel):
+    """Typed parameters for the weekend constraint."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    weekend_days: list[int] = Field(default_factory=lambda: [5, 6])
+    require_complete: bool = Field(default=False)
+    identical_shift_type: bool = Field(default=False)
+    max_working_weekends: int | None = Field(default=None, ge=0)
+    max_consecutive_weekends: int | None = Field(default=None, ge=0)
+
+    @field_validator("weekend_days")
+    @classmethod
+    def validate_weekend_days(cls, v: list[int]) -> list[int]:
+        """Weekend days use Python weekday numbering (Mon=0..Sun=6)."""
+        invalid = [d for d in v if d < 0 or d > 6]
+        if invalid:
+            raise ValueError(
+                f"weekend_days must be 0-6 (Mon=0..Sun=6), got invalid "
+                f"values: {invalid}"
+            )
+        return v
+
+
+class PreferenceParametersConfig(BaseModel):
+    """Typed parameters for the preference constraint."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    worker_preferred_weight: int | None = Field(default=None, ge=1)
+    availability_preferred_weight: int | None = Field(default=None, ge=1)
+    honor_required_availability: bool | None = Field(default=None)
+
+
+class PinnedAssignmentConfig(BaseModel):
+    """Configuration for a single pinned assignment record."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    worker_id: str = Field(min_length=1)
+    period_index: int = Field(ge=0)
+    shift_type_id: str = Field(min_length=1)
+    value: int = Field(ge=0, le=1)
+
+
+class PinnedParametersConfig(BaseModel):
+    """Typed parameters for the pinned constraint."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    assignments: list[PinnedAssignmentConfig] = Field(default_factory=list)
+
+
+class WorkerPairingRuleConfig(BaseModel):
+    """Configuration for a single worker pairing rule."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    rule_id: str = Field(min_length=1)
+    type: str = Field(pattern=r"^(together|apart)$")
+    worker_a: str = Field(min_length=1)
+    worker_b: str = Field(min_length=1)
+    shift_types: list[str] | None = Field(default=None)
+    is_hard: bool | None = Field(default=None)
+    priority: int = Field(default=1, ge=1)
+
+    @model_validator(mode="after")
+    def validate_distinct_workers(self) -> "WorkerPairingRuleConfig":
+        """Ensure worker_a and worker_b are not the same worker."""
+        if self.worker_a == self.worker_b:
+            raise ValueError(
+                f"worker_pairing rule '{self.rule_id}': worker_a and "
+                f"worker_b must be different workers"
+            )
+        return self
+
+
+class WorkerPairingParametersConfig(BaseModel):
+    """Typed parameters for the worker_pairing constraint."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    rules: list[WorkerPairingRuleConfig] = Field(default_factory=list)
 
 
 class SkillsParametersConfig(BaseModel):
@@ -280,6 +493,14 @@ CONSTRAINT_PARAMETER_MODELS: dict[str, type[BaseModel]] = {
     "skills": SkillsParametersConfig,
     "shift_frequency": ShiftFrequencyParametersConfig,
     "shift_order_preference": ShiftOrderPreferenceParametersConfig,
+    "min_rest": MinRestParametersConfig,
+    "max_consecutive": MaxConsecutiveParametersConfig,
+    "shift_succession": ShiftSuccessionParametersConfig,
+    "consecutive_shift_type": ConsecutiveShiftTypeParametersConfig,
+    "weekend": WeekendParametersConfig,
+    "preference": PreferenceParametersConfig,
+    "pinned": PinnedParametersConfig,
+    "worker_pairing": WorkerPairingParametersConfig,
 }
 
 
@@ -523,19 +744,76 @@ class ShiftSolverConfig(BaseModel):
         _check_filter("sequence", "categories", declared_categories)
         _check_filter("frequency", "shift_types", declared_shift_type_ids)
         _check_filter("max_absence", "shift_types", declared_shift_type_ids)
+        _check_filter("min_rest", "shift_types", declared_shift_type_ids)
+        _check_filter("max_consecutive", "shift_types", declared_shift_type_ids)
+        _check_filter("max_consecutive", "categories", declared_categories)
+        _check_filter("workload", "shift_types", declared_shift_type_ids)
+        _check_filter("workload", "categories", declared_categories)
 
-        sf_config = self.constraints.get("shift_frequency")
-        if sf_config is not None:
-            requirements = sf_config.parameters.get("requirements") or []
-            for i, req in enumerate(requirements):
-                shift_types = req.get("shift_types") or []
-                unknown = [s for s in shift_types if s not in declared_shift_type_ids]
+        def _check_rule_list_filter(
+            constraint_id: str,
+            list_key: str,
+            item_key: str,
+            valid: set[str],
+        ) -> None:
+            """Validate <item_key> lists inside a rules/records list param."""
+            config = self.constraints.get(constraint_id)
+            if config is None:
+                return
+            for i, rule in enumerate(config.parameters.get(list_key) or []):
+                if not isinstance(rule, dict):
+                    continue
+                values = rule.get(item_key) or []
+                if isinstance(values, str):
+                    values = [values]
+                unknown = [v for v in values if v not in valid]
                 if unknown:
                     raise ValueError(
-                        f"constraints.shift_frequency.parameters.requirements[{i}]"
-                        f".shift_types references unknown values {unknown}. "
-                        f"Valid shift type ids: {sorted(declared_shift_type_ids)}"
+                        f"constraints.{constraint_id}.parameters.{list_key}"
+                        f"[{i}].{item_key} references unknown values "
+                        f"{unknown}. Valid values: {sorted(valid)}"
                     )
+
+        _check_rule_list_filter(
+            "shift_frequency", "requirements", "shift_types", declared_shift_type_ids
+        )
+        _check_rule_list_filter(
+            "consecutive_shift_type", "rules", "shift_types", declared_shift_type_ids
+        )
+        _check_rule_list_filter(
+            "consecutive_shift_type", "rules", "categories", declared_categories
+        )
+        _check_rule_list_filter(
+            "worker_pairing", "rules", "shift_types", declared_shift_type_ids
+        )
+        _check_rule_list_filter(
+            "pinned", "assignments", "shift_type_id", declared_shift_type_ids
+        )
+
+        # shift_succession rules: from/to values reference shift type ids or
+        # categories depending on the paired *_type discriminator.
+        succ_config = self.constraints.get("shift_succession")
+        if succ_config is not None:
+            for i, rule in enumerate(succ_config.parameters.get("rules") or []):
+                if not isinstance(rule, dict):
+                    continue
+                for side in ("from", "to"):
+                    ref_type = rule.get(f"{side}_type")
+                    value = rule.get(f"{side}_value")
+                    if value is None:
+                        continue
+                    valid = (
+                        declared_shift_type_ids
+                        if ref_type == "shift_type"
+                        else declared_categories
+                    )
+                    if ref_type in ("shift_type", "category") and value not in valid:
+                        raise ValueError(
+                            f"constraints.shift_succession.parameters.rules[{i}]"
+                            f".{side}_value references unknown "
+                            f"{ref_type} '{value}'. Valid values: "
+                            f"{sorted(valid)}"
+                        )
 
         return self
 

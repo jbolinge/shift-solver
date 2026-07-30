@@ -33,9 +33,9 @@ logging: { ... }        # optional -- see "Logging"
 
 | Field | Type | Default | Meaning |
 |---|---|---|---|
-| `period_type` | str | `"week"` | The CLI's `generate` command currently only implements *weekly* period computation and explicitly rejects any config whose `period_type` isn't `"week"` (a `ClickException` at run time, not a schema validation error -- the schema itself accepts any string here). The underlying `ShiftSolver` engine is actually period-length agnostic (see "Period-granular scheduling model" below); day- or month-granularity scheduling is only reachable today by constructing `period_dates` and calling `ShiftSolver` directly, not through the shipped CLI. |
-| `num_periods` | int >= 1 or null | null | Not currently consumed by the CLI's date-range-based period calculation. |
-| `date_format` | `iso`\|`us`\|`eu`\|`auto` | `auto` | Date parsing mode used by CSV import (`auto` tries all formats and warns on ambiguity). |
+| `period_type` | `"day"`\|`"week"` | `"week"` | Validated at load time; any other value is a schema error. `"week"` chunks the schedule into 7-day periods. `"day"` gives each calendar day its own period -- required for the day-granular constraints (`min_rest`, `weekend`, and per-day semantics of `max_consecutive`/`consecutive_shift_type`) to be meaningful. |
+| `num_periods` | int >= 1 or null | null | Alternative to `generate --end-date`: when set and `--end-date` is omitted, the horizon is `num_periods` whole periods starting at `--start-date`. An explicit `--end-date` always wins. |
+| `date_format` | `iso`\|`us`\|`eu`\|`auto` | `auto` | Date parsing mode used by CSV/Excel import (`auto` tries all formats and warns on ambiguity). |
 
 ## Shift types (`shift_types`)
 
@@ -154,6 +154,19 @@ soft (contributes to the objective unless promoted via `is_hard: true`).
 | `shift_frequency` | soft | `false` | `false` | `500` |
 | `shift_order_preference` | soft | `false` | `false` | `200` |
 | `workload` | soft | `false` | `false` | `100` |
+| `pinned` | hard | `false` | `true` (ignored) | n/a |
+| `min_rest` | soft | `false` | `true` | `1000` |
+| `max_consecutive` | soft | `false` | `true` | `100` |
+| `shift_succession` | soft | `false` | `false` | `100` |
+| `consecutive_shift_type` | soft | `false` | `true` | `100` |
+| `weekend` | soft | `false` | `false` | `150` |
+| `preference` | soft | `false` | `false` | `100` |
+| `worker_pairing` | soft | `false` | `false` | `200` |
+
+All constraints added in the commercial-parity expansion (`pinned` and
+below) ship **disabled by default**: enabling a new rule by default would
+silently change the schedules an existing config produces. Turn each on
+explicitly with `enabled: true`.
 
 #### `coverage` (hard)
 
@@ -213,9 +226,10 @@ objective term (registered type `"objective_target"`).
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
 | `categories` | list[str] or null | null | If set, count shifts in these categories as "undesirable" for this constraint, instead of using each shift type's `is_undesirable` flag. |
+| `tolerance` | int >= 0 | 0 | Spread allowed before the constraint reacts. Hard mode enforces `spread <= tolerance` (an exact equal split -- `tolerance: 0` -- is rarely satisfiable); soft mode only penalizes the spread *above* tolerance. |
 
 No-op with fewer than 2 workers, or if no shift types qualify as
-undesirable.
+undesirable (logged as warnings).
 
 #### `frequency` (soft)
 
@@ -319,19 +333,260 @@ doesn't exist in `shift_types` is silently skipped.
 
 #### `workload` (soft)
 
-Bounds each worker's total shift count over the *entire* scheduling
-horizon (not per-period), using the `shift_counts` variables the solver
-already builds.
+Bounds each worker's total workload -- shift count or **hours** -- across
+the whole horizon or across every **rolling window** of a configured
+size, optionally restricted to specific shift types or categories.
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `min_total_shifts` | int >= 0 | 0 | Minimum shifts a worker should be assigned across the whole horizon. `0` disables the shortfall penalty entirely. |
-| `max_total_shifts` | int >= 1 or null | null | Maximum shifts a worker should be assigned across the whole horizon. `null` disables the excess penalty entirely (unbounded). |
+| `unit` | `"shifts"`\|`"hours"` | `"shifts"` | What the bounds measure. Hours are computed from each shift type's `duration_hours`. |
+| `window_periods` | int >= 1 or null | null | Apply the bounds to every rolling window of this many consecutive periods instead of the whole horizon (e.g. `7` with day periods = a weekly cap). |
+| `shift_types` / `categories` | list or null | null | Filters (AND when both set) restricting which assignments count. |
+| `min_total_shifts` | int >= 0 | 0 | Minimum shifts (when `unit: shifts`). `0` disables the shortfall penalty. |
+| `max_total_shifts` | int >= 1 or null | null | Maximum shifts (when `unit: shifts`). `null` = unbounded. |
+| `min_total_hours` / `max_total_hours` | float or null | null | Bounds when `unit: hours` (e.g. `max_total_hours: 40.0` with `window_periods: 7` = a weekly overtime cap). |
 
-Config validation rejects `min_total_shifts > max_total_shifts` when both
-are set. In hard mode (`is_hard: true`), both the shortfall and excess
-violation amounts are forced to 0, which pins every worker's total into
-`[min_total_shifts, max_total_shifts]` exactly.
+Config validation rejects min > max (for either unit) and mixing hours
+params with `unit: shifts` (or vice versa). In hard mode
+(`is_hard: true`), shortfall and excess are forced to 0, pinning every
+worker's total into the configured range exactly.
+
+```yaml
+constraints:
+  workload:
+    enabled: true
+    is_hard: false
+    weight: 50
+    parameters:
+      unit: hours
+      window_periods: 7          # one week of daily periods
+      max_total_hours: 40.0      # weekly overtime cap
+```
+
+#### `pinned` (hard)
+
+Forces specific worker/period/shift assignment values, leaving every
+other assignment free for the solver to optimize. This is the engine hook
+for republishing a schedule without disturbing already-published periods,
+and for rolling re-solves in general. Each pin is also passed to CP-SAT
+as a solution hint so the search warm-starts from it.
+
+| Parameter | Type | Default | Meaning |
+|---|---|---|---|
+| `assignments` | list of `{worker_id, period_index, shift_type_id, value}` | `[]` | `value` is `1` (must work) or `0` (must not work). |
+
+Records referencing an unknown `worker_id` or out-of-range
+`period_index` are skipped with a warning at solve time; an unknown
+`shift_type_id` is rejected at config load.
+
+```yaml
+constraints:
+  pinned:
+    enabled: true
+    parameters:
+      assignments:
+        - {worker_id: worker_1, period_index: 0, shift_type_id: shift_day, value: 1}
+        - {worker_id: worker_2, period_index: 0, shift_type_id: shift_night, value: 0}
+```
+
+#### `min_rest` (soft, hard by default when enabled)
+
+Enforces minimum rest hours between shifts for the same worker (the
+"clopening" rule -- e.g. no closing at night then opening the next
+morning). Checks both shifts assigned within the same single-day period
+and shifts spanning the boundary between two adjacent periods, using each
+shift type's `start_time`/`end_time` (overnight shifts wrap to the next
+calendar day) and the real calendar dates in `period_dates`. Most
+meaningful with `period_type: day`.
+
+| Parameter | Type | Default | Meaning |
+|---|---|---|---|
+| `min_rest_hours` | float > 0 | `11.0` | Minimum rest required between two shifts, in hours (11 is the EU working-time norm). |
+| `shift_types` | list[str] or null | null | Restrict the rule to these shift types (both shifts in a checked pair must be in the set). |
+| `per_worker_overrides` | map worker id -> hours or null | null | Override `min_rest_hours` for specific workers. |
+
+```yaml
+constraints:
+  min_rest:
+    enabled: true
+    is_hard: true
+    parameters:
+      min_rest_hours: 11.0
+```
+
+#### `max_consecutive` (soft, hard by default when enabled)
+
+Caps how many periods in a row a worker may be assigned "working" shifts
+(any filtered shift type/category), and optionally enforces a minimum run
+length once a working streak starts. With `period_type: day` this is the
+classic "max N days in a row" rule.
+
+| Parameter | Type | Default | Meaning |
+|---|---|---|---|
+| `max_consecutive_periods` | int >= 1 or null | null | Maximum consecutive working periods allowed. |
+| `min_consecutive_periods` | int >= 1 or null | null | Minimum run length once a streak starts. Runs truncated by the schedule horizon are exempt (lenient boundary policy). |
+| `shift_types` / `categories` | list or null | null | What counts as "working" (AND when both set). |
+
+At least one bound must be set or the constraint warns and no-ops.
+
+```yaml
+constraints:
+  max_consecutive:
+    enabled: true
+    is_hard: true
+    parameters:
+      max_consecutive_periods: 5
+      min_consecutive_periods: 2
+```
+
+#### `shift_succession` (soft, `handles_hard_mode = True`)
+
+Forbids or penalizes specific shift-type transitions between periods
+(e.g. "no early shift after a night shift"). Each rule matches a "from"
+shift type/category at period `p` and a "to" shift type/category at
+period `p + gap_periods`. Each rule may set its own `is_hard`, overriding
+the constraint-level default, so hard and soft succession rules coexist.
+Supersedes `sequence`'s same-category special case with per-rule control.
+
+| Rule field | Type | Default | Meaning |
+|---|---|---|---|
+| `rule_id` | str | required | Identifier used in variable names and logs. |
+| `from_type` / `to_type` | `shift_type`\|`category` | required | What `from_value`/`to_value` name. |
+| `from_value` / `to_value` | str | required | The shift type id or category. Validated against `shift_types` at config load. |
+| `is_hard` | bool or null | null | Per-rule override; null inherits the constraint's `is_hard`. |
+| `priority` | int >= 1 | 1 | Weight multiplier for this rule's violations. |
+| `gap_periods` | int >= 1 | 1 | Transition distance (1 = consecutive periods). |
+
+```yaml
+constraints:
+  shift_succession:
+    enabled: true
+    is_hard: false
+    weight: 100
+    parameters:
+      rules:
+        - rule_id: no_early_after_night
+          from_type: shift_type
+          from_value: night
+          to_type: shift_type
+          to_value: early
+          is_hard: true
+```
+
+#### `consecutive_shift_type` (soft, hard by default when enabled)
+
+Bounds and/or requires consecutive-period runs of a "shift group" (a set
+of shift type ids and/or categories, unioned) per worker, with optional
+mandatory rest after a completed run. Covers "no more than 3 nights in a
+row", "a night rotation must last at least 2 periods once started", and
+"2 periods of rest immediately after a night block ends".
+
+| Rule field | Type | Default | Meaning |
+|---|---|---|---|
+| `rule_id` | str | required | Identifier. |
+| `shift_types` / `categories` | list or null | null | The shift group (union; at least one required). |
+| `min_consecutive` | int >= 1 or null | null | Minimum run length once started (horizon-lenient). |
+| `max_consecutive` | int >= 1 or null | null | Maximum run length. |
+| `rest_after_run` | int >= 0 | 0 | Periods with no work at all required after a run of this group ends. |
+
+```yaml
+constraints:
+  consecutive_shift_type:
+    enabled: true
+    is_hard: true
+    weight: 500
+    parameters:
+      rules:
+        - rule_id: night_block
+          categories: ["night"]
+          max_consecutive: 3
+          rest_after_run: 2
+```
+
+#### `weekend` (soft)
+
+Weekend-specific rostering rules. Only meaningful when every period in
+the horizon is one calendar day (`period_type: day`) -- with multi-day
+periods it logs a warning and has no effect.
+
+| Parameter | Type | Default | Meaning |
+|---|---|---|---|
+| `weekend_days` | list[int] (0=Mon..6=Sun) | `[5, 6]` | Which weekdays form a "weekend" group. |
+| `require_complete` | bool | `false` | Penalize/forbid working only part of a weekend. |
+| `identical_shift_type` | bool | `false` | Penalize/forbid different shift types across a weekend the worker fully works. |
+| `max_working_weekends` | int or null | null | Cap on total weekends worked across the horizon. |
+| `max_consecutive_weekends` | int or null | null | Cap on runs of consecutive working weekends. |
+
+All four sub-rules are independent and optional -- enable only what you
+need.
+
+```yaml
+constraints:
+  weekend:
+    enabled: true
+    is_hard: false
+    weight: 150
+    parameters:
+      require_complete: true
+      max_working_weekends: 3
+```
+
+#### `preference` (soft, `handles_hard_mode = True`)
+
+Honors two data channels that are otherwise unused by the solver: a
+worker's `preferred_shifts` (from `workers.csv`), and `Availability`
+records of type `"preferred"` or `"required"`.
+
+- **preferred_shifts**: assignment to any shift type outside a worker's
+  non-empty preferred set is penalized (soft) or forbidden (hard).
+- **`availability_type: preferred`**: the worker not working at all
+  (optionally restricted to the record's `shift_type_id`) anywhere in the
+  availability window is penalized (soft) or forbidden (hard).
+- **`availability_type: required`**: the worker must work at least one
+  matching shift in the window. Always hard when
+  `honor_required_availability` is true, regardless of the constraint's
+  own `is_hard`. A required window overlapping no periods is skipped with
+  a warning rather than making the schedule infeasible.
+
+| Parameter | Type | Default | Meaning |
+|---|---|---|---|
+| `worker_preferred_weight` | int >= 1 | 1 | Priority multiplier for preferred_shifts violations. |
+| `availability_preferred_weight` | int >= 1 | 1 | Priority multiplier for "preferred" availability violations. |
+| `honor_required_availability` | bool | true | Whether "required" availability windows are enforced. |
+
+```yaml
+constraints:
+  preference:
+    enabled: true
+    weight: 100
+    parameters:
+      worker_preferred_weight: 2
+```
+
+#### `worker_pairing` (soft, `handles_hard_mode = True`)
+
+Keeps two named workers apart (never sharing a shift) or together (a
+"tutor"/backup who must be present whenever the other works).
+
+| Rule field | Type | Default | Meaning |
+|---|---|---|---|
+| `rule_id` | str | required | Identifier. |
+| `type` | `together`\|`apart` | required | `apart`: never share the same shift+period. `together`: `worker_b` must work (any scope shift) whenever `worker_a` does. |
+| `worker_a` / `worker_b` | str | required | Distinct worker ids. Unknown ids are skipped with a warning at solve time. |
+| `shift_types` | list[str] or null | null | Rule scope; null = all shift types. Validated at config load. |
+| `is_hard` | bool or null | null | Per-rule override; null inherits the constraint's `is_hard`. |
+| `priority` | int >= 1 | 1 | Weight multiplier. |
+
+```yaml
+constraints:
+  worker_pairing:
+    enabled: true
+    weight: 200
+    parameters:
+      rules:
+        - {rule_id: keep_apart, type: apart, worker_a: worker_1, worker_b: worker_2, is_hard: true}
+        - {rule_id: tutor_new_hire, type: together, worker_a: worker_3, worker_b: worker_4, priority: 3}
+```
 
 ## Sliding-window semantics (`frequency`, `max_absence`, `shift_frequency`)
 
