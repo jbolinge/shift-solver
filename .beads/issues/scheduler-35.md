@@ -5,7 +5,7 @@ type: epic
 status: open
 priority: 4
 created: 2026-01-22
-updated: 2026-01-22
+updated: 2026-07-30
 depends-on: scheduler-29
 ---
 
@@ -14,8 +14,6 @@ depends-on: scheduler-29
 Extended functionality after MVP is complete.
 
 ## Scope
-- REST API with FastAPI
-- Web UI (technology TBD)
 - Schedule comparison and diff
 - What-if analysis
 - Multi-objective optimization
