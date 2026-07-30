@@ -11,7 +11,7 @@ This is a configurable shift scheduling application that uses Google OR-Tools CP
 - **Python 3.12+** with modern type hints
 - **uv** for package management
 - **OR-Tools** for constraint programming
-- **Django + SQLite** for web app persistence (the core solver is stateless: YAML/JSON/CSV in, schedules out)
+- **FastAPI + stdlib sqlite3** for the Shift Studio web app (the core solver is stateless: YAML/JSON/CSV in, schedules out)
 - **Pydantic v2** for configuration validation
 - **Click** for CLI
 - **pytest + hypothesis** for TDD

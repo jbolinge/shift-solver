@@ -67,3 +67,8 @@ plotly_chart/
 
 # Generated example outputs
 examples/*/output/
+
+# Shift Studio frontend build artifacts
+node_modules/
+frontend/dist/
+src/shift_studio/static/app/
